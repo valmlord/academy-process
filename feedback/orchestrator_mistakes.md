@@ -267,3 +267,11 @@ cleanly only because the brief asked for a clean commit boundary. The fix rounds
 Rule: for a design over about 25 steps, brief the coder in commit ranges from the start (one spawn per 4-5
 commits, each with the resume notes of the previous one), and name the base commit explicitly in every rebase
 instruction instead of `origin/main`.
+
+### 2026-11-01: The tester's brief asked it to attack the new gate (#86), keep doing that
+
+The coder watched every guard it wrote go red, yet three tester rounds still found gate gaps,
+each from a case the coder had not imagined (hidden paths, repo config, nested caches).
+Rule: For any new gate, the tester brief names the gate and asks for bypass attempts the coder
+did not list (config, symlinks, odd names, nested paths), on scratch copies. A coder's own
+mutation set shows the guard can fail, not that it covers the class.

@@ -796,3 +796,73 @@ row, dashboard row and breadcrumb link fades its focus ring from `currentColor` 
 8.4 tables were read against proto.css property by property, but not against what the prescribed utility expands to.
 Rule: When a design prescribes a Tailwind utility, check what it compiles to (property list included) against the
 prototype rule and the global focus rule; transitions name only the properties the prototype animates.
+
+### 2026-10-31: Removed the review and CI controls of the hooks without naming or replacing them (#86, judge_design round 1, security)
+The design untracked `/.claude/` and deleted CI jobs `pipeline`/`pipeline-types`. ADR-0005 item 7 accepts deliberate
+bypasses because they are "caught by review and by Stepan at merge", and CI was the only place shellcheck, py_compile
+and strict mypy of the hooks ran. After the change no hook, settings or agent edit shows up in any diff and nothing
+runs those checks, yet "What NOT to build" said "no change to the judge process". The same design took the backup of
+the local files only after `done`, though commits A and B still track them and a checkout across commit C deletes the
+hooks (gates fail open), and its rollback pushed a refspec from a `--mirror` clone, which git refuses.
+Rule: When a change removes files or CI jobs, list every control that relied on them (review at merge, CI checks,
+residual-risk ADRs) and replace each or have Stepan accept the loss in writing; back up before the first destructive
+step, and run every rollback command once in scratch.
+
+### 2026-10-31: Removed the definition of "the design file" while 33 citations of local design notes stayed tracked (#86, judge_design round 1, architecture)
+The #86 design rewrote the `design/flows/ia.md` header to explain only the "research §n" tags and dropped
+the line that named `plans/50-...-design.md`, while 24 "the design file" citations in `design/flows/*`,
+4 "design section 2" in `design/system/`, and 5 "(design D2/D3)" comments in `apps/web` (the #30 design)
+stayed in tracked files with no decision about them. The grep covered path references only, not citations
+of a note by name ("design file", "design Dn", "research §n", "review n").
+Rule: when files leave the repository, grep tracked files for every way they are cited (path, file nickname, section and decision ids) and decide each group explicitly in the change list or in "What NOT to build".
+
+### 2026-10-31: Rollback from a mirror that git refuses, and no guard for the window after the untracking commit (#86, judge_design round 1, operations)
+Design section 7 restored main and deleted branches with `git -C <mirror> push origin <sha>:refs/heads/<name>`;
+a `git clone --mirror` sets `remote.origin.mirror=true` and git answers "--mirror can't be combined with refspecs"
+(rehearsed in scratch; pushing to the URL works). The same design took its only backup of the local process files
+after `done`, although from the untracking commit on a rebase across it deletes `.claude/` from disk (rehearsed) and
+`stash`/`pop` re-tracks it, and the four commits needed intermediate file states with no stated way to build them.
+Its rewrite script took two args but its checks needed two more values, and its rehearsal could not pass its own checks.
+Rule: Every rollback and recovery command is run once against a scratch remote before the design ships it; a
+design that makes some git operation destructive names the first moment that is true, takes the backup before it,
+and forbids the operations by name from then on; a prescribed script's args cover every value its checks compare with.
+
+### 2026-10-31: A gate rule that its own definition makes unreachable, and an allowlist that never reaches the live directory (#86, judge_design round 2, security)
+Design 4.2 blocked a process repo "ahead" on a protected branch, with "ahead" = `<local protected branch>..HEAD`; on
+`main` that range is always empty (rehearsed: 0 after the commit, and `origin/main..HEAD` is 0 after the push), so an
+honest commit on process `main` passes `pr` and Stop and is pushed without a PR. The same design wrote the allowlist
+`.gitignore` only into the import dir; the attach of the live `.claude/` leaves it deleted, and the grant, local
+settings and state show as untracked and are staged by `git add -A` (rehearsed), while V12 described the attach as
+clean.
+Rule: For every gate rule, construct the exact state it must block (including the "already pushed" variant) and
+evaluate the rule's own definition on it before writing it down; every file a design creates is traced to the
+directory where it must exist at runtime, and rehearsals run on a copy of that directory as it is today.
+
+### 2026-10-31: Fixed the 33 listed citations and stopped, 37 of the same class stayed (#86, judge_design round 2, architecture)
+Revision 2 rewrote exactly the citations round-1 F1 listed ("design file", "design section 2", "(design D2/D3)")
+and its test grep matched only those forms. "design 4.Q5", "design 7.2", "(Arch A4)", "O N2", "decision A8" in
+`design/pages` and `design/system`, "round-4 advisory" and "(design 6.3)" in ADR-0008 cite the same unpublished notes
+in 37 more tracked lines, although the round-1 lesson above already said to grep section and decision ids.
+Rule: A finding's list is an example of a class. Run your own broad grep for the class, record the pattern and the
+hit count in the design, classify every hit, and prefer one convention that covers the class over per-line edits.
+
+### 2026-10-31: Attach rehearsed without the file the import commit adds, and a tool pin assumed to install on the runtime Python (#86, judge_design round 2, operations)
+Revision 2 claimed (V12, 3.2) that attaching the live `.claude/` to the pushed import commit changes no file and shows
+only #86's edits. The allowlist `.gitignore` exists only in the import commit; the mixed reset writes nothing, so on a
+copy of the live directory `status` shows ` D .gitignore` and the grant, state and flock as `??`, P1.4 fails and the
+new `pr`/Stop rule blocks. The same revision kept "mypy 1.20.2 under /usr/bin/python3 3.9.6" as an open question,
+while `pip download` answers it in seconds: no distribution for 3.9.
+Rule: Rehearse every operator command on a copy of the real directory and diff the copy against each file the
+commit being attached adds; an unverified install is checked with `pip download --only-binary :all:` on the target
+interpreter before the design relies on it.
+
+### 2026-11-01: A dirty-tree gate over an allowlist .gitignore saw nothing new (#86)
+
+The process repo ignores `/*` and re-includes known paths, and the design's gate checked only
+`git status --porcelain`. Any new top-level entry (`rules/`, `skills/`, `commands/`, which Claude
+Code loads as instructions) was ignored, so it never reached a process PR. The tester found it,
+then two more of the same class (`__pycache__/` at any depth, `core.fileMode=false`).
+Rule: When a gate decides "nothing changed" from git output, design it against what git hides,
+not only what it shows: list ignored entries and compare them with an explicit local-runtime
+list, and pin every config that changes the output (`--untracked-files`, `core.fileMode`,
+`core.fsmonitor`, assume-unchanged/skip-worktree flags).
