@@ -3,7 +3,7 @@
 - Status: Proposed
 - Date: 2026-10-27
 - Issue: #21
-- Amended: #23 (items 6, 7, 8 and 9); #27 (item 10)
+- Amended: #23 (items 6, 7, 8 and 9); #27 (item 10); #86 (item 11, Proposed)
 
 ## Context
 Pipeline v1 assumed one checkout. With git worktrees (#15) every hook still read the main
@@ -99,6 +99,54 @@ decisions 1-7: `plans/21-pipeline-v2-research.md`; full design: `plans/21-pipeli
     directories (CI, `tests/pipeline/run.sh` S1); judges are bound by the tier's judge list. Residual
     risk accepted as for items 1-9: a deliberate bypass (a prompt without the leading `Read` line and no
     `subagent_type`) is not a role spawn and is caught by review.
+
+11. **Process repository (#86, amendment, status Proposed; Stepan accepts).** The process files
+    (this ADR, `.claude/CLAUDE.md`, agents, feedback, hooks, `pipeline.json`, settings, the self-test,
+    the learner notes) are the private repository `valmlord/academy-process`, cloned at the product's
+    `.claude/`, which the product ignores as a whole. Its `.gitignore` is an allowlist, so runtime
+    files (state, parked states, flock, grant, `settings.local.json`, `worktrees/`) stay untracked.
+    Every process change is a commit on a branch named like the product branch, footer
+    `Refs valmlord/academy#<n>`, a process PR with CI (`tests/pipeline/check.sh`), merged by Stepan
+    before the product PR. "Caught by review and by Stepan at merge" (item 7) now means the process
+    PR. `pr` and Stop at `done` refuse a dirty process repo (untracked files listed whatever
+    `status.showUntrackedFiles` says), an ignored path that is not on the module's local runtime list
+    (state, lock, parked states, grant, `settings.local.json`, `worktrees/`, `.DS_Store`,
+    `__pycache__/` while it holds only regular `*.pyc` files, walked without following symlinks: so a
+    new `rules/`, `skills/` or `commands/` hidden by the allowlist's `/*`, or an agent file inside an
+    `agents/**/__pycache__/`, is refused), a mode change on a tracked file whatever `core.fileMode`
+    says, a tracked file flagged assume-unchanged or skip-worktree, a commit for the issue (process footer or
+    `Refs #<n>`) reachable from a local or remote-tracking protected process branch, process commits on
+    a detached or unpushed protected HEAD, a last process commit without the footer, a tracked file
+    outside the allowlist, and (`pr`) a task with no commit in either repository
+    (`hooks/lib/pl_process_repo.py`). A missing `.claude/.git` skips these rules with a log line;
+    a `.git` that is not a directory and any git error refuse. Residual risks, accepted:
+    1. A CLI session in a `git worktree add` checkout loads no hooks (the worktree has no
+       `.claude/`); only Stepan's habit of working in the main checkout stops it.
+    2. Tree-moving git verbs in `.claude/` (`checkout`, `restore`, `switch <existing>`, `reset`,
+       `pull`, `merge`, `rebase`, `stash`, `clean`) swap the live hooks under a running session: a
+       rule in `.claude/CLAUDE.md` section 3, no guard. The shell guard's write-verb list does not see
+       `git -C .claude checkout <ref> -- <path>` or `git -C .claude restore ...` (no write verb next to
+       `git`, no core path in the string); the same class as the relative `cd` of item 7.
+    3. `core.fsmonitor` (or another command-running config) set with `git -C .claude config` runs
+       code in every later git call there; the process-repo rules pass `-c core.fsmonitor=false`
+       (and `-c core.fileMode=true`, so a lost exec bit is not hidden), other git calls do not.
+    4. A product checkout across #86 (a commit that tracks the process files) deletes the process
+       working files until they are restored from the process repo
+       (`git -C .claude restore --source=HEAD --worktree -- .`); uncommitted edits are lost.
+    5. `.claude/CLAUDE.md`, this ADR and the agent files are under the open `.claude/` prefix,
+       writable with no active pipeline (the root `CLAUDE.md` needed one), and so is any new path
+       there (`rules/`, `skills/`, `commands/`), which Claude Code may load as instructions. The
+       dirty-repo rule turns each such edit into a process PR at the next `pr` or Stop at `done`:
+       a tracked path shows as changed, a new path as untracked or, when the allowlist's `/*` hides
+       it, as an ignored path off the local runtime list. An edit made and removed again between two
+       gates, or made in a session that never reaches `pr` or Stop at `done`, is not seen. The commit phase pushes the process branch
+       before `pr` runs, so a force-added runtime file (`git add -f settings.local.json`) reaches the
+       private repo's task branch before the tracked-file rule refuses it; Stepan then deletes that
+       branch and rotates anything secret the file held.
+    6. Process `main` has no branch protection (private repository, free plan). The gates refuse an
+       issue commit on it; a push outside any task, and a process commit on `main` that carries
+       neither `Refs valmlord/academy#<n>` nor `Refs #<n>`, once `main` is pushed or HEAD has left
+       `main`, are seen only by Stepan (while HEAD is on an unpushed `main`, the gates refuse it).
 
 ## Alternatives considered
 - Dispatch to the resolved checkout's own scripts: an old-commit worktree or a fake `.git`-file
