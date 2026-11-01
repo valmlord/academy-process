@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  hooks:
+    name: pipeline hooks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # The same script as locally. CI=true (set by Actions) turns the design validator cross-check,
+      # which needs the product checkout, into one SKIP line instead of a failure.
+      - run: bash tests/pipeline/check.sh "$RUNNER_TEMP/venv"
