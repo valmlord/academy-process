@@ -1,0 +1,135 @@
+# ux-researcher mistakes
+
+Seeded with design-discipline rules; append real lessons as they are found. Load before working.
+
+Format:
+### YYYY-MM-DD: Short description (#issue)
+
+What happened and why it is wrong.
+Rule: One-line rule that prevents this.
+
+### Seeded: Flows written from assumed needs
+
+A flow that starts from what the designer imagines the learner wants, instead of a course file, a
+journal entry or the issue, designs for nobody in particular.
+Rule: Every flow names its learner goal and the source it comes from (`course/`, `learner/journal.md`,
+the issue).
+
+### Seeded: A flow without error and empty states
+
+A flow that describes only the happy path leaves dev to invent what the learner sees when a check fails,
+a workspace does not start or a list is empty.
+Rule: Every flow has an entry point, a success state, error and empty states, and an exit.
+
+### Seeded: Two words for one concept
+
+Calling the same thing a "lesson" in one flow and a "class" in another makes the UI inconsistent and the
+IA ambiguous.
+Rule: Take the vocabulary from `course/` and `docs/learning-process.md` and use one term per concept.
+
+### 2026-10-29: Prototype scope table contradicted the deferred list and the flows (#50)
+The lesson row of the design file's prototype table asked for "each status of the checks.md table"
+(including closed, runner error, format error) while D1 deferred F14 and runner error; it listed an
+"M0 stub" state that no flow defines; it left F3.1-F3.2 (user menu) assigned to no prototype; and
+ia.md gave a different F6 region order than lesson-workspace.md and A2.
+Rule: Before handing off, cross-check every in-scope state against a flow step or error state, every
+deferred item against the in-scope list, and every flow step against exactly one prototype.
+
+### 2026-10-29: Lesson status labels not closed over all states (#50)
+F14.4 introduced lesson status "Не пройден" that the catalog status list (F5.3) does not have, and the
+mentor action was named "Разобрать с ментором" in F13.6/F16 and "Разбор с ментором" in F14.3/F15.6.
+Rule: Put every status label and action label in the ia.md vocabulary table and grep the flows for
+variants before handing off.
+
+### 2026-10-29: Keyboard, live-region and contrast decisions left gaps an a11y judge could name (#50)
+The accessibility judge failed the #50 design: below 768 px the environment and "Проверить" disappear,
+so a 1280 px laptop at 200 % zoom (640 CSS px) loses the task's core function (WCAG 1.4.4, 1.4.10);
+the idle banner and the F2 alert can sit in a hidden pane or outside the F6 cycle; the check bar puts a
+ticking timer next to a live announcement without saying which element is live; F6 is the only way out
+of the terminal and its delivery to the page in browsers is unverified, with no fallback; the terminal
+surface follows the theme while xterm's default ANSI palette stays dark-tuned (yellow on white 1.35:1);
+and the F6 region order still differs between ia.md and lesson-workspace.md.
+Rule: For every keyboard path, name the element that receives focus, the element that is the live
+region, and what is outside it; check each breakpoint decision against 200 % zoom on a 1280 px
+screen; and mark every unverified key behaviour as a test the dev issue must pass, with a fallback.
+
+### 2026-10-29: English vocabulary, inventory flow column and token names left inconsistent (#50)
+The consistency judge failed the #50 design: ia.md:19 fixes English "workspace" for the running
+container, yet ia.md, the registry titles (F8, F10, F11) and every flow say "environment", and
+lesson-workspace.md:82 and ia.md:64 still say "workspace" for the same thing. The page inventory's
+Flows column lists F3 (user menu on every page except sign-in) only for sign-in and dashboard, and F2
+(any protected page) for dashboard and lesson but not catalog. The plan leaves the status and terminal
+token names open, although the validator checks only `<name>-foreground` on `<name>` (plus
+`muted-foreground` and `destructive` on `background`), so a name outside that shape or a status colour
+used as text on `background`/`card` ships unchecked. "F6" names both flow F6 and the F6 key.
+Rule: Grep docs for every English and Russian synonym of each vocabulary row, derive the inventory's
+Flows column from each flow's Entry line, and name every planned colour token in the `<name>` /
+`<name>-foreground` shape with the surface it is used on.
+
+### 2026-10-29: Round-1 fixes introduced new gaps at their seams (#50, judge_design round 2)
+The usability judge failed round 2: the disabled "Проверить" with no button leaves region "Проверка"
+with no focusable element, although the `F6` rule lands on "the first focusable element"; "Открыть
+результаты" does not switch the one-pane area back to "Урок" while "К окружению" does; the one-pane
+switch belongs to no region; the "closed" status sets omit labels the flows use (terminal and reset
+statuses, "Не пройдено: исчерпан бюджет $N", "Осталась 1 попытка"); A18 assumes "Продолжить" means the
+learner is practising while A10 auto-starts the environment on any open, and "В процессе" has no rule;
+v1 shows "Пройти квиз", "Разобрать с ментором" and "Попросить подсказку" before their features exist,
+against the own rule that a control which does nothing is a dead end (F12, A15).
+Rule: After a fix, re-walk every flow that touches the changed rule (focus landing, one-pane switch,
+closed sets, assumptions) and check each new statement against every other assumption and every
+disabled or not-yet-shipped state.
+
+### 2026-10-29: Round-1 a11y fixes added a live region that is not announced and an F6 stop with nothing to focus (#50)
+The accessibility judge failed #50 round 2. ia.md:102-103 puts region "Уведомления" in the DOM only while
+it holds an alert, and lesson-environment.md:40 makes the idle warning inside it `role="status"`: a live
+region inserted together with its text is not reliably announced (ARIA live regions must exist before
+their content changes), so the WCAG 2.2.1 warning can stay silent for a screen reader user in the
+terminal. ia.md:137 says `F6` focus lands on the region's first focusable element, but in the creating /
+starting state (checks.md:75-77) region "Проверка" holds only a disabled "Проверить" and no button, so
+the rule has no target, and a `disabled` button's reason is skipped by Tab.
+Rule: Every live element exists in the DOM, empty, before its text is set; when a region can hold no
+focusable control, say where `F6` focus goes (the region itself with `tabindex="-1"`, or an
+`aria-disabled` control with its reason in `aria-describedby`).
+
+### 2026-10-29: "Closed" status sets that flows break, and a token rule the ANSI tokens break (#50)
+Round 2 consistency FAIL. ia.md:37 says no flow uses a status label outside the closed sets, yet the
+environment status row (ia.md:44, "F8, F10, F11") omits the status-bar texts of F9
+("Соединение с терминалом потеряно. Переподключаемся...", "Не удалось переподключиться", "Сеанс
+терминала завершён", lesson-environment.md:184-191) and F11.4 "Рабочая папка сброшена"
+(lesson-environment.md:267), and the check status set omits "Не пройдено: исчерпан бюджет $N"
+(checks.md:88, design file :175). The design file :65 says every new colour token is a
+`<name>`/`<name>-foreground` pair, then adds 16 `terminal-ansi-*` tokens with no foreground and no
+stated `@theme inline` mapping, which the validator requires for every colour token
+(scripts/design_tokens.py:353-357).
+Rule: Before calling a set closed, grep every flow for quoted labels on that surface and diff them
+against the set; when adding a token family, state its shape, both-theme rule and mapping explicitly
+even when it is an exception to the general rule.
+
+### 2026-10-29: R2 left the sign-in errors silent, and the split handle has only a drag (#50)
+Round 3 accessibility FAIL. ia.md:154-157 (R2) allows no live container outside the lesson page except
+"Уведомления", which sign-in does not have, and auth.md:31-37 gives "Не удалось связаться с сервером..."
+and "Слишком много попыток входа..." no focus move (only wrong credentials moves focus, auth.md:27), so
+both submit errors are status messages a screen reader never hears (WCAG 4.1.3). lesson-environment.md:168
+and design file :237 make pane resizing drag or arrow keys only; a mouse user without fine dragging has no
+single-pointer way to resize (WCAG 2.5.7 Dragging Movements; keyboard does not satisfy it).
+Rule: When a rule says "nothing else" or "only", walk every page it excludes and every message shown after
+an action there; every dragged control gets a click alternative, not only keys.
+
+### 2026-10-29: R6 hides the progress extras, the dashboard state list still draws them (#50)
+Round 3 usability FAIL. ia.md:246-248 (R6) says recent attempts, weak topics and cost (#35) are not shown
+in v1, and progress.md:24,26 agree, but the dashboard's required states (design file :159) still ask for
+"reserved slots for F18.3-F18.4 marked "M2"", ia.md:305 repeats it, and the F18 first-run empty state
+(progress.md:34-35) shows cost "$0", which is F18.4. The product-designer's checklist contradicts the rule
+it must follow, and a `ready` dashboard would ship a placeholder box R6 calls a dead end.
+Rule: After adding a "not shown in v1" rule, grep the required-states lists, the page inventory and every
+empty state for each hidden item and remove or re-label it there in the same edit.
+
+### 2026-10-30: Release-state grep searched the link text, not the whole hidden class (#79)
+judge_design usability FAIL, round 1. ia.md R6 "Before the catalog ships" hides a class of controls (top-bar
+"Курс", "Открыть курс", the Card button "Начать" / "Продолжить", module rows, breadcrumbs), but the design
+file's grep (plans/79-...-design.md:147-148) searched only "Курс" and "Открыть курс". So
+dashboard/acceptance.md AC1, AC2, AC4, AC5, AC9 (unconditional: "the Card shows the first `ready` lesson",
+"the course line counts...") stay unscoped, and against #29's build with module 00 `ready` they fail and
+contradict the planned AC14 ("no link to a `/courses/...` route appears anywhere").
+Rule: When a release rule hides a class of controls, grep every member of the class (labels, routes,
+component names) and scope every acceptance check that describes a hidden control to its release.

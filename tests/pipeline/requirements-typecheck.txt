@@ -1,0 +1,8 @@
+# mypy for the pipeline hook Python (.github/workflows/ci.yml, job pipeline-types). Exact pins,
+# installed with --no-deps --only-binary :all:, so every version is deliberate and a missing pin
+# fails loudly. mypy 1.20 is the last line that accepts --python-version 3.9, the hooks' runtime.
+mypy==1.20.2
+librt==0.16.0
+mypy_extensions==1.1.0
+pathspec==1.1.1
+typing_extensions==4.16.0

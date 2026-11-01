@@ -1,0 +1,205 @@
+{
+  "_comment": "Single source of truth for the pipeline state machine. Hooks read this file; do not hardcode tiers, phases or judges in hook scripts.",
+  "state_ttl_hours": 8,
+  "watchdog_minutes": 30,
+  "hook_log_max_bytes": 262144,
+  "state_lock_timeout_seconds": 5,
+  "grant_file": ".claude/settings.pipeline-grant.json",
+  "protected_branches": ["main", "master"],
+  "tiers": {
+    "HOTFIX": {
+      "team": "dev",
+      "requires_issue": true,
+      "phases": ["init", "coder", "tester", "judge_code", "commit", "pr", "notify", "done"],
+      "judges": ["security", "architecture", "operations"]
+    },
+    "TASK": {
+      "team": "dev",
+      "requires_issue": true,
+      "phases": [
+        "init",
+        "researcher",
+        "architect",
+        "judge_design",
+        "planner",
+        "coder",
+        "tester",
+        "judge_code",
+        "compound",
+        "commit",
+        "pr",
+        "notify",
+        "done"
+      ],
+      "judges": ["security", "architecture", "operations"]
+    },
+    "PROJECT": {
+      "team": "dev",
+      "requires_issue": true,
+      "phases": [
+        "init",
+        "researcher",
+        "architect",
+        "judge_design",
+        "planner",
+        "coder",
+        "tester",
+        "judge_code",
+        "compound",
+        "commit",
+        "pr",
+        "notify",
+        "done"
+      ],
+      "judges": ["security", "architecture", "operations"]
+    },
+    "PIPELINE": {
+      "team": "dev",
+      "requires_issue": true,
+      "edits_pipeline_core": true,
+      "phases": [
+        "init",
+        "researcher",
+        "architect",
+        "judge_design",
+        "planner",
+        "coder",
+        "tester",
+        "judge_code",
+        "compound",
+        "commit",
+        "pr",
+        "notify",
+        "done"
+      ],
+      "judges": ["security", "architecture", "operations"]
+    },
+    "LEARN": {
+      "team": "dev",
+      "requires_issue": true,
+      "learner_writes_code": true,
+      "phases": [
+        "init",
+        "researcher",
+        "architect",
+        "judge_design",
+        "planner",
+        "learner",
+        "tester",
+        "judge_code",
+        "compound",
+        "commit",
+        "pr",
+        "notify",
+        "done"
+      ],
+      "judges": ["security", "architecture", "operations"]
+    },
+    "MODULE": {
+      "team": "content",
+      "requires_issue": true,
+      "phases": [
+        "init",
+        "researcher",
+        "architect",
+        "judge_design",
+        "planner",
+        "author",
+        "student",
+        "validate",
+        "judge_content",
+        "compound",
+        "commit",
+        "pr",
+        "notify",
+        "done"
+      ],
+      "judges": ["accuracy", "pedagogy", "assessment"]
+    },
+    "LESSON": {
+      "team": "content",
+      "requires_issue": true,
+      "phases": [
+        "init",
+        "researcher",
+        "author",
+        "student",
+        "validate",
+        "judge_content",
+        "commit",
+        "pr",
+        "notify",
+        "done"
+      ],
+      "judges": ["accuracy", "pedagogy", "assessment"]
+    },
+    "DESIGN": {
+      "team": "design",
+      "requires_issue": true,
+      "phases": [
+        "init",
+        "researcher",
+        "architect",
+        "judge_design",
+        "planner",
+        "author",
+        "judge_ux",
+        "compound",
+        "commit",
+        "pr",
+        "notify",
+        "done"
+      ],
+      "judges": ["usability", "accessibility", "consistency"]
+    },
+    "RESEARCH": {
+      "team": "any",
+      "requires_issue": false,
+      "phases": ["init", "researcher", "notify", "done"],
+      "judges": []
+    },
+    "RELEASE": {
+      "team": "dev",
+      "requires_issue": false,
+      "phases": ["init", "release", "notify", "done"],
+      "judges": []
+    }
+  },
+  "agent_gates": {
+    "_comment": "agent file -> [first phase, last phase] window in which it may be spawned. Outside the window, or if the window's phases are not in the tier, the spawn is blocked.",
+    "coder.md": ["coder", "judge_code"],
+    "tester.md": ["tester", "judge_code"],
+    "curriculum-architect.md": ["architect", "judge_design"],
+    "lesson-author.md": ["author", "judge_content"],
+    "practice-designer.md": ["author", "judge_content"],
+    "student.md": ["student", "judge_content"],
+    "ux-researcher.md": ["researcher", "judge_design"],
+    "product-designer.md": ["author", "judge_ux"],
+    "ui-designer.md": ["author", "judge_ux"]
+  },
+  "judge_agents": {
+    "security": "judge-security.md",
+    "architecture": "judge-architecture.md",
+    "operations": "judge-operations.md",
+    "accuracy": "judge-accuracy.md",
+    "pedagogy": "judge-pedagogy.md",
+    "assessment": "judge-assessment.md",
+    "usability": "judge-usability.md",
+    "accessibility": "judge-accessibility.md",
+    "consistency": "judge-consistency.md"
+  },
+  "learn_tier_editable_paths": [".claude/", "pipeline/", "docs/", "plans/", "learner/", "backlog/"],
+  "human_wait_phases": ["learner"],
+  "learn_tier_test_globs": [
+    "**/test/**",
+    "**/tests/**",
+    "**/e2e/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ],
+  "learn_tier_code_dirs": ["apps/", "services/", "packages/", "images/"],
+  "protected_files": [".claude/pipeline_state"],
+  "pipeline_core_files": [".claude/pipeline.json", ".claude/settings", ".claude/hooks/"]
+}

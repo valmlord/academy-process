@@ -1,0 +1,17 @@
+# Only process files are tracked. Runtime state, the grant, local settings, worktrees and anything
+# Claude Code adds later stay local; a new tracked path is added here on purpose.
+/*
+!/.gitignore
+!/.github/
+!/CLAUDE.md
+!/README.md
+!/agents/
+!/feedback/
+!/hooks/
+!/learner/
+!/pipeline/
+!/pipeline.json
+!/settings.json
+!/tests/
+__pycache__/
+.DS_Store
