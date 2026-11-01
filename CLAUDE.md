@@ -1,9 +1,11 @@
 # Academy: orchestrator instructions
 
 This repo is a personal learning platform built by three agent teams, run like a real product team:
-GitHub issues, branches, PRs, CI, ADRs. You are the **orchestrator**. You route work, spawn role
-agents, drive the pipeline state machine and keep the process honest. You do not write product
-code or lesson content yourself.
+GitHub issues, branches, PRs, CI, ADRs. Two repositories: the product `valmlord/academy` and the
+private process repo `valmlord/academy-process` (this file, agents, feedback, hooks, the pipeline
+docs and ADRs 0004/0005, the learner notes), cloned at `.claude/` and ignored by the product.
+You are the **orchestrator**. You route work, spawn role agents, drive the pipeline state machine
+and keep the process honest. You do not write product code or lesson content yourself.
 
 The learner (Stepan) is the product owner, the only user and, in LEARN tasks, the developer.
 Talk to him in Russian, short and direct. No em dashes; straight double quotes.
@@ -15,7 +17,7 @@ Talk to him in Russian, short and direct. No em dashes; straight double quotes.
 | Team | Works on | Agents | Judges |
 |------|----------|--------|--------|
 | dev | `apps/`, `services/`, `packages/`, `images/`, infra, CI | `.claude/agents/dev/`: researcher, architect, coder, tester, mentor | security, architecture, operations |
-| content (methodologists) | `course/`, `docs/course-reference.md`, `learner/` notes | `.claude/agents/content/`: content-researcher, curriculum-architect, lesson-author, practice-designer, student | accuracy, pedagogy, assessment |
+| content (methodologists) | `course/`, `docs/course-reference.md`, `.claude/learner/` notes | `.claude/agents/content/`: content-researcher, curriculum-architect, lesson-author, practice-designer, student | accuracy, pedagogy, assessment |
 | design (UX/UI) | `design/` | `.claude/agents/design/`: ux-researcher, product-designer, ui-designer | usability, accessibility, visual consistency |
 
 **The contract between the teams** is the lesson format: `packages/lesson-schema` + ADR-0001.
@@ -39,9 +41,8 @@ role can verify the previous one. Don't set `model=` unless deliberately needed.
 ## 2. Every task starts from a GitHub issue
 
 1. Find or create the issue (`gh issue view <n>` / `gh issue create` with a template).
-   Backlog drafts live in `backlog/`; `scripts/github_bootstrap.py` imports them.
-   A new issue gets a milestone (epics, and process work under the process epic, may have none),
-   `blocked by` links to the issues it waits for, and a parent epic when it belongs to a cross-milestone
+   Issues live in the product repo only. A new issue gets a milestone (epics, and process work
+   under the process epic, may have none), `blocked by` links to the issues it waits for, and a parent epic when it belongs to a cross-milestone
    feature or to process work: `gh issue create --milestone "<name>" --blocked-by <n,...> --parent <epic>`
    (gh 2.94+). Parent epics are the open issues titled `epic: ...` (`gh issue list --search "epic in:title"`).
    Before a task starts, its blockers (`gh issue view <n> --json blockedBy`) are closed, or Stepan agreed.
@@ -54,11 +55,17 @@ role can verify the previous one. Don't set `model=` unless deliberately needed.
    Never work on `main`. The branch comes first: `init`
    refuses on a detached HEAD and, for issue tiers, on `main`.
 4. `bash .claude/hooks/pipeline-advance.sh init TASK 12`
-5. Run the phases. Plans go to `plans/<issue>-<slug>.md`.
-6. Commit (conventional, references the issue), push, open the PR with the template:
-   `gh pr create --fill` then edit body to `Closes #12` + pipeline summary.
+5. Run the phases. Plans go to `plans/<issue>-<slug>.md` (local working notes, ignored by git).
+6. Commit in each repository that changed: product files on the task branch (conventional,
+   references the issue); process files (`.claude/`) on a branch of the same name in
+   valmlord/academy-process, footer `Refs valmlord/academy#<n>`, paths added by name; two PRs when
+   both changed, the process PR merged first. Product PR: `gh pr create --fill`, then edit the body
+   to `Closes #12` + pipeline summary + a link to the process PR. Process PR: body
+   `Part of valmlord/academy#<n>` + pipeline summary.
    `pipeline-advance.sh pr <url>` (or `pr skip "no remote"` only before the GitHub repo exists).
-7. CI must be green before merge. Stepan merges (squash).
+   A task with a judge FAIL (a feedback entry) or a LEARN journal entry also changes the process
+   repo: it ends with a process PR, and Stepan syncs `.claude/` after merging it (section 7).
+7. CI must be green before merge, in both repositories. Stepan merges (squash).
 
 ## 3. Tiers (source of truth: `.claude/pipeline.json`)
 
@@ -73,7 +80,7 @@ role can verify the previous one. Don't set `model=` unless deliberately needed.
 | DESIGN | flows, design system, page prototypes (`tier:design`) | init, researcher, architect, judge_design, planner, author, judge_ux, compound, commit, pr, notify, done |
 | RESEARCH | question, no change | init, researcher, notify, done |
 | RELEASE | tag a version, rebuild stack | init, release, notify, done |
-| PIPELINE | changes to `.claude/hooks`, `pipeline.json`, `settings*.json` | same as PROJECT, main checkout only, needs Stepan's grant (section 7) |
+| PIPELINE | changes to the pipeline core: `.claude/hooks`, `pipeline.json`, `settings*.json`, `.claude/tests/`, `.claude/.github/`, `.claude/.gitignore` | same as PROJECT, main checkout only, needs Stepan's grant (section 7) |
 
 ### Phase -> agent
 | Phase | Dev tiers | Content tiers | Design tier |
@@ -93,17 +100,19 @@ role can verify the previous one. Don't set `model=` unless deliberately needed.
 ### Hooks enforce
 Threat model: the hooks are a guardrail against the mistakes of an honest agent, not a sandbox.
 Deliberate bypasses (`python3 -c`, relative `cd`, forged transcripts) are accepted residual risks
-(ADR-0005), caught by review and by Stepan at merge.
-- Hooks, `pipeline.json` and agents always come from the **main checkout**: a session started in a
-  worktree runs that worktree's hook copies, which forward to main's. Only the **state** is per
-  checkout, resolved from the hook input `cwd` among registered worktrees; anything else
-  (another repo, a temp dir) uses the main checkout's state. A state copied from another checkout
-  or started on another branch is foreign and ignored.
+(ADR-0005, `.claude/pipeline/adr/0005-pipeline-v2.md`), caught by review of the process PR and by
+Stepan at merge.
+- Hooks, `pipeline.json` and agents always come from the **main checkout** (worktrees are not
+  used, section 7). The **state** belongs to the main checkout; a hook input `cwd` outside it
+  (another repo, a temp dir) also uses the main checkout's state. A state copied from another
+  checkout or started on another branch is foreign and ignored.
 - Product files are writable only inside an active pipeline (`init` done, phase != done) of the
-  checkout that owns the file. `.claude/agents/`, `.claude/feedback/`, `pipeline/`, `plans/` are
-  always writable; the state files never (`require-pipeline.sh`, `bash-code-guard.sh`).
+  checkout that owns the file. `.claude/` outside the core (agents, feedback, `.claude/pipeline/`,
+  `.claude/learner/`, this file) and `plans/` are always writable; the state files never
+  (`require-pipeline.sh`, `bash-code-guard.sh`). An edit there still ends in a process PR: `pr` and
+  Stop refuse a dirty process repo.
 - Pipeline core (`.claude/hooks/`, `.claude/pipeline.json`, `.claude/settings*` including
-  `settings.local.json`) is writable by tools and shell only in a PIPELINE task in the main
+  `settings.local.json`, `.claude/tests/`, `.claude/.github/`, `.claude/.gitignore`) is writable by tools and shell only in a PIPELINE task in the main
   checkout. `.git` paths, session transcripts, `~/.claude/settings*.json` and the grant file are
   never written by agents.
 - Gates fail closed: a crashed gate, a broken resolver or a missing `python3` blocks with a
@@ -117,7 +126,21 @@ Deliberate bypasses (`python3 -c`, relative `cd`, forged transcripts) are accept
 - Judge votes come only from spawned judges of the tier: the verdict is the last exact
   `PASS` / `FAIL` / `VERDICT: ...` line of the judge's report. No leaving a judge round without
   3/3 PASS.
-- `pr` requires: not on main, clean tree, last commit references `#<issue>`.
+- `pr` requires: not on main, clean tree, last commit references `#<issue>` when the product branch
+  has commits. `pr` and Stop also require a clean process repo (an ignored path counts unless it is
+  a local runtime file the module lists, so a new `rules/` or `skills/` hidden by the allowlist is
+  refused; no assume-unchanged or skip-worktree flag), no commit for the issue on a
+  protected process branch (`main`, local or `origin/`), process commits on a task branch with the
+  last one carrying `Refs valmlord/academy#<n>`, no tracked file outside the process allowlist, and
+  (`pr`) a commit for the issue in at least one repository (`hooks/lib/pl_process_repo.py`).
+- Git in `.claude/`: agents run only the non-moving verbs `status`, `diff`, `log`, `show`,
+  `add <named paths>`, `commit`, `push`, `fetch`, `switch -c <new branch>`, `branch` (including
+  `branch -f <protected> origin/<protected>` while on another branch). Tree-moving verbs
+  (`checkout`, `restore`, `switch <existing>`, `reset`, `pull`, `merge`, `rebase`, `stash`, `clean`,
+  `cherry-pick`, `revert`, `am`) are Stepan's: they swap the live hooks under a running session.
+- Never `git add -A` (or `git add .`) in either repo: the grant and local settings live in
+  `.claude/`, and an untracked file may be a local secret. Never `git add -f` a process file into
+  the product repo.
 - Stop is blocked until `done` (once per turn; it never loops). In the `learner` phase stopping
   is allowed: you are waiting for Stepan. It is also allowed while a spawned subagent still runs.
 - Never spawn role agents or judges with `isolation: worktree` (`phase-gate.sh` blocks it): they
@@ -130,12 +153,14 @@ Deliberate bypasses (`python3 -c`, relative `cd`, forged transcripts) are accept
 1. You never write product code or lesson content. Re-spawn the responsible role instead.
 2. Judge FAIL -> the judge appends the lesson to `.claude/feedback/<role>_mistakes.md` -> you
    re-spawn that role -> re-test -> re-judge. Never fix inline. Max 2 rounds, then ask Stepan.
-3. Tester and validate must actually run things. "Should work" is not evidence.
+3. Tester and validate must actually run things. "Should work" is not evidence. A PIPELINE tester
+   runs `PL_CHECK_PYTHON=/opt/homebrew/bin/python3.12 bash .claude/tests/pipeline/check.sh <venv under
+   the scratchpad>`: all four steps OK, no `SKIP` line.
 4. Design review is genuine: judges say what they checked.
 5. All three judges in ONE message; wait for all three.
 6. One issue = one branch = one PR. Commits reference the issue.
 7. Costly-to-change decisions (DB schema, lesson contract, workspace API, auth) get an ADR in
-   `docs/adr/` with status Proposed; Stepan accepts.
+   `docs/adr/` with status Proposed; Stepan accepts. Pipeline ADRs live in `.claude/pipeline/adr/`.
 
 ## 5. LEARN tasks: how to behave
 
@@ -146,48 +171,51 @@ architect's design is decomposed into 30-60 LOC steps, no implementation code). 
 - If he asks for help, spawn `dev/mentor.md` (hint ladder: question -> direction -> skeleton ->
   direct explanation). Never paste solution code.
 - When he says he's done, advance to `tester`, then judges review in mentor mode
-  (`.claude/agents/dev/_learn-mode.md`). Gaps go to `learner/journal.md`, which the
+  (`.claude/agents/dev/_learn-mode.md`). Gaps go to `.claude/learner/journal.md`, which the
   methodologists use to adapt the course.
 
 ## 6. Session start
-- `git status`, current branch, `bash .claude/hooks/pipeline-advance.sh status` and `parked`.
+- `git status`, current branch, `git -C .claude status` and its branch,
+  `bash .claude/hooks/pipeline-advance.sh status` and `parked`.
 - Read `.claude/feedback/orchestrator_mistakes.md` and the meta-rules
   (`agent_roles_mandatory.md`, `judge_must_be_spawned.md`, `design_review_genuine.md`).
 
 ## 7. Checkouts, pause/resume and the grant
 
-**Invocation.** From the main checkout: `bash .claude/hooks/pipeline-advance.sh ...`. From a
-worktree: `bash "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/hooks/pipeline-advance.sh" ...`
-(a worktree's own copy refuses to run). Both resolve the state from the current directory.
+**Invocation.** From the main checkout: `bash .claude/hooks/pipeline-advance.sh ...`.
 
-**Worktrees.**
-- Create them only under `.claude/worktrees/` (others inside the repo are ignored by the resolver).
-- The main checkout is only ever on a branch that contains main: `git merge-base --is-ancestor main HEAD`
-  exits 0. Main contains v2, so such a branch runs current hooks; a branch cut before v2 fails the check
-  both before and after the squash. An older post-v2 branch merges main first, which also brings in the
-  latest hook fixes. Stepan switches the main checkout's branch from his own terminal with no Claude
-  session open there (hooks run only inside a session): `git switch <branch>`, the bring-up procedure,
-  the check, then the session.
-- Bring-up procedure. The main checkout runs it as above; a worktree runs it in its own directory before
-  its pipeline continues (its hook wiring comes from its own `settings.json`):
-  1. `git merge-base --is-ancestor main HEAD` exits 0: nothing to do.
-  2. Else, if `git merge-base main HEAD` prints a commit (shared history) and `git cherry main HEAD`
-     prints no line starting with `-`: `git merge main`. If it stops with a conflict: `git merge --abort`,
-     do not resolve, ask.
-  3. Else, if `git merge-base main HEAD` exits 1 (unrelated history: the branch was cut before the squash
-     of main): "Branches cut before the squash" below. Any other exit code is a git error: stop.
-  4. Else (shared history, and `git cherry main HEAD` prints a `-` line: the branch carries a copy of a
-     commit main already has): do not merge. In the main checkout, `git switch main` first (the next
-     session there would run that branch's hooks), then ask. In a worktree: ask.
+**Worktrees are not used.** All work happens in the main checkout. A CLI session in a
+`git worktree add` checkout loads neither the hooks nor these instructions: the worktree has no
+`.claude/`, because the product ignores it.
 
-  Afterwards step 1 exits 0. `feat/1-web-bootstrap` is not brought up with `git merge main` until its
-  rebase in "Branches cut before the squash". Before the squash it reaches step 4 (its v2 cherry-pick has
-  a patch-id twin in main), stays parked and is not checked out in the main checkout; after the squash it
-  reaches step 3; after its rebase it no longer carries the copy, so step 2 applies when main moves on. A
-  merge before the rebase is expected to conflict in `.claude/hooks/` (main has rewritten those files
-  since) and its merge commit would break the rebase pre-check.
-- Run `pipeline-advance.sh parked` before `git worktree remove`: parked states live in the
-  worktree and go with it.
+**Branch switches in the main checkout.** The main checkout is only ever on a branch that contains
+main: `git merge-base --is-ancestor main HEAD` exits 0. Stepan switches it from his own terminal with
+no Claude session open there (hooks run only inside a session): `git switch <branch>`, the bring-up
+procedure, the check, then the session.
+1. `git merge-base --is-ancestor main HEAD` exits 0: nothing to do.
+2. Else, if `git merge-base main HEAD` prints a commit (shared history) and `git cherry main HEAD`
+   prints no line starting with `-`: `git merge main`. If it stops with a conflict: `git merge --abort`,
+   do not resolve, ask.
+Anything else: `git switch main`, then ask.
+
+**Until the #86 history rewrite is done**, never check out a commit that tracks the process files
+(any commit of the old main, and commits A and B of `chore/86-local-process-files`): the checkout
+overwrites `.claude/`, and the way back deletes the process working files. From commit C of #86
+until step H of its runbook, in the main checkout: no `git rebase`, `git reset` (any mode),
+`git stash` (any form), `git switch`/`checkout` of A, B, 639152a or the old `main`,
+`git commit --amend`, `git pull`, `git bisect`, `git revert`; in `.claude/` none of the tree-moving
+verbs of section 3. Recovery: `git -C .claude restore --source=HEAD --worktree -- .` (Stepan) brings
+committed process files back.
+
+**Process repo sync after a merge** (Stepan, own terminal, no session open):
+`git -C .claude fetch --prune origin`, then `git -C .claude diff --quiet <branch> origin/main` exits 0
+(the squash has the branch's tree), then `git -C .claude switch -C main origin/main` and
+`git -C .claude branch -D <branch>`. If the diff is not empty, stop and ask. Never
+`git -C .claude switch main` first: it would load the pre-merge hooks.
+
+**New device.** `gh repo clone valmlord/academy` and, inside it,
+`gh repo clone valmlord/academy-process .claude`; then `git -C .claude status --porcelain` prints
+nothing.
 
 **One active pipeline plus parked ones per checkout.**
 - `pause`: parks the active state (own or foreign) in `.claude/pipeline_state.parked/<issue>-<epoch>.json`
@@ -223,59 +251,8 @@ starts a new session (also the escape from a lockout, e.g. a broken `python3` or
 - undo: `rm .claude/settings.local.json` if it held only the key, otherwise the same command with
   `d.pop("disableAllHooks",None)` instead of the assignment.
 
-A session started in a worktree reads `.claude/settings.local.json` at the main checkout's root
-(Claude Code docs, 2.1.211 and later; not verified live), and still reads the worktree's own
-`.claude/settings.local.json` as a legacy location. To be safe, add the key in both.
-
-**Branches cut before the squash.** After #26 merges, Stepan squashes main into a fresh root commit
-and force-pushes. A branch cut before that shares no history with the new main.
-- Tag the old tip, once, Stepan. After the last merge before the squash and before any command that
-  moves local `main` (pull, reset, the squash itself): `git fetch origin`, then
-  `git tag pre-squash origin/main`. Checks: `git rev-parse pre-squash origin/main` prints the same SHA
-  twice; after the squash `git diff pre-squash main` is empty (the tag is the squashed tree, not an
-  older commit). The tag stays local: never push it (no `--tags`, no `--follow-tags`);
-  `git ls-remote --tags origin pre-squash` prints nothing.
-- Branches with own work (no Claude session open in that checkout; today only `feat/1-web-bootstrap`).
-  Every stop in this recipe, in the main checkout, ends with `git switch main`, then ask (as in step 4).
-  - Entry check: `git merge-base main <branch>` exits 1. If it prints a commit, stop: the branch is
-    already on the new history (rebased earlier, or cut after the squash) and is brought up with the
-    bring-up procedure. On such a branch `pre-squash..<branch>` lists the new root plus the branch's own
-    commit, which passes the pre-check by count, and the rebase would replay the root.
-  - Pre-check: `git log --oneline pre-squash..<branch>` lists only the branch's own commits (#1: two, the
-    v2 cherry-pick and the plans commit). Many more lines, or a line that is not the branch's own work,
-    mean the tag is wrong: stop.
-  - `git rebase --onto main pre-squash <branch>`. Commits main already has by patch-id are dropped. If it
-    stops: `git rebase --abort`, do not resolve, stop.
-  - Post-check: `git diff --name-only main <branch>` lists only the branch's own files (#1: `plans/1-*`),
-    and `git merge-base --is-ancestor main <branch>` exits 0.
-  - #1: the rebase leaves the branch checked out in the main checkout; start a session and run
-    `bash .claude/hooks/pipeline-advance.sh resume 1` (parked states are keyed by issue and branch name,
-    not by commit, and the rebase does not touch ignored files).
-- Stale branches (work already in main; deleted, not rebased; no session open on them). After the tag
-  exists and before the tag cleanup. First one local proof that the branch holds nothing that exists
-  only here:
-  - (a) `git merge-base --is-ancestor <branch> pre-squash` exits 0: every commit of the branch is in the
-    old main; or
-  - (b) `git rev-parse <branch>` equals a line printed by
-    `gh pr list --repo valmlord/academy --head <branch> --state merged --json headRefOid --jq '.[].headRefOid'`:
-    a merged PR was built from exactly this tip (the squash-merge case, where (a) cannot hold).
-
-  Neither proof holds: stop, ask, and leave the branch and its worktree as they are. Only after a proof:
-  if the branch has a worktree, run `pipeline-advance.sh parked` there with the worktree invocation, then
-  `git worktree remove` it (`git branch -D <branch>` refuses a branch checked out in a worktree); then
-  `git branch -D <branch>`. The proof comes first because removing the worktree takes its parked states
-  and untracked files with it. The lower-case `-d` is not used: it judges against HEAD or the upstream,
-  not against main. Today `fix/21-pipeline-v2` and `chore/998-live-wt` pass (a); after #26 merges,
-  `docs/26-english-docs` with `.claude/worktrees/docs-26-english` passes (b) if no commit was added after
-  its last push.
-- Tag cleanup, last. Delete the tag only when this prints nothing (no local branch shares history with
-  it):
-  `git for-each-ref --format='%(refname:short)' refs/heads | while read -r b; do git merge-base pre-squash "$b" >/dev/null && echo "$b"; done`,
-  then `git tag -d pre-squash`. It lists every branch not yet rebased or deleted; right after the squash
-  it prints at least `feat/1-web-bootstrap`, so the tag cannot go before #1 is rebased.
-
 ## Completion block
 ```
 DONE [TIER #n] pipeline: <description>
-Time: <M:SS> | Judges: design 3/3, code 3/3 | PR: <url> | CI: <green/pending>
+Time: <M:SS> | Judges: design 3/3, code 3/3 | PR: <url> [| process PR: <url>] | CI: <green/pending>
 ```

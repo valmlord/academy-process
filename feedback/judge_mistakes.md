@@ -195,3 +195,10 @@ screenshots. The input's `md:text-sm`, the unstyled `aria-disabled` busy button 
 in the same class strings and surfaced only in round 2, costing a round.
 Rule: When a finding is "vendored component differs from the design system", read the whole class string against
 the matching proto.css rules, every state included, and list every item in round 1.
+
+### 2026-10-31: Round-1 citation grep listed forms by example, missing "design N.N" and review ids (#86, architecture)
+Round-1 F1 grepped "design file", "design Dn", "design section n" and "research §n" and listed 33 hits. The same class
+in "design 4.Q5", "(Arch A4)", "O N2", "decision A8" outside `design/flows/`, "round-n advisory" was 37 more lines;
+the architect fixed the 33 and round 2 was spent on the rest.
+Rule: For a "class of references" finding, grep the class with several neighbouring forms (section numbers, decision
+ids, review finding ids) before sending round 1, and state that the list is an example and the effect is the target.

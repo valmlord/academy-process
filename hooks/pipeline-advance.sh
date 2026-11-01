@@ -247,10 +247,17 @@ if [ "$PHASE" = "pr" ]; then
       fi
     done
     if [ -n "$(git -C "$REPO_DIR" status --porcelain 2>/dev/null)" ]; then
-      echo "BLOCKED: uncommitted changes. Commit first (git add -A)." >&2; exit 1
+      echo "BLOCKED: uncommitted changes. Commit first, adding each path by name (git add <path> ...); never git add -A or git add ." >&2; exit 1
     fi
-    if ! git -C "$REPO_DIR" log -1 --format=%B 2>/dev/null | grep -qE "#$ISSUE\b"; then
-      echo "BLOCKED: the last commit message must reference the issue (e.g. 'Refs #$ISSUE')." >&2; exit 1
+    # The issue reference, a commit for the issue in at least one repository, and the process repo
+    # at .claude/ (clean, nothing for the issue on a protected branch): lib/pl_process_repo.py.
+    PROC_RC=0
+    PROC_OUT=$(python3 -I "$LIB/pl_process_repo.py" pr "$REPO_DIR" "$ISSUE") || PROC_RC=$?
+    if [ "$PROC_RC" = 2 ]; then
+      while IFS= read -r problem; do echo "BLOCKED: $problem" >&2; done <<< "$PROC_OUT"
+      exit 1
+    elif [ "$PROC_RC" != 0 ]; then
+      echo "ERROR: the process repo check failed (rc $PROC_RC); see the error above" >&2; exit 1
     fi
   fi
 fi

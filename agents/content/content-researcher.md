@@ -22,7 +22,7 @@ written from memory is wrong by default. You bring facts with sources and dates.
 1. `.claude/feedback/content-researcher_mistakes.md`
 2. `.claude/agents/content/_contract.md`
 3. `docs/course-reference.md` : the reference program the course follows (Hexlet "ИИ для разработчиков").
-4. `learner/profile.md` and `learner/journal.md` : what the learner already knows and where he struggles.
+4. `.claude/learner/profile.md` and `.claude/learner/journal.md` : what the learner already knows and where he struggles.
 
 ## Output
 

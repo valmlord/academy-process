@@ -5,7 +5,7 @@
 #  2. The main checkout's state and core are checked as absolute paths before any checkout mapping,
 #     so no worktree layout can re-label them. Core is writable only in an own PIPELINE task in main.
 #  3. Otherwise the checkout that owns the file governs: its state files are protected, its core is
-#     never writable, .claude/ pipeline/ plans/ are open, everything else needs its active pipeline.
+#     never writable, .claude/ and plans/ are open, everything else needs its active pipeline.
 #  4. LEARN tier: product code is written by the learner; only meta paths and test files are writable.
 # The decision code lives in lib/pl_write_gate.py (since #23); this wrapper maps its exit code.
 HOOK_KIND=gate
@@ -16,7 +16,7 @@ unset PL_COMMON_LOADED
 source "$HOOK_DIR/lib/common.sh"
 # Set by the last line of common.sh; a source that stopped early would make this hook exit 127,
 # which does not block.
-[ "${PL_COMMON_LOADED:-}" = 1 ] || { echo "BLOCKED: $0: lib/common.sh did not load; pipeline gates cannot run. Stepan: kill switch, CLAUDE.md section 7" >&2; exit 2; }
+[ "${PL_COMMON_LOADED:-}" = 1 ] || { echo "BLOCKED: $0: lib/common.sh did not load; pipeline gates cannot run. Stepan: kill switch, .claude/CLAUDE.md section 7" >&2; exit 2; }
 
 deny() { # deny <message> <log reason>
   echo "BLOCKED: $1" >&2

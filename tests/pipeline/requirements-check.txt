@@ -1,0 +1,10 @@
+# Tools of tests/pipeline/check.sh, the same locally and in the process repo's CI. Exact pins,
+# installed with --no-deps --only-binary :all:, so every version is deliberate and a missing pin
+# fails loudly. mypy 1.20 is the last line that accepts --python-version 3.9, the hooks' runtime;
+# it needs Python 3.10+ to install. shellcheck-py ships the shellcheck binary as a wheel.
+mypy==1.20.2
+librt==0.16.0
+mypy_extensions==1.1.0
+pathspec==1.1.1
+typing_extensions==4.16.0
+shellcheck-py==0.10.0.1

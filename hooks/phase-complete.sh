@@ -5,7 +5,8 @@
 # - Phase waits on a human (human_wait_phases, e.g. LEARN "learner") -> allow with a reminder.
 # - A subagent is still running (background_tasks) -> allow; its result is still to come.
 # - Otherwise require: phase=done, each judge round unanimous for the tier, notify run, clean
-#   tree, not on a protected branch for issue-linked work.
+#   tree, not on a protected branch for issue-linked work, and the process repo rules of
+#   lib/pl_process_repo.py (clean, no issue commit on a protected process branch).
 # - Cannot evaluate (common.sh did not load, python3 unusable, resolver failure) -> warn and
 #   allow (HOOK_KIND=stop): blocking a Stop that nothing can repair only loops.
 HOOK_KIND=stop
@@ -16,7 +17,7 @@ unset PL_COMMON_LOADED
 source "$HOOK_DIR/lib/common.sh"
 # Set by the last line of common.sh. Without it stop_hook_active cannot be read, so a block here
 # would repeat on every Stop: warn and allow.
-[ "${PL_COMMON_LOADED:-}" = 1 ] || { echo "WARNING (not blocking): $0: lib/common.sh did not load; the pipeline completion check did not run. Stepan: kill switch, CLAUDE.md section 7" >&2; exit 0; }
+[ "${PL_COMMON_LOADED:-}" = 1 ] || { echo "WARNING (not blocking): $0: lib/common.sh did not load; the pipeline completion check did not run. Stepan: kill switch, .claude/CLAUDE.md section 7" >&2; exit 0; }
 
 ACTIVE_FLAG=""
 block() {
@@ -87,7 +88,7 @@ PY
   [ -z "$notify" ] && block "notify not run. Run: bash .claude/hooks/pipeline-advance.sh notify"
 
   cd "$STATE_ROOT"
-  [ -n "$(git status --porcelain 2>/dev/null)" ] && block "uncommitted changes exist (including untracked files). Commit (git add -A)."
+  [ -n "$(git status --porcelain 2>/dev/null)" ] && block "uncommitted changes exist (including untracked files). Commit first, adding each path by name (git add <path> ...); never git add -A or git add ."
 
   issue=$(python3 -I -c "import json,sys; print(json.load(open(sys.argv[1])).get('issue') or '')" "$STATE_FILE")
   if [ -n "$issue" ]; then
@@ -96,6 +97,16 @@ PY
       [ "$br" = "$p" ] && block "issue #$issue work is on protected branch '$br'. Move it to <type>/$issue-<slug> and open a PR."
     done
   fi
+
+  # Before finish removes the state, so a refusal leaves the task resumable.
+  local problems prc=0
+  problems=$(python3 -I "$LIB/pl_process_repo.py" stop "$STATE_ROOT" "$issue") || prc=$?
+  case "$prc" in
+    0) ;;
+    2) block "process repo: ${problems//$'\n'/; }" ;;
+    # block, not a crash: block allows the second Stop of a turn, so a broken check cannot loop.
+    *) block "the process repo check failed (rc $prc); see the error above" ;;
+  esac
 
   # Removed under the state lock; a timeout leaves the done state, which never blocks the next init.
   if ! python3 -I "$LIB/state.py" finish "$STATE_ROOT" >/dev/null; then

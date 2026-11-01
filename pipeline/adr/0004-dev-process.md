@@ -16,6 +16,9 @@
 
 Pipeline mechanics: see ADR-0005.
 
+Amended by #86: the pipeline self-test runs in the CI of the process repository
+(`valmlord/academy-process`, `tests/pipeline/check.sh`), not in the product's CI.
+
 ## Consequences
 - Branch protection for private repositories on GitHub's free plan may be unavailable. In that case
   the rule is held by the pipeline hooks (no work on main) and by discipline.

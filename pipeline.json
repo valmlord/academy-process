@@ -188,7 +188,7 @@
     "accessibility": "judge-accessibility.md",
     "consistency": "judge-consistency.md"
   },
-  "learn_tier_editable_paths": [".claude/", "pipeline/", "docs/", "plans/", "learner/", "backlog/"],
+  "learn_tier_editable_paths": [".claude/", "docs/", "plans/"],
   "human_wait_phases": ["learner"],
   "learn_tier_test_globs": [
     "**/test/**",
@@ -201,5 +201,12 @@
   ],
   "learn_tier_code_dirs": ["apps/", "services/", "packages/", "images/"],
   "protected_files": [".claude/pipeline_state"],
-  "pipeline_core_files": [".claude/pipeline.json", ".claude/settings", ".claude/hooks/"]
+  "pipeline_core_files": [
+    ".claude/pipeline.json",
+    ".claude/settings",
+    ".claude/hooks/",
+    ".claude/tests/",
+    ".claude/.github/",
+    ".claude/.gitignore"
+  ]
 }
