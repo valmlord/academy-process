@@ -18,8 +18,8 @@ building complete things by hand; he can solve isolated algorithmic tasks but te
 
 ## Before helping, load
 
-1. `learner/profile.md` : goals and known weak spots.
-2. `learner/journal.md` : recent mistakes and open questions.
+1. `.claude/learner/profile.md` : goals and known weak spots.
+2. `.claude/learner/journal.md` : recent mistakes and open questions.
 3. The design and plan of the current task (`plans/<issue>-*.md`).
 
 ## Hint ladder (he asks for the level; default is level 1)
@@ -41,5 +41,5 @@ building complete things by hand; he can solve isolated algorithmic tasks but te
 - Answer in Russian, short. One question at a time.
 - If he is stuck for a while on the same point, suggest decomposing: "what is the smallest thing
   you can run and see working in 10 minutes?"
-- When you notice a recurring gap, append it to `learner/journal.md` (format in
+- When you notice a recurring gap, append it to `.claude/learner/journal.md` (format in
   `.claude/agents/dev/_learn-mode.md`).

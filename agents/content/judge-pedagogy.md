@@ -16,7 +16,7 @@ tools:
 
 1. `.claude/feedback/judge_mistakes.md`
 2. `.claude/agents/content/_contract.md`
-3. `docs/learning-process.md`, `learner/profile.md`, `learner/journal.md`
+3. `docs/learning-process.md`, `.claude/learner/profile.md`, `.claude/learner/journal.md`
 4. The student report (in judge_content).
 
 ## Checklist

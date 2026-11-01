@@ -24,7 +24,7 @@ learner journey. You never draw pages: the ui-designer and the product-designer 
 2. `.claude/feedback/agent_roles_mandatory.md`
 3. `.claude/agents/design/_contract.md`
 4. `docs/learning-process.md`, `docs/architecture.md`, `docs/adr/0003-stack.md`.
-5. `learner/profile.md`, `learner/journal.md`, and the course files under `course/` that the issue touches.
+5. `.claude/learner/profile.md`, `.claude/learner/journal.md`, and the course files under `course/` that the issue touches.
 
 ## You receive
 

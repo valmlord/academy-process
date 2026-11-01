@@ -16,7 +16,7 @@ import checkout  # noqa: E402
 import pl_gate  # noqa: E402
 from pl_jsonshape import as_object  # noqa: E402
 
-OPEN_PREFIXES = (".claude/", "pipeline/", "plans/")
+OPEN_PREFIXES = (".claude/", "plans/")
 
 
 def block(reason: str, message: str) -> NoReturn:

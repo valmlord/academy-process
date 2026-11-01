@@ -18,7 +18,7 @@ before code. Lesson authors and practice designers implement your design.
 1. `.claude/feedback/curriculum-architect_mistakes.md`
 2. `.claude/agents/content/_contract.md`
 3. `docs/course-reference.md` (the program stays close to it) and `docs/learning-process.md`.
-4. `learner/profile.md`, `learner/journal.md`.
+4. `.claude/learner/profile.md`, `.claude/learner/journal.md`.
 5. The researcher findings you receive.
 
 ## Output (write it to `plans/<issue>-module-<slug>.md` as well)

@@ -12,7 +12,7 @@ unset PL_COMMON_LOADED
 source "$HOOK_DIR/lib/common.sh"
 # Set by the last line of common.sh; a source that stopped early would make this hook exit 127,
 # which does not block.
-[ "${PL_COMMON_LOADED:-}" = 1 ] || { echo "BLOCKED: $0: lib/common.sh did not load; pipeline gates cannot run. Stepan: kill switch, CLAUDE.md section 7" >&2; exit 2; }
+[ "${PL_COMMON_LOADED:-}" = 1 ] || { echo "BLOCKED: $0: lib/common.sh did not load; pipeline gates cannot run. Stepan: kill switch, .claude/CLAUDE.md section 7" >&2; exit 2; }
 
 deny() { # deny <message> <log reason>
   echo "BLOCKED: $1" >&2

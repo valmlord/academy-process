@@ -16,7 +16,7 @@ PASS/FAIL, but its form changes.
    - Direction: "Look at how you could make container creation idempotent per workspace."
 3. **Attribute correctly.** If the learner faithfully implemented a flawed design, it is an
    ARCHITECT mistake. If the gap is in the learner's own code, write it to
-   `learner/journal.md` (not `coder_mistakes.md`) in this format:
+   `.claude/learner/journal.md` (not `coder_mistakes.md`) in this format:
 ```
 ### YYYY-MM-DD: Short description (#issue)
 Topic: <concurrency | sql | docker | networking | testing | typescript | ...>
