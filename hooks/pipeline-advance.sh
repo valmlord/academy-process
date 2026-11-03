@@ -13,13 +13,18 @@
 #   pipeline-advance.sh pause                           park the active state, free the checkout
 #   pipeline-advance.sh resume <issue|key>              restore a parked state on its own branch
 #   pipeline-advance.sh parked                          list parked states
+#   pipeline-advance.sh worktrees [<path>]              report unsaved process work in linked worktrees
+#                                                       (stdout; exit 0 none, 1 findings, 2 report failed)
 # Judge votes and the judge spawn map are recorded ONLY by the judge hooks (JUDGE_HOOK_CALLER):
 #   pipeline-advance.sh <judge_phase> <judge> <PASS|FAIL> [agent_id] [path]
 #   pipeline-advance.sh spawn <judge_phase> <agent_id> <judge>
 #
 # State: .claude/pipeline_state.json of the checkout that contains the current directory (a
-# registered worktree, else the main checkout). Run the main checkout's copy of this script; from a
-# worktree: bash "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/hooks/pipeline-advance.sh"
+# registered worktree, else the main checkout). In a linked worktree, init first creates that .claude
+# as a process worktree of the main checkout's process clone (lib/pl_process_worktree.py).
+# Run the main checkout's copy of this script. A worktree session's session-start text
+# (session-context.sh) names it as bash "<main checkout>/.claude/hooks/pipeline-advance.sh"; also:
+# bash "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/hooks/pipeline-advance.sh"
 HOOK_KIND=cli
 case $0 in */*) HOOK_DIR=${0%/*} ;; *) HOOK_DIR=. ;; esac
 # An inherited value must not fake a load.
@@ -115,6 +120,17 @@ report_parked() {
   state_op parked | while IFS= read -r line; do echo "Parked here: $line" >&2; done
 }
 
+# Unsaved process work in linked worktrees, on stderr like the parked list. Best effort: status
+# itself never fails on it, so a failed report is one warning line.
+report_worktrees() {
+  local out rc=0
+  out=$(python3 -I "$LIB/pl_process_worktree.py" report) || rc=$?
+  case "$rc" in
+    0|1) [ -z "$out" ] || printf '%s\n' "$out" >&2 ;;
+    *) echo "WARNING: worktree report failed (rc $rc)" >&2 ;;
+  esac
+}
+
 # ---------------------------------------------------------------- STATUS
 if [ "$PHASE" = "status" ]; then
   case "$STATE_STATUS" in
@@ -126,6 +142,7 @@ if [ "$PHASE" = "status" ]; then
     *) echo "No active pipeline." ;;
   esac
   report_parked
+  report_worktrees
   exit 0
 fi
 
@@ -141,6 +158,12 @@ fi
 if [ "$PHASE" = "parked" ]; then
   state_op parked
   exit 0
+fi
+# The sync gate before Stepan removes a process worktree: exit 0 only when nothing would be lost.
+if [ "$PHASE" = "worktrees" ]; then
+  WORKTREES_RC=0
+  python3 -I "$LIB/pl_process_worktree.py" report ${1:+"$1"} || WORKTREES_RC=$?
+  exit "$WORKTREES_RC"
 fi
 
 # ---------------------------------------------------------------- INIT

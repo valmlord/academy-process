@@ -866,3 +866,61 @@ Rule: When a gate decides "nothing changed" from git output, design it against w
 not only what it shows: list ignored entries and compare them with an explicit local-runtime
 list, and pin every config that changes the output (`--untracked-files`, `core.fileMode`,
 `core.fsmonitor`, assume-unchanged/skip-worktree flags).
+
+### 2026-11-03: A guardrail delivered through a file the session does not load (#89, judge_design round 1, security)
+
+The #89 design made "every non-main session runs the R3 probe first" its only mitigation for sessions
+without hooks. It put the probe and the R7 fallback in CLAUDE.md section 6 and called R7 (does the
+worktree session load CLAUDE.md?) "docs only". The rehearsal showed a Desktop worktree session loads no
+process CLAUDE.md. So the probe, the git-verb rules for `.claude/` and every other instruction-only rule
+never reach the session, and sections 1, 2, F1, the ADR residual and the accepted section 10 all claimed
+coverage that did not exist.
+Rule: For every instruction-level guardrail, name the channel that delivers it to the session it targets,
+and treat "is that channel loaded there" as a load-bearing rehearsal row, not a docs row.
+
+### 2026-11-03: Put the mitigation for sessions in the instructions file those sessions do not load (#89, judge_design round 1, architecture)
+
+The design's guard for worktree sessions (the R3 probe, the common-dir invocation, "branch then init") lived
+only in CLAUDE.md sections 6-7, and R7 ("does the worktree session load that CLAUDE.md?") was classed as
+docs-only. R7 failed: a Desktop worktree session loads no process CLAUDE.md, so the mitigation never reaches
+the sessions it exists for, and section 10 gave Stepan no step to compensate.
+Rule: For every instruction-based mitigation, name the mechanism that delivers it to the target session and
+rehearse that delivery; if it is not loaded automatically, the design names who gives it (an absolute-path
+first prompt) and the residual risk says the guard runs only when that happens.
+
+### 2026-11-03: Cleanup procedure trusted "git refused nothing" as "nothing lost" (#89)
+The #89 design's sync step ran `git worktree remove` (no `--force`) on a process worktree and treated a refusal
+as the only sign of unsaved work. Under the allowlist `.gitignore` (`/*`), git deletes every ignored file without
+refusing: parked states and allowlist-hidden new dirs went silently (rehearsed). The same design told Stepan to
+resolve feedback conflicts in GitHub's editor, which moves `headRefOid`, so its own merged check failed on that
+path.
+Rule: For every destructive step in a procedure, list what it deletes under the repo's ignore rules and gate it on
+the check that sees those files. Walk each documented recovery path through the procedures that run after it.
+
+### 2026-11-03: Contingency branch deleted an imported module; a sanitiser test on JSON-escaped output; a live row red by construction (#89, judge_design round 2, architecture)
+Revision 2 said "if L1 fails, remove the SessionStart entry and both new files; steps 2-5 proceed", while step 4's
+report imports `printable` from one of those files. W14c checked raw JSON stdout for control characters, which
+`json.dumps` escapes anyway, so dropping `printable` could not turn it red; the report's `printable` had no row.
+L5 accepted `forwarded=true` as an outcome but stopped on a missing injection, which that outcome guarantees
+before merge (the origin/main settings copy has no entry yet).
+Rule: Walk every contingency branch through the later steps' imports; assert a sanitiser on the decoded value the
+consumer reads, not on the encoded transport; for each live-check outcome you accept, derive what the other
+assertions must then show.
+
+### 2026-11-03: A fallback path passed its own check and failed the next step's gate; a guard row that tests presence, not wiring (#89, judge_design round 2, operations)
+Revision 2 added `fetch origin pull/<n>/head` for a deleted remote branch; steps 3-5 passed, but `FETCH_HEAD` is not
+a remote ref, so the step-6 gate's "commits on no remote" refused the removal (rehearsed). W10(f) made `{wt}/.claude`
+unreadable and expected "cannot inspect", while 1.3 checks `.git` first and `lexists` returns False there, so the
+design's own code reports "not a process worktree; run init". W18 checked that each script is still wired, which a
+changed matcher also satisfies.
+Rule: Walk every fallback branch of a procedure through all later steps and their gates; for each test row, trace
+which check of the design fires first on that setup; pin a safety-critical config by exact equality, not by presence.
+
+### 2026-11-03: The sync's "app already removed the folder" branch was not walked through its own gate (#89)
+Design section 7 step 6 runs the gate `worktrees "<wt>"` (1 or 2: stop, ask) and then says "already gone
+(`is not a working tree`): `worktree prune`". When the app archives the product worktree first, the gate prints
+the prunable line and exits 1, so Stepan is told to stop while that line tells him to prune; and `worktree remove`
+on the missing folder exits 0 with no "is not a working tree" message at all. W12(f) skipped the gate, so the
+self-test pinned a path the doc never lets Stepan take. Same class as the round-2 lesson above, one branch later.
+Rule: For every documented branch of a procedure ("if X already happened"), run the doc's commands in the doc's
+order on that exact setup, gates included, and make the test row run the same sequence.

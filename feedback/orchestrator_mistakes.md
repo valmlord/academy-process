@@ -275,3 +275,14 @@ each from a case the coder had not imagined (hidden paths, repo config, nested c
 Rule: For any new gate, the tester brief names the gate and asks for bypass attempts the coder
 did not list (config, symlinks, odd names, nested paths), on scratch copies. A coder's own
 mutation set shows the guard can fail, not that it covers the class.
+
+### 2026-11-03: Tester fixes moved the code past the design, and nobody updated the design (#89)
+
+Three tester rounds on #89 added behaviour the judged design never described (casefolded names, shadow-ref
+refusals, new report findings, an extra formatter argument). The architecture code judge caught it and asked for
+an "Implementation deltas" section before the PR; the operations judge found a doc step (sync step 6) that the
+design had specified wrongly and the coder had copied faithfully.
+Rule: after any tester-driven fix round, brief the architect to append the deltas to the design in the same
+turn as the coder fix, and brief the tester to rehearse every procedure Stepan follows by hand literally, not
+only the hooks. Live checks that need a new session are proposed as cards or started on Stepan's own words: the
+app refuses to start sessions from a turn an agent's report started.

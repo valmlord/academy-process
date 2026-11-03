@@ -143,7 +143,12 @@ def transaction(root: str) -> Iterator[None]:
     lock that is still held belongs to a live process and is never broken."""
     lock = os.path.join(_claude_dir(root), LOCK_NAME)
     timeout = _lock_timeout()
-    fd = os.open(lock, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fd = os.open(lock, os.O_RDWR | os.O_CREAT, 0o600)
+    except FileNotFoundError:
+        # A linked worktree before its first init has no .claude: a pause or resume there is refused.
+        raise Refused("%s does not exist: no pipeline was started in this checkout; run init here first"
+                      % _claude_dir(root))
     try:
         deadline = time.monotonic() + timeout
         while True:
@@ -302,11 +307,19 @@ def op_init(root: str, tier: str, issue: str, branch: str, gitdir: str, code_roo
     if tier_conf.get("requires_issue") and branch in conf["protected_branches"]:
         raise Refused("you are on protected branch '%s'. Create the task branch first: git switch -c <type>/%s-<slug>"
                       % (branch, issue))
+    # Only the main checkout's hooks are live, so core edits anywhere else cannot be checked. Refused
+    # before ensure, so a PIPELINE init in a worktree leaves no process worktree behind.
+    if tier_conf.get("edits_pipeline_core") and os.path.realpath(root) != os.path.realpath(code_root):
+        raise Refused("%s tasks run in the main checkout: only its hooks are live" % tier)
+    # Imported here, not at module level: only init needs it, so a broken pl_process_worktree
+    # cannot take down every other state op (advance, vote, park, Stop's finish, the watchdog).
+    import pl_process_worktree
+    try:
+        pl_process_worktree.ensure(root, code_root, branch, conf)
+    except pl_process_worktree.WorktreeRefused as exc:
+        raise Refused(str(exc))
     with transaction(root):
         if tier_conf.get("edits_pipeline_core"):
-            # Only the main checkout's hooks are live, so core edits anywhere else cannot be checked.
-            if os.path.realpath(root) != os.path.realpath(code_root):
-                raise Refused("%s tasks run in the main checkout: only its hooks are live" % tier)
             require_grant(conf, code_root, "pipeline_init", issue,
                           '%s #%s needs a grant: Stepan adds %s to "pipeline_init" in %s (main checkout)'
                           % (tier, issue, issue, conf["grant_file"]), root)
