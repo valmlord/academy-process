@@ -7,7 +7,7 @@ import unicodedata
 # Not Cc, but each one reorders or breaks what a reader sees: the bidi embeddings, overrides and
 # isolates can make a path display as another, and U+2028/U+2029 are line breaks to many readers.
 _INVISIBLE_LAYOUT = frozenset(
-    "؜‎‏‪‫‬‭‮⁦⁧⁨⁩  "
+    "\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069\u2028\u2029"
 )
 
 
