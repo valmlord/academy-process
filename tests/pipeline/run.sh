@@ -1706,6 +1706,233 @@ capture python3 -I "$PH/lib/pl_process_repo.py" pr "$PB" " 86"
 if [ "$RC" = 1 ] && [ "$ERR" = "pl_process_repo.py: issue must be ASCII digits, got ' 86'" ]; then
   ok "malformed issue argument: rc 1 and one line with the value"
 else bad "malformed issue argument: rc 1 and one line with the value (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+echo "== worktree sessions"
+# A product worktree where the Desktop app creates one: under <main>/.claude/worktrees/, with a
+# space in its name on purpose. Hooks always come from main ($PH).
+WTP="$PB/.claude/worktrees/w one"
+PLOG="$PB/.git/pipeline-hooks.log"
+wt_reset() { rm -rf "$WTP"; prod worktree prune; }
+wt_reset
+prod worktree add -q -B feat/90-w "$WTP"
+plog_last() { # plog_last <field>: that field of the newest line of fixture 2's hook log
+  tail -n 1 "$PLOG" 2>/dev/null | python3 -c "import json,sys; print(json.loads(sys.stdin.read() or '{}').get(sys.argv[1], ''))" "$1"; }
+ctx_json() { # ctx_json <cwd> <source>: a SessionStart hook input
+  python3 -c "import json,sys; print(json.dumps({'hook_event_name':'SessionStart','session_id':'s89','cwd':sys.argv[1],'source':sys.argv[2]}))" "$1" "$2"; }
+ctx() { printf '%s' "$1" | bash "$PH/session-context.sh"; }
+fmt() { python3 -I "$PH/lib/pl_session_context.py" "$@"; }
+# context_has <stdout> <substring...>: stdout is one SessionStart JSON object whose context holds every substring.
+context_has() {
+  python3 -I - "$@" <<'PY' 2>/dev/null
+import json, sys
+spec = json.loads(sys.argv[1])["hookSpecificOutput"]
+text = spec["additionalContext"]
+sys.exit(0 if spec["hookEventName"] == "SessionStart" and all(s in text for s in sys.argv[2:]) else 1)
+PY
+}
+
+# W14
+OUT=$(ctx "$(ctx_json "$WTP" startup)" 2>/dev/null); RC=$?
+if [ "$RC" = 0 ] && context_has "$OUT" "Read $PB/.claude/CLAUDE.md" "Worktree: $WTP." \
+    "echo hook-probe >> /dev/null settings.pipeline-grant.json" "bash \"$PB/.claude/hooks/pipeline-advance.sh\"" \
+    "PIPELINE tasks run only in the main checkout" \
+  && python3 -I - "$OUT" "$PH/lib" <<'PY' 2>/dev/null \
+  && [ "$(plog_last event)" = session-context ] && [ "$(plog_last reason)" = linked ]
+import json, sys
+sys.path.insert(0, sys.argv[2])
+from pl_session_context import SESSION_CONTEXT_MAX_CHARS
+sys.exit(0 if len(json.loads(sys.argv[1])["hookSpecificOutput"]["additionalContext"]) < SESSION_CONTEXT_MAX_CHARS else 1)
+PY
+then ok "W14 a linked worktree session gets main's CLAUDE.md path, the probe and the rules; log reason=linked"
+else bad "W14 a linked worktree session gets main's CLAUDE.md path, the probe and the rules; log reason=linked (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+
+# W14b
+LONG_ROOT=$(python3 -c "print('/' + 'r' * 2100)")
+FOUT=$(fmt "$LONG_ROOT" "$PB" cwd own:TASK:coder 2>"$BASE/fmt.err"); RC=$?
+if [ "$RC" = 3 ] && [ -z "$FOUT" ] && grep -qF SESSION_CONTEXT_MAX_CHARS "$BASE/fmt.err"; then
+  ok "W14b a context over SESSION_CONTEXT_MAX_CHARS exits 3 with nothing on stdout"
+else bad "W14b a context over SESSION_CONTEXT_MAX_CHARS exits 3 with nothing on stdout (rc=$RC)"; fi
+
+# W14c: json.dumps escapes controls on the wire anyway, so the decoded context is what is checked.
+CRAFTED=$(fmt $'/x/a\nb\x1bc' $'/m/d\ne' cwd $'own:TASK:coder\xc2\x9b' 2>/dev/null)
+PLAIN=$(fmt /x/abc /m/de cwd own:TASK:coder 2>/dev/null)
+if python3 -I - "$CRAFTED" "$PLAIN" <<'PY' 2>/dev/null
+import json, sys, unicodedata
+crafted, plain = (json.loads(s)["hookSpecificOutput"]["additionalContext"] for s in sys.argv[1:3])
+controls = [ch for ch in crafted if unicodedata.category(ch) == "Cc" and ch != "\n"]
+sys.exit(0 if not controls and crafted.count("\n") == plain.count("\n") and "/x/abc" in crafted else 1)
+PY
+then ok "W14c control characters in paths and status never reach the decoded context"
+else bad "W14c control characters in paths and status never reach the decoded context"; fi
+
+# W14p
+if python3 -I - "$PH/lib" <<'PY' 2>/dev/null
+import sys
+sys.path.insert(0, sys.argv[1])
+from pl_text import printable
+sys.exit(0 if printable("a\x00b\x1b\x7f\u0085\u009bc\nd\té→") == "abcdé→" else 1)
+PY
+then ok "W14p printable drops C0, DEL and C1 (tab and newline too), keeps other text"
+else bad "W14p printable drops C0, DEL and C1 (tab and newline too), keeps other text"; fi
+if python3 -I - "$PH/lib" <<'PY' 2>/dev/null
+import sys
+sys.path.insert(0, sys.argv[1])
+from pl_text import printable
+sys.exit(0 if printable("x‮y⁦z w v‏") == "xyzwv" else 1)
+PY
+then ok "W14p printable drops bidi controls and the U+2028/U+2029 line breaks"
+else bad "W14p printable drops bidi controls and the U+2028/U+2029 line breaks"; fi
+
+# W15
+OUT=$(ctx "$(ctx_json "$PB" startup)" 2>/dev/null); RC=$?
+if [ "$RC" = 0 ] && [ -z "$OUT" ] && [ "$(plog_last event)" = session-context ] && [ "$(plog_last reason)" = main ]; then
+  ok "W15 a main-checkout session gets no context; log reason=main"
+else bad "W15 a main-checkout session gets no context; log reason=main (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+
+# W16: common.sh stops at its python3 probe; pl_fail exits 0 for an observer and the trap prints.
+mkdir -p "$BASE/emptypath"
+CTX_IN=$(ctx_json "$PB" startup)
+OUT=$(printf '%s' "$CTX_IN" | PATH="$BASE/emptypath" /bin/bash "$PH/session-context.sh" 2>/dev/null); RC=$?
+if [ "$RC" = 0 ] && context_has "$OUT" "the session-context hook failed" "$PB/.claude/CLAUDE.md"; then
+  ok "W16 no python3: the fallback text names main's CLAUDE.md"
+else bad "W16 no python3: the fallback text names main's CLAUDE.md (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+QROOT="$BASE/q\"uo\\te"
+mkdir -p "$QROOT/.claude/hooks/lib"
+cp "$PH/session-context.sh" "$QROOT/.claude/hooks/" && cp "$PH/lib/common.sh" "$QROOT/.claude/hooks/lib/"
+OUT=$(printf '%s' "$CTX_IN" | PATH="$BASE/emptypath" /bin/bash "$QROOT/.claude/hooks/session-context.sh" 2>/dev/null); RC=$?
+if [ "$RC" = 0 ] && context_has "$OUT" "the session-context hook failed" "$QROOT/.claude/CLAUDE.md"; then
+  ok "W16 a quote and a backslash in the root still give one parsable JSON object"
+else bad "W16 a quote and a backslash in the root still give one parsable JSON object (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+rm -rf "$QROOT"
+
+# W16b: a linked copy whose main has no session-context.sh cannot forward (common.sh), so the
+# fallback must name main's CLAUDE.md through _pl_main, not the stranded copy's own root.
+S16="$BASE/w16b"
+mkdir -p "$S16/wt/.claude/hooks/lib" "$S16/admin" "$S16/fm/.git"
+cp "$PH/session-context.sh" "$S16/wt/.claude/hooks/" && cp "$PH/lib/common.sh" "$S16/wt/.claude/hooks/lib/"
+printf 'gitdir: %s\n' "$S16/admin" > "$S16/wt/.git"
+printf '%s\n' "$S16/fm/.git" > "$S16/admin/commondir"
+OUT=$(printf '%s' "$CTX_IN" | bash "$S16/wt/.claude/hooks/session-context.sh" 2>/dev/null); RC=$?
+if [ "$RC" = 0 ] && context_has "$OUT" "$S16/fm/.claude/CLAUDE.md" && ! printf '%s' "$OUT" | grep -qF "$S16/wt"; then
+  ok "W16b a stranded linked copy's fallback names main's CLAUDE.md"
+else bad "W16b a stranded linked copy's fallback names main's CLAUDE.md (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+rm -rf "$S16"
+
+# W17: run as a script, so no bytecode cache applies; python3 exits 2 and the trap prints.
+chmod 000 "$H/lib/pl_session_context.py"
+OUT=$(at "$WORK" ctx_json "$WORK" startup | bash "$H/session-context.sh" 2>/dev/null); RC=$?
+chmod 644 "$H/lib/pl_session_context.py"
+if ! test -r "$H/lib/pl_session_context.py"; then bad "W17 chmod restored"
+elif [ "$RC" = 0 ] && context_has "$OUT" "the session-context hook failed"; then
+  ok "W17 a formatter crash prints exactly one fallback JSON object"
+else bad "W17 a formatter crash prints exactly one fallback JSON object (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+
+# W18: exact equality, because a changed matcher or event keeps every script wired while it
+# switches a gate off. A PIPELINE task that changes the wiring updates this literal in the same commit.
+if python3 -I - "$WORK/.claude/settings.json" <<'PY' 2>/dev/null
+import json, sys
+
+PINNED = json.loads(r"""{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-pipeline.sh\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/phase-gate.sh\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/bash-code-guard.sh\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "SubagentHandback",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/judge-handback.sh\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pipeline-watchdog.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/judge-count.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/phase-complete.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/judge-vote.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}""")["hooks"]
+SESSION_START = [{"hooks": [{"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-context.sh\"", "timeout": 15}]}]
+
+settings = json.load(open(sys.argv[1]))
+hooks = dict(settings["hooks"])
+session_start = hooks.pop("SessionStart", None)
+sys.exit(0 if set(settings) == {"hooks"} and hooks == PINNED and session_start == SESSION_START else 1)
+PY
+then ok "W18 settings.json wiring equals the pinned literal, SessionStart without a matcher"
+else bad "W18 settings.json wiring equals the pinned literal, SessionStart without a matcher"; fi
+wt_reset
+prod branch -q -D feat/90-w
 rm -rf "$PB" "$PUP" "$PSEED" "$BASE/pgit.saved" "$BASE/process-excludes"
 
 echo "== design validator output vs vote parser"
