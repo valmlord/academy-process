@@ -2132,6 +2132,16 @@ if [ -n "$(pg for-each-ref --format='%(refname)' refs/heads/Origin refs/heads/or
   bad "W9c the Origin/main refusal creates no process branch and no .claude"
 else ok "W9c the Origin/main refusal creates no process branch and no .claude"; fi
 prod -C "$WTP" switch -q feat/90-w && prod branch -q -D Origin/main
+# A case variant of a protected name: on APFS a process branch MASTER would write onto master.
+# (Main itself cannot be created next to the product's main on APFS, so MASTER stands in.)
+wt_fresh
+prod -C "$WTP" switch -q -c MASTER
+capture wadv init TASK 90
+expect_out "W9c a product branch MASTER is refused" 1 "the product branch is MASTER"
+if [ -n "$(pg for-each-ref --format='%(refname)' refs/heads/MASTER refs/heads/master)" ] || [ -e "$WTP/.claude" ]; then
+  bad "W9c the MASTER refusal creates no process branch and no .claude"
+else ok "W9c the MASTER refusal creates no process branch and no .claude"; fi
+prod -C "$WTP" switch -q feat/90-w && prod branch -q -D MASTER
 # A local origin/main left by anything else must not become the start point.
 wt_fresh
 pg branch -q origin/main "$(pg commit-tree "$(pg rev-parse 'refs/remotes/origin/main^{tree}')" -p refs/remotes/origin/main -m "unreviewed")" 2>/dev/null

@@ -218,7 +218,8 @@ def ensure(state_root: str, main_root: str, branch: str, conf: cfg.Config) -> No
     if os.path.realpath(state_root) == os.path.realpath(main_root):
         return
     # The process branch takes the product branch's name, so no process worktree ever holds main.
-    if not branch or branch in conf["protected_branches"]:
+    # casefold: on case-insensitive APFS refs/heads/Main is the loose ref file of refs/heads/main.
+    if not branch or branch.casefold() in {name.casefold() for name in conf["protected_branches"]}:
         raise WorktreeRefused("the product branch is %s; process worktrees take the task branch's name. Create "
                               "it first: git switch -c <type>/<issue>-<slug>" % (branch or "a detached HEAD"))
     # casefold: on case-insensitive APFS refs/heads/Origin/main is the file git reads for origin/main.
