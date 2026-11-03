@@ -2103,6 +2103,11 @@ pg config branch.feat/90-w.remote .
 rm -f "$WSTATE"
 capture wadv init TASK 90
 expect_out "W9b an upstream main on remote . is refused" 1 "tracks main"
+# A case variant: on case-insensitive APFS a push to Main moves main.
+pg config branch.feat/90-w.merge Main
+capture wadv init TASK 90
+expect_out "W9b an upstream Main (a case variant of main) is refused" 1 "tracks Main"
+rm -f "$WSTATE"
 pg config branch.feat/90-w.remote origin
 pg config branch.feat/90-w.merge refs/heads/feat/90-w
 capture wadv init TASK 90
@@ -2118,6 +2123,15 @@ if pg show-ref --verify --quiet refs/heads/origin/main || [ -e "$WTP/.claude" ];
   bad "W9c the refusal creates no process branch and no .claude"
 else ok "W9c the refusal creates no process branch and no .claude"; fi
 prod -C "$WTP" switch -q feat/90-w && prod branch -q -D origin/main
+# A case variant: on case-insensitive APFS refs/heads/Origin/main is the file git reads for origin/main.
+wt_fresh
+prod -C "$WTP" switch -q -c Origin/main
+capture wadv init TASK 90
+expect_out "W9c a product branch Origin/main is refused" 1 "the product branch Origin/main would shadow another ref"
+if [ -n "$(pg for-each-ref --format='%(refname)' refs/heads/Origin refs/heads/origin)" ] || [ -e "$WTP/.claude" ]; then
+  bad "W9c the Origin/main refusal creates no process branch and no .claude"
+else ok "W9c the Origin/main refusal creates no process branch and no .claude"; fi
+prod -C "$WTP" switch -q feat/90-w && prod branch -q -D Origin/main
 # A local origin/main left by anything else must not become the start point.
 wt_fresh
 pg branch -q origin/main "$(pg commit-tree "$(pg rev-parse 'refs/remotes/origin/main^{tree}')" -p refs/remotes/origin/main -m "unreviewed")" 2>/dev/null

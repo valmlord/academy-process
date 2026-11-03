@@ -147,7 +147,9 @@ def _check_existing(proc_path: str, main_root: str, branch: str, conf: cfg.Confi
                               "start a new worktree session" % (proc_path, head or "a detached HEAD"))
     # An upstream on the branch's own name (push -u) is fine; one on main would carry a bare push there,
     # whatever the remote: with remote "." it moves the local main.
-    upstream = next((t for t in map(_merge_target, merges) if t in conf["protected_branches"]), "")
+    # casefold: loose refs on case-insensitive APFS make refs/heads/Main the file of refs/heads/main.
+    protected = {name.casefold() for name in conf["protected_branches"]}
+    upstream = next((t for t in map(_merge_target, merges) if t.casefold() in protected), "")
     if upstream:
         raise WorktreeRefused("process branch %s tracks %s; Stepan: git -C %s branch --unset-upstream %s"
                               % (branch, upstream, main_proc, branch))
@@ -219,7 +221,9 @@ def ensure(state_root: str, main_root: str, branch: str, conf: cfg.Config) -> No
     if not branch or branch in conf["protected_branches"]:
         raise WorktreeRefused("the product branch is %s; process worktrees take the task branch's name. Create "
                               "it first: git switch -c <type>/<issue>-<slug>" % (branch or "a detached HEAD"))
-    if branch == "HEAD" or branch.split("/", 1)[0] in SHADOWING_FIRST_COMPONENTS:
+    # casefold: on case-insensitive APFS refs/heads/Origin/main is the file git reads for origin/main.
+    first = branch.split("/", 1)[0].casefold()
+    if branch.casefold() == "head" or first in SHADOWING_FIRST_COMPONENTS:
         raise WorktreeRefused("the product branch %s would shadow another ref in the process repo (a branch "
                               "starting with %s/, or HEAD); rename it: git branch -m <type>/<issue>-<slug>"
                               % (printable(branch), "/, ".join(SHADOWING_FIRST_COMPONENTS)))
