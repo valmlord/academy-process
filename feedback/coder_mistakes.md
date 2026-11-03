@@ -207,3 +207,15 @@ which has been true since #29.
 Rule: A fix found late goes into the commit that introduced the failing code (fixup and rebase while the branch is
 unpushed, with the author's approval of the rewritten history); run the multi-run check at every commit that adds e2e
 load, not only at the last.
+
+### 2026-11-03: Work before the lock and state from a stale listing broke the ordering the ADR promises (#31, judge_code round 1, architecture)
+`WorkspaceManager.ensure` awaited a whole-course read before `mutex.run`, so a stop or DELETE that arrived later on
+the same key ran first and the PUT then re-created the workspace; ADR-0010 item 8 (written in the same PR) says calls
+on one workspace queue behind earlier calls. Reconcile's `keep` branch called `tracker.forget` without the lock, from
+the container state of the list taken at the start of the pass, so a workspace a PUT started meanwhile ran untracked
+(activity 409, `idle: null`). Both were recorded as deviations with a reason, and neither had a test of the order.
+Separately, the never-started branch reported the spec's image while the docstring said "what the container was
+created from".
+Rule: Call `mutex.run` synchronously at the top of every locked operation and do all work inside it; never mutate
+shared state (tracker, cache) from a snapshot taken before an await unless under the same lock with a freshness
+check; a deviation that touches ordering needs a test whose start state makes the two orders diverge.
