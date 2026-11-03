@@ -102,10 +102,12 @@ Threat model: the hooks are a guardrail against the mistakes of an honest agent,
 Deliberate bypasses (`python3 -c`, relative `cd`, forged transcripts) are accepted residual risks
 (ADR-0005, `.claude/pipeline/adr/0005-pipeline-v2.md`), caught by review of the process PR and by
 Stepan at merge.
-- Hooks, `pipeline.json` and agents always come from the **main checkout** (worktrees are not
-  used, section 7). The **state** belongs to the main checkout; a hook input `cwd` outside it
-  (another repo, a temp dir) also uses the main checkout's state. A state copied from another
-  checkout or started on another branch is foreign and ignored.
+- Hooks, `pipeline.json` and agents always come from the **main checkout** (also in Desktop
+  worktree sessions, section 7). The **state** belongs to the checkout the hook input `cwd` lies in:
+  the main checkout or a registered worktree; a `cwd` outside them (another repo, a temp dir) uses
+  the main checkout's state. In a worktree session `.claude/` means that worktree's process
+  worktree; its hooks, settings and core files are inert copies and never writable. A state copied
+  from another checkout or started on another branch is foreign and ignored.
 - Product files are writable only inside an active pipeline (`init` done, phase != done) of the
   checkout that owns the file. `.claude/` outside the core (agents, feedback, `.claude/pipeline/`,
   `.claude/learner/`, this file) and `plans/` are always writable; the state files never
@@ -175,6 +177,9 @@ architect's design is decomposed into 30-60 LOC steps, no implementation code). 
   methodologists use to adapt the course.
 
 ## 6. Session start
+- In a worktree session the hooks inject a session-start text beginning `academy pipeline:`.
+  Follow it first: Read this file by its absolute path in the main checkout, run the hook probe
+  (section 7).
 - `git status`, current branch, `git -C .claude status` and its branch,
   `bash .claude/hooks/pipeline-advance.sh status` and `parked`.
 - Read `.claude/feedback/orchestrator_mistakes.md` and the meta-rules
@@ -182,11 +187,42 @@ architect's design is decomposed into 30-60 LOC steps, no implementation code). 
 
 ## 7. Checkouts, pause/resume and the grant
 
-**Invocation.** From the main checkout: `bash .claude/hooks/pipeline-advance.sh ...`.
+**Invocation.** From the main checkout: `bash .claude/hooks/pipeline-advance.sh ...`. From a
+worktree session: `bash "<main checkout>/.claude/hooks/pipeline-advance.sh" ...`, by the absolute
+path; the copy under the worktree's own `.claude/` refuses by design.
 
-**Worktrees are not used.** All work happens in the main checkout. A CLI session in a
-`git worktree add` checkout loads neither the hooks nor these instructions: the worktree has no
-`.claude/`, because the product ignores it.
+**Worktree sessions.** Supported: a side session the Desktop app starts in a worktree of the main
+checkout (`.claude/worktrees/<name>`). Not supported: `claude --worktree` and a terminal `claude`
+inside a worktree folder; such a session may run with no hooks and no instructions, and nothing
+stops it. A Desktop worktree session runs main's hooks, so gates, judges and the grant work as in
+main, and after `init` its state and process edits live in its own `.claude/`; a session that loads
+no project hooks is guarded by nothing.
+- This file does not load there by itself. The hooks inject a session-start text beginning
+  `academy pipeline:` (on startup, resume, `/clear`, compaction and fork): it names the worktree and
+  the main checkout, and asks the session to Read `<main checkout>/.claude/CLAUDE.md` in full and to
+  run the hook probe `echo hook-probe >> /dev/null settings.pipeline-grant.json` in Bash, which must
+  print `BLOCKED` (if it does not: stop and tell Stepan, the guards are off). Re-read this file after
+  `/clear` or compaction.
+- If a worktree session reports no `academy pipeline:` context, Stepan sends this first line:
+  `Read /Users/stepankorshukov/Documents/Projects/academy/.claude/CLAUDE.md first: this session runs in an academy worktree. Then run the hook probe from its section 7.`
+  Until the resume check of ADR-0005 item 12 (residual 4) has passed, the same applies after a
+  resume of a worktree session that has run `init`.
+- One task per worktree session: create the task branch, then `init`, which creates `.claude/` in
+  the worktree: a process worktree of the main checkout's process clone, on a process branch named
+  like the product branch, cut from process `origin/main`. A second task needs a new worktree
+  session. PIPELINE tasks run only in the main checkout.
+- A fork of a worktree session (`/fork`, `/branch`, `--fork-session`, moving it to the background)
+  runs in the same worktree and continues the same task and state, so only one of the two sessions
+  drives the task.
+- In a worktree session `.claude/` is that worktree's process worktree: hooks, settings and core
+  there are inert copies, never writable. Git in it: only the agent verbs of section 3; never switch
+  it to `main` or another protected branch, never push to `main`, never `git add -A`. Never use
+  `$CLAUDE_PROJECT_DIR` in Bash there: it is empty.
+- Role agents with `isolation: worktree` stay blocked (section 3).
+- `status` prints `Worktree ...` lines on stderr when a linked worktree holds unsaved process work
+  (state, parked states, uncommitted or allowlist-hidden paths, commits on no remote, a process
+  worktree whose product worktree is gone); `pipeline-advance.sh worktrees [<path>]` prints them and
+  exits 0 only when nothing would be lost.
 
 **Branch switches in the main checkout.** The main checkout is only ever on a branch that contains
 main: `git merge-base --is-ancestor main HEAD` exits 0. Stepan switches it from his own terminal with
@@ -207,11 +243,33 @@ until step H of its runbook, in the main checkout: no `git rebase`, `git reset` 
 verbs of section 3. Recovery: `git -C .claude restore --source=HEAD --worktree -- .` (Stepan) brings
 committed process files back.
 
-**Process repo sync after a merge** (Stepan, own terminal, no session open):
-`git -C .claude fetch --prune origin`, then `git -C .claude diff --quiet <branch> origin/main` exits 0
-(the squash has the branch's tree), then `git -C .claude switch -C main origin/main` and
-`git -C .claude branch -D <branch>`. If the diff is not empty, stop and ask. Never
-`git -C .claude switch main` first: it would load the pre-merge hooks.
+**Process repo sync after a merge** (Stepan, own terminal, from the main checkout, no session
+working, main or worktree). A task run in a worktree first reaches `done` and its session stops (Stop
+removes the done state; a state still there is a finding in step 6).
+1. `git -C .claude fetch --prune origin`
+2. `git -C .claude rev-list --count origin/main..<branch>` prints `0`: no process work, go to 6.
+3. `gh pr view <branch> --repo valmlord/academy-process --json state,headRefOid,number --jq '.state + " " + .headRefOid + " " + (.number|tostring)'`
+   prints `MERGED <sha> <n>`. Anything else: stop, ask.
+4. `git -C .claude rev-parse --verify -q origin/<branch>` prints `<sha>`. If it prints nothing (GitHub
+   deleted the branch): `git -C .claude fetch origin pull/<n>/head:refs/remotes/origin/pull/<n>`, then
+   `git -C .claude rev-parse refs/remotes/origin/pull/<n>` prints `<sha>`. The named ref (not
+   `FETCH_HEAD`) is what lets step 6 see the branch's commits on a remote; the next `fetch --prune`
+   removes it. Another sha: stop, ask.
+5. `git -C .claude merge-base --is-ancestor <branch> <sha>; echo $?` prints `0` (every local commit is
+   in what was merged). `1`: stop, ask.
+6. Task ran in main: `git -C .claude switch -C main origin/main`. Task ran in a worktree:
+   `bash .claude/hooks/pipeline-advance.sh worktrees "<wt path>"; echo $?` prints `0` last (`1` or `2`:
+   stop, ask), then `git -C .claude worktree remove "<wt path>/.claude"` (no `--force`). If git says it
+   is not a working tree (the app already removed the folder): `git -C .claude worktree prune`.
+7. `git -C .claude branch -D <branch>`. Check: `git -C .claude worktree list` and
+   `git -C .claude branch --list <branch>` no longer show it.
+
+Never `git -C .claude switch main` first: it would load the pre-merge hooks. Before archiving a
+worktree session in the app, run this sync, or at least check that `worktrees "<path>"` exits 0:
+`git worktree remove` deletes parked states and allowlist-hidden files without asking.
+`worktree remove` and `worktree prune` are Stepan's; agents do not run them. Two parallel process
+PRs may conflict in a feedback file: resolve it in GitHub's conflict editor (steps 4-5 accept the
+resulting merge commit).
 
 **New device.** `gh repo clone valmlord/academy` and, inside it,
 `gh repo clone valmlord/academy-process .claude`; then `git -C .claude status --porcelain` prints
@@ -242,7 +300,9 @@ agents never can (tool and shell writes are blocked). A malformed file grants no
 
 **Kill switch.** Stepan sets `"disableAllHooks": true` in `.claude/settings.local.json` by hand and
 starts a new session (also the escape from a lockout, e.g. a broken `python3` or a broken
-`lib/common.sh`). From the main checkout, in his own terminal:
+`lib/common.sh`). It also turns off the session-start text. Whether it reaches worktree sessions is
+not yet checked; for them the fallback is `"disableAllHooks": true` in `~/.claude/settings.json`, by
+hand. From the main checkout, in his own terminal:
 - no file yet (`ls -l .claude/settings.local.json` finds none):
   `printf '%s\n' '{"disableAllHooks": true}' > .claude/settings.local.json`
 - the file exists (overwriting it would lose the other local settings), add the key:

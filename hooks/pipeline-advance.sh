@@ -14,13 +14,17 @@
 #   pipeline-advance.sh resume <issue|key>              restore a parked state on its own branch
 #   pipeline-advance.sh parked                          list parked states
 #   pipeline-advance.sh worktrees [<path>]              report unsaved process work in linked worktrees
+#                                                       (stdout; exit 0 none, 1 findings, 2 report failed)
 # Judge votes and the judge spawn map are recorded ONLY by the judge hooks (JUDGE_HOOK_CALLER):
 #   pipeline-advance.sh <judge_phase> <judge> <PASS|FAIL> [agent_id] [path]
 #   pipeline-advance.sh spawn <judge_phase> <agent_id> <judge>
 #
 # State: .claude/pipeline_state.json of the checkout that contains the current directory (a
-# registered worktree, else the main checkout). Run the main checkout's copy of this script; from a
-# worktree: bash "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/hooks/pipeline-advance.sh"
+# registered worktree, else the main checkout). In a linked worktree, init first creates that .claude
+# as a process worktree of the main checkout's process clone (lib/pl_process_worktree.py).
+# Run the main checkout's copy of this script. A worktree session's session-start text
+# (session-context.sh) names it as bash "<main checkout>/.claude/hooks/pipeline-advance.sh"; also:
+# bash "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/hooks/pipeline-advance.sh"
 HOOK_KIND=cli
 case $0 in */*) HOOK_DIR=${0%/*} ;; *) HOOK_DIR=. ;; esac
 # An inherited value must not fake a load.

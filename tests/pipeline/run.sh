@@ -2232,6 +2232,77 @@ sys.exit(0 if all(line.startswith("Worktree ") for line in lines) and not contro
 PY
 then ok "W10 (h) a file name with a newline and ESC stays on its report line, without controls"
 else bad "W10 (h) a file name with a newline and ESC stays on its report line, without controls (rc=$RC)"; fi
+
+# W12: Stepan's sync (.claude/CLAUDE.md section 7), in procedure order, after a pushed process commit.
+# Steps 1-2 and the gh step need GitHub; the tester runs those by hand.
+wt_fresh
+prod worktree add -q -B feat/91-w "$WTP2" main
+wadv init TASK 90 >/dev/null 2>&1; wadv2 init TASK 91 >/dev/null 2>&1
+echo "lesson" > "$WTP/.claude/feedback/w12.md"
+wpg add feedback/w12.md && wpg commit -qm "fix: w12
+
+$W_FOOTER" && wpg push -q -u origin feat/90-w
+PUSHED=$(wpg rev-parse HEAD)
+# (a) why the gate exists: git removes ignored files with the worktree, without refusing.
+pg worktree add -q -b w12-scratch "$BASE/w12a" origin/main
+mkdir -p "$BASE/w12a/pipeline_state.parked" "$BASE/w12a/rules"
+echo '{}' > "$BASE/w12a/pipeline_state.parked/90-1.json"; echo x > "$BASE/w12a/rules/x.md"
+if pg worktree remove "$BASE/w12a" 2>/dev/null && [ ! -e "$BASE/w12a" ]; then
+  ok "W12 (a) git worktree remove deletes a parked state and an allowlist-hidden file without refusing"
+else bad "W12 (a) git worktree remove deletes a parked state and an allowlist-hidden file without refusing"; fi
+pg branch -q -D w12-scratch
+# (c) a squash merge: the PR head is the pushed tip, and the local branch is inside it.
+SQUASH=$(pg commit-tree "$(pg rev-parse 'feat/90-w^{tree}')" -p origin/main -m "fix: w12 (#7)" -m "$W_FOOTER")
+pg push -q origin "$SQUASH:refs/heads/main" && pg fetch -q --prune origin
+if [ "$(pg rev-parse origin/feat/90-w)" = "$PUSHED" ] && pg merge-base --is-ancestor feat/90-w "$PUSHED"; then
+  ok "W12 (c) after a squash merge, origin/<b> is the PR head and the local branch is its ancestor"
+else bad "W12 (c) after a squash merge, origin/<b> is the PR head and the local branch is its ancestor"; fi
+# (d) a conflict resolved in GitHub's editor adds a merge commit on the PR branch.
+MERGED=$(pg commit-tree "$(pg rev-parse 'feat/90-w^{tree}')" -p feat/90-w -p origin/main -m "Merge main into feat/90-w")
+pg push -q origin "$MERGED:refs/heads/feat/90-w" && pg fetch -q --prune origin
+if [ "$(pg rev-parse origin/feat/90-w)" = "$MERGED" ] && pg merge-base --is-ancestor feat/90-w "$MERGED"; then
+  ok "W12 (d) after an editor merge commit, the new head still contains the local branch"
+else bad "W12 (d) after an editor merge commit, the new head still contains the local branch"; fi
+pg branch -q feat/90-w-extra "$(pg commit-tree "$(pg rev-parse 'feat/90-w^{tree}')" -p feat/90-w -m "a local commit never pushed")"
+if pg merge-base --is-ancestor feat/90-w-extra "$MERGED"; then bad "W12 (d) a local commit outside the merged head fails the ancestry check"
+else ok "W12 (d) a local commit outside the merged head fails the ancestry check"; fi
+pg branch -q -D feat/90-w-extra
+# (e) GitHub deleted the branch: only the PR ref is left. Precondition: no state in w one.
+rm -f "$WSTATE"
+git -C "$PUP" update-ref refs/pull/7/head "$MERGED" && git -C "$PUP" update-ref -d refs/heads/feat/90-w
+pg fetch -q --prune origin
+if pg rev-parse --verify -q origin/feat/90-w >/dev/null || [ -e "$WSTATE" ]; then bad "W12 (e) precondition: origin/feat/90-w pruned, no state in w one"
+else ok "W12 (e) precondition: origin/feat/90-w pruned, no state in w one"; fi
+pg fetch -q origin pull/7/head
+wreport "$WTP"
+expect_rc_out "W12 (e) fetched into FETCH_HEAD only, the branch's commits are on no remote: exit 1" 1 "commit(s) on no remote"
+pg fetch -q origin pull/7/head:refs/remotes/origin/pull/7
+if [ "$(pg rev-parse refs/remotes/origin/pull/7)" = "$MERGED" ] && pg merge-base --is-ancestor feat/90-w "$MERGED"; then
+  ok "W12 (e) the named pull ref holds the PR head, which contains the local branch"
+else bad "W12 (e) the named pull ref holds the PR head, which contains the local branch"; fi
+wreport "$WTP"
+if [ "$RC" = 0 ] && [ -z "$OUT" ]; then ok "W12 (e) with the named pull ref, worktrees <it> exits 0"
+else bad "W12 (e) with the named pull ref, worktrees <it> exits 0 (rc=$RC: $OUT)"; fi
+# (b) step 6: the gate refuses while removal would lose a parked state or a hidden path.
+mkdir -p "$WTP/.claude/pipeline_state.parked"; echo '{}' > "$WTP/.claude/pipeline_state.parked/90-1.json"
+wreport "$WTP"
+expect_rc_out "W12 (b) a parked state in the process worktree: worktrees <it> exits 1" 1 "Worktree $WTP: 1 parked state(s)"
+rm -rf "$WTP/.claude/pipeline_state.parked"
+mkdir -p "$WTP/.claude/rules"; echo x > "$WTP/.claude/rules/x.md"
+wreport "$WTP"
+expect_rc_out "W12 (b) a new rules/ in the process worktree: worktrees <it> exits 1" 1 "Worktree $WTP: hidden by the allowlist: rules/"
+rm -rf "$WTP/.claude/rules"
+wreport "$WTP"
+if [ "$RC" = 0 ] && pg worktree remove "$WTP/.claude" && pg branch -q -D feat/90-w && [ ! -e "$WTP/.claude" ]; then
+  ok "W12 (b) exit 0, then worktree remove and branch -D succeed"
+else bad "W12 (b) exit 0, then worktree remove and branch -D succeed (rc=$RC: $OUT)"; fi
+pg fetch -q --prune origin
+if pg rev-parse --verify -q refs/remotes/origin/pull/7 >/dev/null; then bad "W12 (b) the next fetch --prune drops the pull ref"
+else ok "W12 (b) the next fetch --prune drops the pull ref"; fi
+# (f) the app removed the product worktree first.
+prod worktree remove --force "$WTP2"
+if pg worktree prune && pg branch -q -D feat/91-w; then ok "W12 (f) a removed product worktree: worktree prune, then branch -D succeed"
+else bad "W12 (f) a removed product worktree: worktree prune, then branch -D succeed"; fi
 wt_reset
 prod branch -q -D feat/90-w
 rm -rf "$PB" "$PUP" "$PSEED" "$BASE/pgit.saved" "$BASE/process-excludes"

@@ -14,9 +14,14 @@ bash .claude/hooks/pipeline-advance.sh status          # JSON on stdout, parked 
 bash .claude/hooks/pipeline-advance.sh pause           # park the active state
 bash .claude/hooks/pipeline-advance.sh resume <issue|key>
 bash .claude/hooks/pipeline-advance.sh parked
+bash .claude/hooks/pipeline-advance.sh worktrees [<path>]   # unsaved process work in linked worktrees
 ```
-Always run the main checkout's copy (from a worktree:
-`bash "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/hooks/pipeline-advance.sh"`).
+Always run the main checkout's copy, in worktree sessions too: `bash "<main checkout>/.claude/hooks/pipeline-advance.sh"`,
+the path a worktree session's session-start text names, or
+`bash "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/hooks/pipeline-advance.sh"`.
+The copy under a worktree's own `.claude/` refuses by design. `worktrees` exits 0 when no linked
+worktree holds unsaved process work, 1 when it prints findings, 2 when the report cannot run; `status`
+prints the same lines on stderr.
 
 ## State per checkout
 - Hooks, `pipeline.json` and agents come from the main checkout; only the state is per checkout.
@@ -30,6 +35,15 @@ Always run the main checkout's copy (from a worktree:
   state without it is own only on its `branch_at_init`. A foreign state is treated as absent by
   every gate.
 - TTL (`state_ttl_hours`) and the watchdog measure time since the last `phase_history` entry.
+- Linked worktree (#89, ADR-0005 item 12): before taking the lock, `init` creates the worktree's
+  `.claude` as a process worktree of the main checkout's process clone, on a process branch named like
+  the product branch and cut from process `origin/main`, or re-checks one an earlier init left; it
+  refuses a protected branch, a `.claude` that is not such a worktree, one on another process branch
+  or tracking a protected branch, and a half-created one, and PIPELINE is refused before anything is
+  created.
+- A worktree session does not load the process `CLAUDE.md`; the SessionStart hook
+  (`session-context.sh`, no matcher) injects a short text naming the main checkout's
+  `.claude/CLAUDE.md`, the hook probe and the worktree rules.
 
 ## init, pause, resume
 `init <TIER> <issue>` decides under the lock, first matching row wins:
