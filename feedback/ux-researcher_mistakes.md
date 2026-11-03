@@ -133,3 +133,22 @@ dashboard/acceptance.md AC1, AC2, AC4, AC5, AC9 (unconditional: "the Card shows 
 contradict the planned AC14 ("no link to a `/courses/...` route appears anywhere").
 Rule: When a release rule hides a class of controls, grep every member of the class (labels, routes,
 component names) and scope every acceptance check that describes a hidden control to its release.
+
+### 2026-11-03: README rewrite states prototype-only mechanics as the shared control spec (#80, judge_design usability)
+plans/80-proto-css-fixes-design.md D4 rewrites design/system/README.md:86 to say controls use their height "as a
+minimum height, so a control grows instead of clipping" and "buttons and inputs have no vertical padding". The
+README is the design-dev contract (ADR-0006) and says "every value is a class in the app" (:59), yet the shipped
+app uses fixed `h-9`/`h-8` (button.tsx:32-34, input.tsx:14) and the input keeps `py-1.5`, and the task declares
+"apps/web needs no change". The truth check in D4 checked the sentences only against proto.css, so after merge the
+contract says one thing and the app, which is "ready", does another, with no follow-up recorded.
+Rule: When rewriting a README rule that binds the app, check every sentence against the app's classes too; either
+scope the mechanism to the prototype in the sentence itself or record the app change as a tracked follow-up.
+
+### 2026-11-03: Acceptance check prints member counts but never asserts them, so an absent member passes (#80, judge_design consistency)
+plans/80-proto-css-fixes-check.mjs skips every element without a box and only prints the per-member counts; the
+expected counts live in a table in the design (D6) that a human is asked to compare. On the patched tree with the
+icon button renamed, every non-busy aria-disabled gallery button stripped and every `.env-details` and
+`.dropdown-check` renamed, the script still prints ALL PASS and exits 0: the 36x36 guard, the not-allowed negative
+cursor case and two class D members are silently gone.
+Rule: A check that enumerates class members asserts each member's expected count (per page and width) in code, and
+treats a missing optional probe (`undefined`) as a finding where the design says the member exists.

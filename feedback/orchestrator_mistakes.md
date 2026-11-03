@@ -307,3 +307,13 @@ Rule: when a task is paused, do not leave its process edits committed on a task 
 not build on; either open its process PR before the pause or leave the edits uncommitted on main's files and
 commit them on a fresh branch at the task's commit phase. Also: a design that the code outgrows (two amendments,
 25 accepted deviations) gets its implementation-deltas file before judge_code, not after the judges ask.
+
+### 2026-11-03: Architect brief checked README truth against the CSS only (#80)
+
+judge_design round 1 failed twice on items my brief shaped: I asked that every README statement "match the CSS after
+the change", so the architect never checked it against the shipped app, which the README binds as the ADR-0006
+contract; and I asked for an acceptance script with "expected counts per page" without saying the counts must be
+asserted in code, so the script printed them and passed on an absent member.
+Rule: in a DESIGN brief that edits design/system/README.md, require each changed sentence to be checked against both
+proto.css and the app classes (file:line). When a brief asks for an executable check over a class of members, say
+that every member's expected count is asserted in code and that absence is a finding.
