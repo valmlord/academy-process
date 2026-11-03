@@ -32,7 +32,6 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(HERE)
 import cfg  # noqa: E402
 import checkout  # noqa: E402
-import pl_process_worktree  # noqa: E402
 from pl_jsonshape import as_list, as_str  # noqa: E402
 
 EXIT_REFUSED = 1
@@ -312,6 +311,9 @@ def op_init(root: str, tier: str, issue: str, branch: str, gitdir: str, code_roo
     # before ensure, so a PIPELINE init in a worktree leaves no process worktree behind.
     if tier_conf.get("edits_pipeline_core") and os.path.realpath(root) != os.path.realpath(code_root):
         raise Refused("%s tasks run in the main checkout: only its hooks are live" % tier)
+    # Imported here, not at module level: only init needs it, so a broken pl_process_worktree
+    # cannot take down every other state op (advance, vote, park, Stop's finish, the watchdog).
+    import pl_process_worktree
     try:
         pl_process_worktree.ensure(root, code_root, branch, conf)
     except pl_process_worktree.WorktreeRefused as exc:
