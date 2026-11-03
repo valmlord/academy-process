@@ -2070,6 +2070,79 @@ expect_out "W9b a reused process branch tracking main is refused" 1 "tracks main
 pg config branch.feat/90-w.merge refs/heads/feat/90-w
 capture wadv init TASK 90
 expect_out "W9b an upstream of its own name is fine" 0
+
+# The process repo rules run on the worktree's process worktree.
+W_FOOTER="Refs valmlord/academy#90"
+wpr() { put_state "$WTP" TASK commit 90; capture wadv pr skip "fixture"; }
+wstop() { at "$WTP" stop_json 0 | bash "$PH/phase-complete.sh"; }
+
+# W4
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+capture eval 'at "$WTP" write_json "$WTP/.claude/feedback/w4.md" | bash "$PH/require-pipeline.sh"'
+expect_out "W4 a feedback write in the worktree's process worktree is allowed" 0
+echo "lesson" > "$WTP/.claude/feedback/w4.md"
+wpr
+expect_out "W4 pr with an uncommitted process edit is refused" 1 "the process repo has uncommitted changes: feedback/w4.md"
+wpg add feedback/w4.md && wpg commit -qm "fix: w4
+
+$W_FOOTER" && wpg push -q -u origin feat/90-w
+wpr
+expect_out "W4 after commit and push, pr is allowed" 0 "PR skipped"
+
+# W5: a real worktree of a scratch repo, clean and back-pointing, but not under main's process admin dir.
+wt_fresh
+git init -q -b main "$BASE/w5" && git -c user.name=t -c user.email=t@t -C "$BASE/w5" commit -q --allow-empty -m init
+git -C "$BASE/w5" worktree add -q -b w5 "$WTP/.claude"
+wpr
+expect_out "W5 a .claude that is a worktree of another repo: pr refused" 1 "$WTP/.claude is not a process worktree of $P"
+rm -rf "$BASE/w5"
+
+# W5b: w one's .git names w two's admin dir.
+wt_fresh
+prod worktree add -q -B feat/91-w "$WTP2" main
+wadv init TASK 90 >/dev/null 2>&1; wadv2 init TASK 91 >/dev/null 2>&1
+cp "$WTP2/.claude/.git" "$WTP/.claude/.git"
+wpr
+expect_out "W5b a .git borrowing a sibling's admin dir: pr refused" 1 "not a process worktree" "belongs to another worktree"
+capture wadv init TASK 90
+expect_out "W5b a .git borrowing a sibling's admin dir: init refused" 1 "not a process worktree" "belongs to another worktree"
+
+# W11
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+wstop_expect() { # wstop_expect <desc> <want rc> <stderr substring...>: Stop at a done TASK state in w one
+  local d="$1" want="$2"; shift 2
+  put_state "$WTP" TASK "done" 90
+  edit_state "$WTP" '{"artifacts": {"notify": "x", "judge_votes": [
+    {"round": "judge_design", "agent": "security", "verdict": "PASS"},
+    {"round": "judge_design", "agent": "architecture", "verdict": "PASS"},
+    {"round": "judge_design", "agent": "operations", "verdict": "PASS"},
+    {"round": "judge_code", "agent": "security", "verdict": "PASS"},
+    {"round": "judge_code", "agent": "architecture", "verdict": "PASS"},
+    {"round": "judge_code", "agent": "operations", "verdict": "PASS"}]}}'
+  capture wstop
+  expect_out "$d" "$want" "$@"
+}
+: > "$WTP/.claude/feedback/w11.md"
+wstop_expect "W11 Stop at done in a worktree refused: dirty process worktree" 2 "process repo: the process repo has uncommitted changes: feedback/w11.md"
+rm -f "$WTP/.claude/feedback/w11.md"
+wstop_expect "W11 Stop at done in a worktree allowed: clean process worktree" 0
+if [ ! -e "$WSTATE" ] && [ ! -e "$P/pipeline_state.json" ] && [ "$(pg symbolic-ref --short HEAD)" = main ] && [ -z "$(pg status --porcelain)" ]; then
+  ok "W11 the allowed Stop removes the worktree's done state and leaves main's process repo alone"
+else bad "W11 the allowed Stop removes the worktree's done state and leaves main's process repo alone"; fi
+
+# W13
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+for f in .claude/settings.local.json .claude/hooks/x.sh; do
+  capture eval 'at "$WTP" write_json "$WTP/$f" | bash "$PH/require-pipeline.sh"'
+  if [ "$RC" = 2 ] && [ "$(plog_last reason)" = "core:$f" ]; then ok "W13 $f in the process worktree is core, never writable"
+  else bad "W13 $f in the process worktree is core, never writable (rc=$RC, reason=$(plog_last reason))"; fi
+done
+capture eval 'at "$WTP" write_json "$WSTATE" | bash "$PH/require-pipeline.sh"'
+if [ "$RC" = 2 ] && [ "$(plog_last reason)" = "protected:.claude/pipeline_state.json" ]; then ok "W13 the worktree's state file is protected"
+else bad "W13 the worktree's state file is protected (rc=$RC, reason=$(plog_last reason))"; fi
 wt_reset
 prod branch -q -D feat/90-w
 rm -rf "$PB" "$PUP" "$PSEED" "$BASE/pgit.saved" "$BASE/process-excludes"
