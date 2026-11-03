@@ -286,3 +286,13 @@ Rule: after any tester-driven fix round, brief the architect to append the delta
 turn as the coder fix, and brief the tester to rehearse every procedure Stepan follows by hand literally, not
 only the hooks. Live checks that need a new session are proposed as cards or started on Stepan's own words: the
 app refuses to start sessions from a turn an agent's report started.
+
+### 2026-11-03: Architect brief checked README truth against the CSS only (#80)
+
+judge_design round 1 failed twice on items my brief shaped: I asked that every README statement "match the CSS after
+the change", so the architect never checked it against the shipped app, which the README binds as the ADR-0006
+contract; and I asked for an acceptance script with "expected counts per page" without saying the counts must be
+asserted in code, so the script printed them and passed on an absent member.
+Rule: in a DESIGN brief that edits design/system/README.md, require each changed sentence to be checked against both
+proto.css and the app classes (file:line). When a brief asks for an executable check over a class of members, say
+that every member's expected count is asserted in code and that absence is a finding.
