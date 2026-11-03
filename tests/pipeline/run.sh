@@ -2143,6 +2143,95 @@ done
 capture eval 'at "$WTP" write_json "$WSTATE" | bash "$PH/require-pipeline.sh"'
 if [ "$RC" = 2 ] && [ "$(plog_last reason)" = "protected:.claude/pipeline_state.json" ]; then ok "W13 the worktree's state file is protected"
 else bad "W13 the worktree's state file is protected (rc=$RC, reason=$(plog_last reason))"; fi
+
+# W10: the worktree report behind status and Stepan's sync gate.
+# wreport [<path>]: `worktrees` from main; stdout and stderr in OUT, exit code in RC.
+wreport() { OUT=$(padv worktrees "$@" 2>&1); RC=$?; }
+# (a)
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+echo "lesson" > "$WTP/.claude/feedback/w10.md"
+capture wadv status
+if [ "$RC" = 0 ] && has_all "$ERR" "Worktree $WTP: uncommitted: feedback/w10.md"; then ok "W10 (a) status names the worktree's uncommitted process edit"
+else bad "W10 (a) status names the worktree's uncommitted process edit (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+wreport "$WTP"
+if [ "$RC" = 1 ] && has_all "$OUT" "Worktree $WTP: uncommitted: feedback/w10.md"; then ok "W10 (a) worktrees <it> exits 1 on an uncommitted process edit"
+else bad "W10 (a) worktrees <it> exits 1 on an uncommitted process edit (rc=$RC: $OUT)"; fi
+# (b)
+prod worktree remove --force "$WTP"
+capture padv status
+if has_all "$ERR" "Worktree $WTP/.claude: removed with its product worktree; commits kept on feat/90-w"; then
+  ok "W10 (b) status names a process worktree whose product worktree was removed"
+else bad "W10 (b) status names a process worktree whose product worktree was removed (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+wreport "$WTP"
+expect_rc_out() { # expect_rc_out <desc> <want rc> <substring...>: RC and OUT (from wreport)
+  local d="$1" want="$2"; shift 2
+  if [ "$RC" = "$want" ] && has_all "$OUT" "$@"; then ok "$d"; else bad "$d (rc=$RC: $(printf '%s' "$OUT" | tr '\n' ' ' | cut -c1-300))"; fi
+}
+expect_rc_out "W10 (b) worktrees <removed one> exits 1 naming it" 1 "Worktree $WTP/.claude: removed"
+# (c)
+wt_fresh
+prod worktree add -q -B feat/91-w "$WTP2" main
+wreport "$WTP2"
+if [ "$RC" = 0 ] && [ "$OUT" = "Worktree $WTP2: no process worktree yet (no init)" ]; then ok "W10 (c) a worktree without init is a note, exit 0"
+else bad "W10 (c) a worktree without init is a note, exit 0 (rc=$RC: $OUT)"; fi
+# (d)
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+rm -f "$WSTATE"
+wreport "$WTP"
+if [ "$RC" = 0 ] && [ -z "$OUT" ]; then ok "W10 (d) a clean process worktree: exit 0, no line"
+else bad "W10 (d) a clean process worktree: exit 0, no line (rc=$RC: $OUT)"; fi
+# (e) A git that fails only `worktree list` in a .claude repo; the product resolver's call passes.
+mkdir -p "$BASE/gitstub"
+{
+  echo '#!/bin/bash'
+  printf 'REAL_GIT=%q\n' "$(command -v git)"
+  cat <<'SH'
+prev=""; in_claude=0; lists=0
+for arg in "$@"; do
+  [ "$prev" = -C ] && case $arg in */.claude) in_claude=1 ;; esac
+  [ "$prev" = worktree ] && [ "$arg" = list ] && lists=1
+  prev=$arg
+done
+[ "$in_claude" = 1 ] && [ "$lists" = 1 ] && exit 1
+exec "$REAL_GIT" "$@"
+SH
+} > "$BASE/gitstub/git"
+chmod +x "$BASE/gitstub/git"
+capture eval 'PATH="$BASE/gitstub:$PATH" padv status'
+if [ "$RC" = 0 ] && [ "$(printf '%s\n' "$ERR" | grep -c '^WARNING: worktree report failed (rc 2)$')" = 1 ]; then
+  ok "W10 (e) a failed report is one warning line and status still exits 0"
+else bad "W10 (e) a failed report is one warning line and status still exits 0 (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+OUT=$(PATH="$BASE/gitstub:$PATH" padv worktrees 2>&1); RC=$?
+expect_rc_out "W10 (e) worktrees exits 2 when the report cannot run" 2 "Worktree report failed: git failed in $P"
+# (f)
+chmod 000 "$WTP/.claude"
+wreport "$WTP"
+chmod 755 "$WTP/.claude"
+if ! { test -r "$WTP/.claude" && test -x "$WTP/.claude"; }; then bad "W10 (f) chmod restored"
+elif [ "$RC" = 1 ] && has_all "$OUT" "Worktree $WTP: cannot inspect" && ! has_all "$OUT" "not a process worktree" \
+    && ! has_all "$OUT" "run init" && ! has_all "$OUT" WARNING; then
+  ok "W10 (f) an inaccessible process worktree is \"cannot inspect\", never \"run init\""
+else bad "W10 (f) an inaccessible process worktree is \"cannot inspect\", never \"run init\" (rc=$RC: $OUT)"; fi
+# (g)
+chmod 000 "$P/.git/worktrees"
+wreport
+chmod 755 "$P/.git/worktrees"
+if ! { test -r "$P/.git/worktrees" && test -x "$P/.git/worktrees"; }; then bad "W10 (g) chmod restored"
+else expect_rc_out "W10 (g) an unreadable process admin dir fails the report" 2 "process admin dir unreadable"; fi
+# (h)
+python3 -I -c 'import sys; open(sys.argv[1] + "/feedback/a\nb\x1b[31m.md", "w").close()' "$WTP/.claude"
+OUT=$(padv worktrees "$WTP"); RC=$?
+if [ "$RC" = 1 ] && python3 -I - "$OUT" <<'PY'
+import sys, unicodedata
+out = sys.argv[1]
+lines = out.split("\n")
+controls = [ch for ch in out if unicodedata.category(ch) == "Cc" and ch != "\n"]
+sys.exit(0 if all(line.startswith("Worktree ") for line in lines) and not controls and "feedback/ab[31m.md" in out else 1)
+PY
+then ok "W10 (h) a file name with a newline and ESC stays on its report line, without controls"
+else bad "W10 (h) a file name with a newline and ESC stays on its report line, without controls (rc=$RC)"; fi
 wt_reset
 prod branch -q -D feat/90-w
 rm -rf "$PB" "$PUP" "$PSEED" "$BASE/pgit.saved" "$BASE/process-excludes"

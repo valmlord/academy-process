@@ -5,17 +5,28 @@ A session in a linked worktree <wt> keeps its pipeline state and process edits i
 git worktree of the main checkout's process repo <main>/.claude, on a process branch named like the
 product branch. lib/state.py's init calls ensure() to create or re-check it; admin_dir_of() is the
 layout check the process repo rules (lib/pl_process_repo.py) share.
+
+  pl_process_worktree.py report [<path>]
+      One line per finding or note about the linked worktrees, each starting with "Worktree ".
+      With <path>, only the lines for that product worktree or its .claude. Exit 0 = no finding
+      (notes may print), 1 = findings printed (unsaved process work), 2 = the report could not run.
 """
+import errno
 import os
 import stat
 import subprocess
 import sys
+from typing import NamedTuple, Optional
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(HERE)
 import cfg  # noqa: E402
 import checkout  # noqa: E402
-from pl_process_repo import PROCESS_DIR, GitFailed, Repo, git, head_branch, status_entries  # noqa: E402
+from pl_process_repo import (  # noqa: E402
+    IGNORED_STATUS, PROCESS_DIR, GitFailed, Repo, git, head_branch, is_local_runtime, is_pycache_dir,
+    linked_process_repo, listed, non_bytecode_paths, short_ref, status_entries,
+)
+from pl_text import printable  # noqa: E402
 
 # git worktree add checks out the whole process tree; init is a CLI call, not a gate under the
 # 15 s hook timeout.
@@ -170,3 +181,177 @@ def ensure(state_root: str, main_root: str, branch: str, conf: cfg.Config) -> No
     _add(main_root, proc_path, branch, state_root)
     _check_existing(proc_path, main_root, branch, conf)
     checkout.log_event(event="process-worktree-created", hook="state.py", checkout=state_root, path=proc_path)
+
+
+# Never PASS or FAIL: a judge may paste this output, and the vote parser reads verdict-shaped lines.
+REPORT_PREFIX = "Worktree "
+EXIT_FINDINGS = 1
+EXIT_REPORT_FAILED = 2
+PARKED_DIR = "pipeline_state.parked"
+PLANS_DIR = "plans"
+
+
+class ReportFailed(Exception):
+    """The report cannot see every process worktree; silence would read as "nothing unsaved"."""
+
+
+class Line(NamedTuple):
+    # The product worktree, or for a prunable record the process worktree, the line is about.
+    path: str
+    text: str
+    is_finding: bool
+
+
+def _line(path: str, message: str, is_finding: bool = True) -> Line:
+    """message holds only fixed text and values already passed through printable()."""
+    return Line(path, "%s%s: %s" % (REPORT_PREFIX, printable(path), message), is_finding)
+
+
+def _cannot_inspect(root: str, exc: OSError) -> Line:
+    code = exc.errno
+    return _line(root, "cannot inspect (%s)" % (errno.errorcode.get(code, str(code)) if code is not None else "OSError"))
+
+
+def _process_records(main_root: str) -> list[dict[str, str]]:
+    """The records of `git worktree list --porcelain -z` in main's process clone, main first."""
+    try:
+        out = git(_process_repo(main_root), "worktree", "list", "--porcelain", "-z").out
+    except GitFailed as exc:
+        raise ReportFailed(str(exc))
+    records: list[dict[str, str]] = []
+    current: dict[str, str] = {}
+    for token in out.split("\0"):
+        if not token:
+            if current:
+                records.append(current)
+                current = {}
+            continue
+        key, _, value = token.partition(" ")
+        current[key] = value
+    if current:
+        records.append(current)
+    return records
+
+
+def _plans_note(root: str) -> list[Line]:
+    count = sum(len(files) for _, _, files in os.walk(os.path.join(root, PLANS_DIR)))
+    if not count:
+        return []
+    return [_line(root, "%d file(s) in plans/ (local notes, lost when the app archives the worktree)" % count, False)]
+
+
+def _unsaved(wt: checkout.Worktree, repo: Repo) -> list[Line]:
+    """Design 1.4 check 3, findings: what a removal of this process worktree would lose."""
+    lines = []
+    status = checkout.status_of(wt)
+    if status != "none":
+        lines.append(_line(wt.root, "pipeline state %s" % printable(status)))
+    parked_dir = os.path.join(repo.path, PARKED_DIR)
+    parked = [f for f in os.listdir(parked_dir) if f.endswith(".json")] if os.path.isdir(parked_dir) else []
+    if parked:
+        lines.append(_line(wt.root, "%d parked state(s)" % len(parked)))
+    entries = status_entries(repo)
+    changed = [printable(p) for code, p in entries if code != IGNORED_STATUS]
+    hidden = [printable(p) for code, p in entries if code == IGNORED_STATUS and not is_local_runtime(p)]
+    hidden += [printable(found) for code, p in entries if code == IGNORED_STATUS and is_pycache_dir(p)
+               for found in non_bytecode_paths(repo, p)]
+    if changed:
+        lines.append(_line(wt.root, "uncommitted: %s" % listed(changed)))
+    if hidden:
+        lines.append(_line(wt.root, "hidden by the allowlist: %s" % listed(hidden)))
+    unpushed = int(git(repo, "rev-list", "--count", "HEAD", "--not", "--remotes").out.strip() or "0")
+    if unpushed:
+        lines.append(_line(wt.root, "%d commit(s) on no remote" % unpushed))
+    return lines
+
+
+def _inspect(wt: checkout.Worktree, main_root: str) -> list[Line]:
+    """Design 1.4 check 3. A permissions problem is classified before the layout check, because
+    "not a process worktree" would send Stepan the wrong way."""
+    proc_path = os.path.join(wt.root, PROCESS_DIR)
+    try:
+        os.lstat(proc_path)
+    except FileNotFoundError:
+        return [_line(wt.root, "no process worktree yet (no init)", False)] + _plans_note(wt.root)
+    except OSError as exc:
+        return [_cannot_inspect(wt.root, exc)]
+    if not os.access(proc_path, os.R_OK | os.X_OK):
+        return [_line(wt.root, "cannot inspect (no access)")]
+    try:
+        os.lstat(os.path.join(proc_path, ".git"))
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        return [_cannot_inspect(wt.root, exc)]
+    repo, refused = linked_process_repo(proc_path, main_root)
+    if repo is None:
+        return [_line(wt.root, printable(problem)) for problem in refused]
+    try:
+        return _unsaved(wt, repo) + _plans_note(wt.root)
+    except GitFailed as exc:
+        return [_line(wt.root, "cannot inspect (%s)" % printable(str(exc)))]
+    except OSError as exc:
+        return [_cannot_inspect(wt.root, exc)]
+
+
+def _prunable(record: dict[str, str]) -> Line:
+    path = record.get("worktree", "")
+    branch = printable(short_ref(record.get("branch", ""))) or "a detached HEAD"
+    return _line(path, "removed with its product worktree; commits kept on %s, uncommitted edits there are lost; "
+                       "Stepan: git -C .claude worktree prune, then sync %s" % (branch, branch))
+
+
+def _wanted(only_path: str) -> set[str]:
+    """Keys a line's path is matched against: abspath, since the directory may be gone, and realpath."""
+    keys: set[str] = set()
+    for path in (os.path.abspath(only_path), os.path.realpath(only_path)):
+        keys.update((path, os.path.join(path, PROCESS_DIR)))
+    return keys
+
+
+def report(main_root: str, only_path: Optional[str]) -> tuple[list[str], int]:
+    """-> (lines, exit code) of design 1.4."""
+    main_proc = _process_repo(main_root)
+    if not os.path.isdir(main_proc.git_dir or ""):
+        # As in the process repo rules: fixtures and a fresh device before the clone have none.
+        return [], 0
+    admin_root = os.path.join(main_proc.git_dir or "", "worktrees")
+    try:
+        # git lists only main, with no error, when it cannot read this directory.
+        if os.path.isdir(admin_root) and not os.access(admin_root, os.R_OK | os.X_OK):
+            raise ReportFailed("process admin dir unreadable: %s" % admin_root)
+        records = _process_records(main_root)
+        try:
+            accepted, _ = checkout.worktrees(main_root)
+        except checkout.GitError as exc:
+            raise ReportFailed("git worktree list failed in %s: %s" % (main_root, exc))
+    except ReportFailed as exc:
+        return ["%sreport failed: %s" % (REPORT_PREFIX, printable(str(exc)))], EXIT_REPORT_FAILED
+    lines: list[Line] = []
+    inspected: set[str] = set()
+    for wt in accepted[1:]:
+        lines += _inspect(wt, main_root)
+        inspected.add(os.path.join(wt.root, PROCESS_DIR))
+    for record in records[1:]:
+        path = record.get("worktree", "")
+        # git also calls a record prunable when it cannot stat the directory; check 3 named that case.
+        if "prunable" in record and not (path in inspected and os.path.lexists(path)):
+            lines.append(_prunable(record))
+    if only_path is not None:
+        wanted = _wanted(only_path)
+        lines = [line for line in lines if line.path in wanted]
+    return [line.text for line in lines], EXIT_FINDINGS if any(line.is_finding for line in lines) else 0
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) not in (2, 3) or argv[1] != "report":
+        print(__doc__, file=sys.stderr)
+        return EXIT_REPORT_FAILED
+    lines, rc = report(checkout.code_root(), argv[2] if len(argv) == 3 else None)
+    for line in lines:
+        print(line)
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

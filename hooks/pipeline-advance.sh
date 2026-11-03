@@ -13,6 +13,7 @@
 #   pipeline-advance.sh pause                           park the active state, free the checkout
 #   pipeline-advance.sh resume <issue|key>              restore a parked state on its own branch
 #   pipeline-advance.sh parked                          list parked states
+#   pipeline-advance.sh worktrees [<path>]              report unsaved process work in linked worktrees
 # Judge votes and the judge spawn map are recorded ONLY by the judge hooks (JUDGE_HOOK_CALLER):
 #   pipeline-advance.sh <judge_phase> <judge> <PASS|FAIL> [agent_id] [path]
 #   pipeline-advance.sh spawn <judge_phase> <agent_id> <judge>
@@ -115,6 +116,17 @@ report_parked() {
   state_op parked | while IFS= read -r line; do echo "Parked here: $line" >&2; done
 }
 
+# Unsaved process work in linked worktrees, on stderr like the parked list. Best effort: status
+# itself never fails on it, so a failed report is one warning line.
+report_worktrees() {
+  local out rc=0
+  out=$(python3 -I "$LIB/pl_process_worktree.py" report) || rc=$?
+  case "$rc" in
+    0|1) [ -z "$out" ] || printf '%s\n' "$out" >&2 ;;
+    *) echo "WARNING: worktree report failed (rc $rc)" >&2 ;;
+  esac
+}
+
 # ---------------------------------------------------------------- STATUS
 if [ "$PHASE" = "status" ]; then
   case "$STATE_STATUS" in
@@ -126,6 +138,7 @@ if [ "$PHASE" = "status" ]; then
     *) echo "No active pipeline." ;;
   esac
   report_parked
+  report_worktrees
   exit 0
 fi
 
@@ -141,6 +154,12 @@ fi
 if [ "$PHASE" = "parked" ]; then
   state_op parked
   exit 0
+fi
+# The sync gate before Stepan removes a process worktree: exit 0 only when nothing would be lost.
+if [ "$PHASE" = "worktrees" ]; then
+  WORKTREES_RC=0
+  python3 -I "$LIB/pl_process_worktree.py" report ${1:+"$1"} || WORKTREES_RC=$?
+  exit "$WORKTREES_RC"
 fi
 
 # ---------------------------------------------------------------- INIT
