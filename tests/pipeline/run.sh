@@ -1931,6 +1931,145 @@ sys.exit(0 if set(settings) == {"hooks"} and hooks == PINNED and session_start =
 PY
 then ok "W18 settings.json wiring equals the pinned literal, SessionStart without a matcher"
 else bad "W18 settings.json wiring equals the pinned literal, SessionStart without a matcher"; fi
+
+# Init in a worktree creates <wt>/.claude as a worktree of the process clone $P.
+WTP2="$PB/.claude/worktrees/w two"
+WSTATE="$WTP/.claude/pipeline_state.json"
+wadv()  { (cd "$WTP" && bash "$PH/pipeline-advance.sh" "$@"); }
+wadv2() { (cd "$WTP2" && bash "$PH/pipeline-advance.sh" "$@"); }
+wpg()   { git -c user.name=t -c user.email=t@t -C "$WTP/.claude" "$@"; }
+# wt_fresh: a fresh process clone (which also drops every process worktree and the product
+# worktrees inside it), then product worktree "w one" on feat/90-w cut from main.
+wt_fresh() {
+  proc_reset
+  prod worktree prune
+  prod worktree add -q -B feat/90-w "$WTP" main
+}
+# expect_out <desc> <want rc> <substring...>: RC and ERR (from capture) against the expectation.
+expect_out() {
+  local d="$1" want="$2"; shift 2
+  if [ "$RC" = "$want" ] && has_all "$ERR" "$@"; then ok "$d"
+  else bad "$d (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+}
+# wt_layout_ok <process worktree>: its .git names an admin dir directly under $P/.git/worktrees/
+# whose gitdir file points back at that .git.
+wt_layout_ok() {
+  python3 -I - "$1" "$P" <<'PY'
+import os, sys
+wt, p = sys.argv[1:3]
+line = open(os.path.join(wt, ".git")).readline().strip()
+admin = os.path.realpath(line[len("gitdir: "):]) if line.startswith("gitdir: ") else ""
+back = os.path.realpath(open(os.path.join(admin, "gitdir")).readline().strip()) if admin else ""
+root = os.path.realpath(os.path.join(p, ".git", "worktrees"))
+sys.exit(0 if os.path.dirname(admin) == root and back == os.path.realpath(os.path.join(wt, ".git")) else 1)
+PY
+}
+
+# W1
+wt_fresh
+capture wadv init TASK 90
+if [ "$RC" = 0 ] && wt_layout_ok "$WTP/.claude" && [ "$(wpg symbolic-ref --short HEAD)" = feat/90-w ] \
+    && [ "$(wpg rev-parse HEAD)" = "$(pg rev-parse origin/main)" ] && [ -f "$WSTATE" ] && [ ! -e "$P/pipeline_state.json" ]; then
+  ok "W1 init in a worktree creates its process worktree on feat/90-w at origin/main; the state lands there"
+else bad "W1 init in a worktree creates its process worktree on feat/90-w at origin/main; the state lands there (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+if pg config --get branch.feat/90-w.merge >/dev/null; then bad "W1 the new process branch has no upstream"
+else ok "W1 the new process branch has no upstream"; fi
+
+# W1b
+wt_fresh
+pg branch -q feat/90-w "$(pg commit-tree "$(pg rev-parse 'origin/main^{tree}')" -p origin/main -m "an older task")"
+rm -f "$PLOG"
+capture wadv init TASK 90
+if [ "$RC" = 0 ] && has_all "$ERR" "reusing existing process branch feat/90-w at" "(1 commits not on origin/main)" \
+    && grep -qF '"process-worktree-reused-branch"' "$PLOG"; then
+  ok "W1b an existing process branch is reused with a warning and a log line"
+else bad "W1b an existing process branch is reused with a warning and a log line (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+# W1c
+wt_fresh
+printf '#!/bin/sh\n: > "%s"\n' "$BASE/post-checkout-ran" > "$P/.git/hooks/post-checkout"
+chmod +x "$P/.git/hooks/post-checkout"
+rm -f "$BASE/post-checkout-ran"
+capture wadv init TASK 90
+if [ "$RC" = 0 ] && [ ! -e "$BASE/post-checkout-ran" ]; then ok "W1c init runs no hook of the process repo"
+else bad "W1c init runs no hook of the process repo (rc=$RC)"; fi
+
+# W2
+wt_fresh
+capture eval 'at "$WTP" write_json "$WTP/apps/x.txt" | bash "$PH/require-pipeline.sh"'
+if [ "$RC" = 2 ] && [ "$(plog_last reason)" = "no-pipeline:apps/x.txt" ]; then ok "W2 a product write in a worktree before init is blocked"
+else bad "W2 a product write in a worktree before init is blocked (rc=$RC)"; fi
+capture wadv pause
+if [ "$RC" = 1 ] && has_all "$ERR" "$WTP/.claude does not exist" "run init" && ! has_all "$ERR" Traceback; then
+  ok "W2 pause before init names the missing .claude and init, without a traceback"
+else bad "W2 pause before init names the missing .claude and init, without a traceback (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+# W3
+wt_fresh
+prod worktree add -q -B feat/91-w "$WTP2" main
+wadv init TASK 90 >/dev/null 2>&1; wadv2 init TASK 91 >/dev/null 2>&1; padv init TASK 92 >/dev/null 2>&1
+wadv researcher >/dev/null 2>&1
+if [ "$(state_get "$WTP" "d['phase']")" = researcher ] && [ "$(state_get "$WTP2" "d['phase']")" = init ] \
+    && [ "$(state_get "$PB" "d['phase']")" = init ] && [ "$(state_get "$WTP2" "d['issue']")" = 91 ]; then
+  ok "W3 two worktrees and main run their own tasks; advancing one leaves the others"
+else bad "W3 two worktrees and main run their own tasks; advancing one leaves the others"; fi
+
+# W6
+wt_fresh
+mkdir "$WTP/.claude"
+capture wadv init TASK 90
+if [ "$RC" = 1 ] && has_all "$ERR" "$WTP/.claude is not a process worktree" && [ ! -e "$WSTATE" ] \
+    && ! pg show-ref --verify --quiet refs/heads/feat/90-w; then
+  ok "W6 a plain .claude in the worktree is refused, naming it; no branch, no state"
+else bad "W6 a plain .claude in the worktree is refused, naming it; no branch, no state (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+# W7
+wt_fresh
+printf '%s\n' '{"version": 1, "pipeline_init": [90]}' > "$P/settings.pipeline-grant.json"
+capture wadv init PIPELINE 90
+rm -f "$P/settings.pipeline-grant.json"
+if [ "$RC" = 1 ] && has_all "$ERR" "run in the main checkout" && [ ! -e "$WTP/.claude" ]; then
+  ok "W7 PIPELINE init in a worktree is refused before anything is created"
+else bad "W7 PIPELINE init in a worktree is refused before anything is created (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+# W8
+wt_fresh
+pg switch -q -c feat/90-w
+capture wadv init TASK 90
+expect_out "W8 the process branch checked out in main's process repo: init refused, naming it and worktree list" 1 \
+  "feat/90-w" "worktree list"
+pg switch -q main && pg branch -q -D feat/90-w
+
+# W8b
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+pg worktree lock "$WTP/.claude"
+rm -f "$WSTATE"
+capture wadv init TASK 90
+expect_out "W8b (a) a locked process worktree is half-created: init refused" 1 "half-created process worktree at $WTP/.claude"
+pg worktree unlock "$WTP/.claude"
+rm -f "$WTP/.claude/CLAUDE.md"
+capture wadv init TASK 90
+expect_out "W8b (b) a tracked file missing in the process worktree: init refused" 1 "half-created" "worktree remove --force"
+
+# W9
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+prod -C "$WTP" switch -q -c feat/93-w
+capture wadv init TASK 93
+expect_out "W9 a second task in the same worktree session is refused" 1 "is on feat/90-w"
+
+# W9b
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+rm -f "$WSTATE"
+pg config branch.feat/90-w.remote origin
+pg config branch.feat/90-w.merge refs/heads/main
+capture wadv init TASK 90
+expect_out "W9b a reused process branch tracking main is refused" 1 "tracks main" "branch --unset-upstream feat/90-w"
+pg config branch.feat/90-w.merge refs/heads/feat/90-w
+capture wadv init TASK 90
+expect_out "W9b an upstream of its own name is fine" 0
 wt_reset
 prod branch -q -D feat/90-w
 rm -rf "$PB" "$PUP" "$PSEED" "$BASE/pgit.saved" "$BASE/process-excludes"
