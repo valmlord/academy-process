@@ -165,7 +165,11 @@ decisions 1-7: `plans/21-pipeline-v2-research.md`; full design: `plans/21-pipeli
       (`core.hooksPath=/dev/null`), or re-checks one an earlier init left. It refuses a protected product
       branch, a `.claude` that is a file, a symlink or not such a worktree, a process worktree on
       another branch, a process branch tracking a protected branch, and a half-created worktree (lock
-      left behind or tracked files missing); an existing process branch is reused with a warning.
+      left behind or tracked files missing); an existing process branch is reused with a warning. The
+      upstream check reads every spelling of `branch.<b>.merge` (`main`, `refs/heads/main`, any
+      remote), and a product branch name that would shadow another ref in the process clone (first
+      component `origin`, `refs`, `heads`, `tags` or `remotes`, or `HEAD`) is refused; new process
+      branches start at the full `refs/remotes/origin/main`.
       PIPELINE runs only in the main checkout and is refused before anything is created.
     - **Validation.** In `ensure` and in the process repo rules alike, `{wt}/.claude/.git` must be a
       regular file naming an admin dir strictly under `{main}/.claude/.git/worktrees/` whose `gitdir`
@@ -175,12 +179,15 @@ decisions 1-7: `plans/21-pipeline-v2-research.md`; full design: `plans/21-pipeli
       main's hooks run in it. A SessionStart entry in main's `settings.json` with no matcher, so all
       five sources (`startup`, `resume`, `clear`, `compact`, `fork`), runs `hooks/session-context.sh`:
       a session in a linked worktree gets a short text (Read `{main}/.claude/CLAUDE.md`, run the hook
-      probe, the worktree rules), a main-checkout session gets nothing, and any failure gets a fixed
-      fallback text. The self-test pins the whole hook wiring by exact equality.
+      probe, the worktree rules), a main-checkout session gets nothing, a directory under
+      `{main}/.claude/worktrees/` that git does not accept gets a short text naming main's `CLAUDE.md`,
+      and any failure gets a fixed fallback text plus a log line with its reason. The self-test pins
+      the whole hook wiring by exact equality.
     - **Removal.** The app removes worktrees outside any hook, and `git worktree remove` deletes
       ignored files (parked states, allowlist-hidden paths) without asking. `pipeline-advance.sh
-      worktrees [<path>]` reports unsaved process work (state, parked states, uncommitted or hidden
-      paths, commits on no remote, process worktrees whose product worktree is gone), `status` prints
+      worktrees [<path>]` reports unsaved process work (state, parked states, uncommitted, hidden or
+      assume-unchanged/skip-worktree paths, commits on no remote, process worktrees whose product
+      worktree is gone; exit 2 when `<path>` matches no worktree), `status` prints
       it, and Stepan removes a process worktree only after `worktrees "<wt>"` exits 0
       (`.claude/CLAUDE.md` section 7). `worktree remove` and `worktree prune` stay his.
 

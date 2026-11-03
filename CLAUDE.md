@@ -210,7 +210,8 @@ no project hooks is guarded by nothing.
 - One task per worktree session: create the task branch, then `init`, which creates `.claude/` in
   the worktree: a process worktree of the main checkout's process clone, on a process branch named
   like the product branch, cut from process `origin/main`. A second task needs a new worktree
-  session. PIPELINE tasks run only in the main checkout.
+  session. PIPELINE tasks run only in the main checkout. Name the branch `<type>/<issue>-<slug>`:
+  `init` refuses a name starting with `origin/`, `refs/`, `heads/`, `tags/` or `remotes/`.
 - A fork of a worktree session (`/fork`, `/branch`, `--fork-session`, moving it to the background)
   runs in the same worktree and continues the same task and state, so only one of the two sessions
   drives the task.
@@ -220,9 +221,10 @@ no project hooks is guarded by nothing.
   `$CLAUDE_PROJECT_DIR` in Bash there: it is empty.
 - Role agents with `isolation: worktree` stay blocked (section 3).
 - `status` prints `Worktree ...` lines on stderr when a linked worktree holds unsaved process work
-  (state, parked states, uncommitted or allowlist-hidden paths, commits on no remote, a process
-  worktree whose product worktree is gone); `pipeline-advance.sh worktrees [<path>]` prints them and
-  exits 0 only when nothing would be lost.
+  (state, parked states, uncommitted, allowlist-hidden or assume-unchanged/skip-worktree paths,
+  commits on no remote, a process worktree whose product worktree is gone);
+  `pipeline-advance.sh worktrees [<path>]` prints them and exits 0 only when nothing would be lost
+  (2: the report could not run, or `<path>` matches no worktree).
 
 **Branch switches in the main checkout.** The main checkout is only ever on a branch that contains
 main: `git merge-base --is-ancestor main HEAD` exits 0. Stepan switches it from his own terminal with

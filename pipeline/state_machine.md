@@ -38,7 +38,8 @@ prints the same lines on stderr.
 - Linked worktree (#89, ADR-0005 item 12): before taking the lock, `init` creates the worktree's
   `.claude` as a process worktree of the main checkout's process clone, on a process branch named like
   the product branch and cut from process `origin/main`, or re-checks one an earlier init left; it
-  refuses a protected branch, a `.claude` that is not such a worktree, one on another process branch
+  refuses a protected branch, a branch name that would shadow another ref (`origin/...`, `refs/...`),
+  a `.claude` that is not such a worktree, one on another process branch
   or tracking a protected branch, and a half-created one, and PIPELINE is refused before anything is
   created.
 - A worktree session does not load the process `CLAUDE.md`; the SessionStart hook
