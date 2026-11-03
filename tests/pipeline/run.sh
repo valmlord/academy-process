@@ -1778,7 +1778,7 @@ if python3 -I - "$PH/lib" <<'PY' 2>/dev/null
 import sys
 sys.path.insert(0, sys.argv[1])
 from pl_text import printable
-sys.exit(0 if printable("x‮y⁦z w v‏") == "xyzwv" else 1)
+sys.exit(0 if printable("x\u202ey\u2066z\u2028w\u2029v\u200f") == "xyzwv" else 1)
 PY
 then ok "W14p printable drops bidi controls and the U+2028/U+2029 line breaks"
 else bad "W14p printable drops bidi controls and the U+2028/U+2029 line breaks"; fi
@@ -2405,10 +2405,18 @@ else bad "W12 (b) exit 0, then worktree remove and branch -D succeed (rc=$RC: $O
 pg fetch -q --prune origin
 if pg rev-parse --verify -q refs/remotes/origin/pull/7 >/dev/null; then bad "W12 (b) the next fetch --prune drops the pull ref"
 else ok "W12 (b) the next fetch --prune drops the pull ref"; fi
-# (f) the app removed the product worktree first.
+# (f) the app removed the product worktree first: the gate's one line is the removed one, then
+# step 6's prune and step 7, then a rerun of the gate finds no record (rc 2).
 prod worktree remove --force "$WTP2"
-if pg worktree prune && pg branch -q -D feat/91-w; then ok "W12 (f) a removed product worktree: worktree prune, then branch -D succeed"
-else bad "W12 (f) a removed product worktree: worktree prune, then branch -D succeed"; fi
+wreport "$WTP2"
+W12F_LINE="Worktree $WTP2/.claude: removed with its product worktree; commits kept on feat/91-w, uncommitted edits there are lost; Stepan: git -C .claude worktree prune, then sync feat/91-w"
+if [ "$RC" = 1 ] && [ "$OUT" = "$W12F_LINE" ]; then ok "W12 (f) a removed product worktree: worktrees <it> exits 1 with only the removed line"
+else bad "W12 (f) a removed product worktree: worktrees <it> exits 1 with only the removed line (rc=$RC: $OUT)"; fi
+if pg worktree prune && pg branch -q -D feat/91-w && ! pg worktree list | grep -qF "$WTP2"; then
+  ok "W12 (f) then worktree prune and branch -D succeed and drop the record"
+else bad "W12 (f) then worktree prune and branch -D succeed and drop the record"; fi
+wreport "$WTP2"
+expect_rc_out "W12 (f) after the prune, worktrees <it> exits 2: no record left" 2 "matches no linked worktree"
 wt_reset
 prod branch -q -D feat/90-w
 rm -rf "$PB" "$PUP" "$PSEED" "$BASE/pgit.saved" "$BASE/process-excludes"

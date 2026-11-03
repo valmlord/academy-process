@@ -220,11 +220,13 @@ no project hooks is guarded by nothing.
   it to `main` or another protected branch, never push to `main`, never `git add -A`. Never use
   `$CLAUDE_PROJECT_DIR` in Bash there: it is empty.
 - Role agents with `isolation: worktree` stay blocked (section 3).
-- `status` prints `Worktree ...` lines on stderr when a linked worktree holds unsaved process work
-  (state, parked states, uncommitted, allowlist-hidden or assume-unchanged/skip-worktree paths,
-  commits on no remote, a process worktree whose product worktree is gone);
-  `pipeline-advance.sh worktrees [<path>]` prints them and exits 0 only when nothing would be lost
-  (2: the report could not run, or `<path>` matches no worktree).
+- `status` prints `Worktree ...` lines on stderr for every linked worktree: findings when it holds
+  unsaved process work (state, parked states, uncommitted, allowlist-hidden or
+  assume-unchanged/skip-worktree paths, commits on no remote, a process worktree whose product
+  worktree is gone), and notes that lose nothing (`no process worktree yet (no init)`, files in
+  `plans/`); `pipeline-advance.sh worktrees [<path>]` prints the same lines and exits 0 only when
+  no finding is among them (1: findings; 2: the report could not run, or `<path>` matches no
+  worktree).
 
 **Branch switches in the main checkout.** The main checkout is only ever on a branch that contains
 main: `git merge-base --is-ancestor main HEAD` exits 0. Stepan switches it from his own terminal with
@@ -260,9 +262,16 @@ removes the done state; a state still there is a finding in step 6).
 5. `git -C .claude merge-base --is-ancestor <branch> <sha>; echo $?` prints `0` (every local commit is
    in what was merged). `1`: stop, ask.
 6. Task ran in main: `git -C .claude switch -C main origin/main`. Task ran in a worktree:
-   `bash .claude/hooks/pipeline-advance.sh worktrees "<wt path>"; echo $?` prints `0` last (`1` or `2`:
-   stop, ask), then `git -C .claude worktree remove "<wt path>/.claude"` (no `--force`). If git says it
-   is not a working tree (the app already removed the folder): `git -C .claude worktree prune`.
+   `bash .claude/hooks/pipeline-advance.sh worktrees "<wt path>"; echo $?`, then by the last line:
+   - `0`: `git -C .claude worktree remove "<wt path>/.claude"` (no `--force`).
+   - `1`, and the one `Worktree` line is `Worktree <wt path>/.claude: removed with its product
+     worktree; ...` (the app already removed the folder, and steps 4-5 proved its commits merged):
+     `git -C .claude worktree prune`.
+   - `2` with `matches no linked worktree`, when this step already pruned or removed that worktree
+     before (git keeps no record of it): nothing left to remove.
+   - Anything else (another `1` line, a `2` for a path never pruned): stop, ask.
+   On a folder that is already gone, `worktree remove` also exits 0 and drops git's record, like the
+   prune; once the record is gone it fails with `is not a working tree`.
 7. `git -C .claude branch -D <branch>`. Check: `git -C .claude worktree list` and
    `git -C .claude branch --list <branch>` no longer show it.
 
@@ -303,8 +312,8 @@ agents never can (tool and shell writes are blocked). A malformed file grants no
 **Kill switch.** Stepan sets `"disableAllHooks": true` in `.claude/settings.local.json` by hand and
 starts a new session (also the escape from a lockout, e.g. a broken `python3` or a broken
 `lib/common.sh`). It also turns off the session-start text. Whether it reaches worktree sessions is
-not yet checked; for them the fallback is `"disableAllHooks": true` in `~/.claude/settings.json`, by
-hand. From the main checkout, in his own terminal:
+not yet checked; for them the fallback is `"disableAllHooks": true` in `~/.claude/settings.json`
+(last bullet). From the main checkout, in his own terminal:
 - no file yet (`ls -l .claude/settings.local.json` finds none):
   `printf '%s\n' '{"disableAllHooks": true}' > .claude/settings.local.json`
 - the file exists (overwriting it would lose the other local settings), add the key:
@@ -312,6 +321,10 @@ hand. From the main checkout, in his own terminal:
 - check: `/usr/bin/python3 -I -m json.tool .claude/settings.local.json` shows `"disableAllHooks": true`.
 - undo: `rm .claude/settings.local.json` if it held only the key, otherwise the same command with
   `d.pop("disableAllHooks",None)` instead of the assignment.
+- worktree sessions, user level (this file usually holds other settings, so the key is added, never
+  the file overwritten; it turns hooks off in every project until undone):
+  `/usr/bin/python3 -I -c 'import json,sys; p=sys.argv[1]; d=json.load(open(p)); d["disableAllHooks"]=True; open(p,"w").write(json.dumps(d,indent=2)+"\n")' ~/.claude/settings.json`;
+  check with `/usr/bin/python3 -I -m json.tool ~/.claude/settings.json`; undo with `d.pop` as above.
 
 ## Completion block
 ```
