@@ -9,7 +9,8 @@ layout check the process repo rules (lib/pl_process_repo.py) share.
   pl_process_worktree.py report [<path>]
       One line per finding or note about the linked worktrees, each starting with "Worktree ".
       With <path>, only the lines for that product worktree or its .claude. Exit 0 = no finding
-      (notes may print), 1 = findings printed (unsaved process work), 2 = the report could not run.
+      (notes may print), 1 = findings printed (unsaved process work), 2 = the report could not run,
+      or <path> is no linked product worktree, its .claude, or a process worktree git still lists.
 """
 import errno
 import os
@@ -23,8 +24,8 @@ sys.path.append(HERE)
 import cfg  # noqa: E402
 import checkout  # noqa: E402
 from pl_process_repo import (  # noqa: E402
-    IGNORED_STATUS, PROCESS_DIR, GitFailed, Repo, git, head_branch, is_local_runtime, is_pycache_dir,
-    linked_process_repo, listed, non_bytecode_paths, short_ref, status_entries,
+    IGNORED_STATUS, PROCESS_DIR, GitFailed, Repo, flagged_paths, git, head_branch, is_local_runtime,
+    is_pycache_dir, linked_process_repo, listed, non_bytecode_paths, short_ref, status_entries,
 )
 from pl_text import printable  # noqa: E402
 
@@ -39,6 +40,12 @@ LOCKED_FILE = "locked"
 # The admin dir's pointer back to the worktree's .git file.
 BACK_POINTER_FILE = "gitdir"
 HEADS_PREFIX = "refs/heads/"
+GIT_FATAL_PREFIX = "fatal: "
+# First components of a branch name that make its short name ambiguous with another ref. git looks
+# a name up as refs/<x>, refs/tags/<x>, refs/heads/<x>, then refs/remotes/<x>, so a process branch
+# origin/main would be what `origin/main` means in main's process clone.
+SHADOWING_FIRST_COMPONENTS = ("refs", "heads", "tags", "remotes", "origin")
+REMOTES_PREFIX = "refs/remotes/"
 
 
 class WorktreeRefused(Exception):
@@ -46,9 +53,21 @@ class WorktreeRefused(Exception):
 
 
 class NotAProcessWorktree(Exception):
+    # What the caller appends to the message: init refuses while the directory is in the way.
+    remedy = "Stepan moves it aside"
+
     def __init__(self, proc_path: str, main_root: str, why: str) -> None:
         super().__init__("%s is not a process worktree of %s (%s)"
                          % (proc_path, os.path.join(main_root, PROCESS_DIR), why))
+
+
+class LayoutUnreadable(NotAProcessWorktree):
+    """A permissions problem, not a wrong layout: moving the directory aside would not be the fix."""
+    remedy = "Stepan restores read access to it"
+
+    def __init__(self, proc_path: str, path: str, exc: OSError) -> None:
+        Exception.__init__(self, "cannot check whether %s is a process worktree: %s is unreadable (%s)"
+                           % (proc_path, path, exc.__class__.__name__))
 
 
 def _process_repo(main_root: str) -> Repo:
@@ -56,13 +75,17 @@ def _process_repo(main_root: str) -> Repo:
     return Repo(path, os.path.join(path, ".git"))
 
 
-def _back_pointer(admin_dir: str) -> str:
-    """Real path of the .git file the admin dir names, or "" when it cannot be read."""
+def _back_pointer(proc_path: str, admin_dir: str) -> str:
+    """Real path of the .git file the admin dir names, or "" when it has none. Raises
+    LayoutUnreadable when the admin dir or the file cannot be read."""
+    pointer = os.path.join(admin_dir, BACK_POINTER_FILE)
     try:
-        with open(os.path.join(admin_dir, BACK_POINTER_FILE), encoding="utf-8", errors="surrogateescape") as fh:
+        with open(pointer, encoding="utf-8", errors="surrogateescape") as fh:
             target = fh.readline().rstrip("\r\n")
-    except OSError:
+    except FileNotFoundError:
         return ""
+    except OSError as exc:
+        raise LayoutUnreadable(proc_path, pointer, exc)
     if not target:
         return ""
     # worktree.useRelativePaths (git 2.48+) writes it relative to the admin dir.
@@ -79,16 +102,27 @@ def admin_dir_of(proc_path: str, main_root: str) -> str:
     except FileNotFoundError:
         raise NotAProcessWorktree(proc_path, main_root, "no .git file")
     except OSError as exc:
-        raise NotAProcessWorktree(proc_path, main_root, "cannot read .git: %s" % exc.__class__.__name__)
+        raise LayoutUnreadable(proc_path, dotgit, exc)
     if not stat.S_ISREG(mode):
         raise NotAProcessWorktree(proc_path, main_root, ".git is not a regular file")
     admin_dir = checkout.linked_gitdir(proc_path)
     admin_root = os.path.realpath(os.path.join(main_root, PROCESS_DIR, ".git", "worktrees"))
     if admin_dir is None or admin_dir == admin_root or not checkout.is_under(admin_dir, admin_root):
         raise NotAProcessWorktree(proc_path, main_root, "its gitdir is not under %s" % admin_root)
-    if _back_pointer(admin_dir) != os.path.realpath(dotgit):
+    if _back_pointer(proc_path, admin_dir) != os.path.realpath(dotgit):
         raise NotAProcessWorktree(proc_path, main_root, "its admin dir %s belongs to another worktree" % admin_dir)
     return admin_dir
+
+
+def _merge_target(merge: str) -> str:
+    """The branch a branch.<b>.merge value names. git accepts the short form (main) as well as
+    refs/heads/main, and with remote "." a refs/remotes/<remote>/<b> value moves that local ref."""
+    for prefix in (HEADS_PREFIX, "heads/"):
+        if merge.startswith(prefix):
+            return merge[len(prefix):]
+    if merge.startswith(REMOTES_PREFIX):
+        return merge[len(REMOTES_PREFIX):].partition("/")[2]
+    return merge
 
 
 def _check_existing(proc_path: str, main_root: str, branch: str, conf: cfg.Config) -> None:
@@ -98,28 +132,38 @@ def _check_existing(proc_path: str, main_root: str, branch: str, conf: cfg.Confi
     try:
         admin_dir = admin_dir_of(proc_path, main_root)
     except NotAProcessWorktree as exc:
-        raise WorktreeRefused("%s; Stepan moves it aside" % exc)
+        raise WorktreeRefused("%s; %s" % (exc, exc.remedy))
     repo = Repo(proc_path, admin_dir)
     main_proc = _process_repo(main_root).path
     try:
         head = head_branch(repo)
-        merge = git(repo, "config", "--get", "branch.%s.merge" % branch, allowed_rcs=(0, 1)).out.strip()
+        # --get-all: a hand-edited config may hold several values, and each one is a push target.
+        merges = git(repo, "config", "--get-all", "branch.%s.merge" % branch, allowed_rcs=(0, 1)).out.splitlines()
         deleted = any("D" in code for code, _ in status_entries(repo))
     except GitFailed as exc:
         raise WorktreeRefused("cannot inspect the process worktree at %s: %s" % (proc_path, exc))
     if head != branch:
         raise WorktreeRefused("the process worktree %s is on %s; sync that task (.claude/CLAUDE.md section 7) or "
                               "start a new worktree session" % (proc_path, head or "a detached HEAD"))
-    upstream = merge[len(HEADS_PREFIX):] if merge.startswith(HEADS_PREFIX) else ""
-    # An upstream on the branch's own name (push -u) is fine; one on main would carry a bare push there.
-    if upstream in conf["protected_branches"]:
+    # An upstream on the branch's own name (push -u) is fine; one on main would carry a bare push there,
+    # whatever the remote: with remote "." it moves the local main.
+    upstream = next((t for t in map(_merge_target, merges) if t in conf["protected_branches"]), "")
+    if upstream:
         raise WorktreeRefused("process branch %s tracks %s; Stepan: git -C %s branch --unset-upstream %s"
                               % (branch, upstream, main_proc, branch))
     # A worktree add that died mid-checkout leaves its lock behind and the tree short of tracked files.
-    if os.path.lexists(os.path.join(admin_dir, LOCKED_FILE)) or deleted:
-        raise WorktreeRefused("half-created process worktree at %s; Stepan: git -C %s worktree unlock %s, then "
-                              "git -C %s worktree remove --force %s (it was never initialised)"
-                              % (proc_path, main_proc, proc_path, main_proc, proc_path))
+    locked = os.path.lexists(os.path.join(admin_dir, LOCKED_FILE))
+    if locked or deleted:
+        # worktree unlock fails on a worktree that is not locked, so it is named only when needed.
+        unlock = "git -C %s worktree unlock %s, then " % (main_proc, proc_path) if locked else ""
+        raise WorktreeRefused("half-created process worktree at %s; Stepan: %sgit -C %s worktree remove --force %s "
+                              "(it was never initialised)" % (proc_path, unlock, main_proc, proc_path))
+
+
+def _git_error(stderr: str) -> str:
+    """git's fatal: line; worktree add prints progress such as "Preparing worktree" before it."""
+    lines = [line for line in stderr.splitlines() if line.strip()]
+    return next((line for line in lines if line.startswith(GIT_FATAL_PREFIX)), lines[-1] if lines else "")
 
 
 def _add(main_root: str, proc_path: str, branch: str, state_root: str) -> None:
@@ -148,20 +192,22 @@ def _add(main_root: str, proc_path: str, branch: str, state_root: str) -> None:
     else:
         # --no-track: a -b from a remote-tracking ref would set origin/main as upstream, and with
         # push.default=upstream a bare git push would land on process main.
-        where = ["--no-track", "-b", branch, proc_path, PROCESS_BASE]
+        # The full ref: a local branch named origin/main would make the short name ambiguous.
+        where = ["--no-track", "-b", branch, proc_path, PROCESS_BASE_REF]
     # core.hooksPath=/dev/null: the process repo's own post-checkout hook must not run inside init.
     cmd = ["git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-C", main_proc.path,
            "worktree", "add"] + where
     try:
         proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, universal_newlines=True,
                               timeout=PROCESS_WORKTREE_ADD_TIMEOUT_SECONDS)
-        rc, first = proc.returncode, (proc.stderr.strip().splitlines() or [""])[0]
+        rc, first = proc.returncode, _git_error(proc.stderr)
     except subprocess.TimeoutExpired:
         rc, first = -1, "timed out after %ss" % PROCESS_WORKTREE_ADD_TIMEOUT_SECONDS
     except OSError as exc:
         rc, first = -1, exc.__class__.__name__
     if rc != 0:
-        raise WorktreeRefused("git worktree add failed: %s; see git -C %s worktree list" % (first, main_proc.path))
+        raise WorktreeRefused("git worktree add failed: %s; see git -C %s worktree list"
+                              % (printable(first), main_proc.path))
 
 
 def ensure(state_root: str, main_root: str, branch: str, conf: cfg.Config) -> None:
@@ -173,6 +219,10 @@ def ensure(state_root: str, main_root: str, branch: str, conf: cfg.Config) -> No
     if not branch or branch in conf["protected_branches"]:
         raise WorktreeRefused("the product branch is %s; process worktrees take the task branch's name. Create "
                               "it first: git switch -c <type>/<issue>-<slug>" % (branch or "a detached HEAD"))
+    if branch == "HEAD" or branch.split("/", 1)[0] in SHADOWING_FIRST_COMPONENTS:
+        raise WorktreeRefused("the product branch %s would shadow another ref in the process repo (a branch "
+                              "starting with %s/, or HEAD); rename it: git branch -m <type>/<issue>-<slug>"
+                              % (printable(branch), "/, ".join(SHADOWING_FIRST_COMPONENTS)))
     proc_path = os.path.join(state_root, PROCESS_DIR)
     if os.path.lexists(proc_path):
         # A rerun after a crash between creation and the state write reuses a valid one.
@@ -259,6 +309,10 @@ def _unsaved(wt: checkout.Worktree, repo: Repo) -> list[Line]:
         lines.append(_line(wt.root, "uncommitted: %s" % listed(changed)))
     if hidden:
         lines.append(_line(wt.root, "hidden by the allowlist: %s" % listed(hidden)))
+    # status shows such a file as clean, and worktree remove (no --force) deletes its edit.
+    flagged = [printable(p) for p in flagged_paths(repo)]
+    if flagged:
+        lines.append(_line(wt.root, "flagged assume-unchanged or skip-worktree: %s" % listed(flagged)))
     unpushed = int(git(repo, "rev-list", "--count", "HEAD", "--not", "--remotes").out.strip() or "0")
     if unpushed:
         lines.append(_line(wt.root, "%d commit(s) on no remote" % unpushed))
@@ -309,6 +363,17 @@ def _wanted(only_path: str) -> set[str]:
     return keys
 
 
+def _known(linked: list[checkout.Worktree], records: list[dict[str, str]]) -> set[str]:
+    """Every path a report line can be about: linked product worktrees, their .claude, and the
+    process records git still lists (a removed product worktree leaves only its record)."""
+    known = {path for wt in linked for path in (wt.root, os.path.join(wt.root, PROCESS_DIR))}
+    for record in records:
+        path = record.get("worktree", "")
+        if path:
+            known.update((os.path.abspath(path), os.path.realpath(path)))
+    return known
+
+
 def report(main_root: str, only_path: Optional[str]) -> tuple[list[str], int]:
     """-> (lines, exit code) of design 1.4."""
     main_proc = _process_repo(main_root)
@@ -339,6 +404,11 @@ def report(main_root: str, only_path: Optional[str]) -> tuple[list[str], int]:
             lines.append(_prunable(record))
     if only_path is not None:
         wanted = _wanted(only_path)
+        # A typo must not pass the sync gate as "nothing unsaved".
+        if not wanted & _known(accepted[1:], records[1:]):
+            return ["%sreport failed: %s matches no linked worktree of %s and no process worktree of %s"
+                    % (REPORT_PREFIX, printable(only_path), printable(main_root), printable(main_proc.path))], \
+                EXIT_REPORT_FAILED
         lines = [line for line in lines if line.path in wanted]
     return [line.text for line in lines], EXIT_FINDINGS if any(line.is_finding for line in lines) else 0
 

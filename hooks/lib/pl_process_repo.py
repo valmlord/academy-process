@@ -214,12 +214,16 @@ def dirty_rule(proc: Repo) -> list[str]:
     return problems
 
 
-def hidden_edits_rule(proc: Repo) -> list[str]:
+def flagged_paths(proc: Repo) -> list[str]:
     """Tracked files whose edits git is told not to look at."""
     # ls-files -v prints the tag in lower case for assume-unchanged and S for skip-worktree; either
     # makes status report an edited tracked hook as clean.
     records = [r for r in git(proc, "ls-files", "-v", "-z").out.split("\0") if r]
-    flagged = [r[2:] for r in records if r[0].islower() or r[0] == "S"]
+    return [r[2:] for r in records if r[0].islower() or r[0] == "S"]
+
+
+def hidden_edits_rule(proc: Repo) -> list[str]:
+    flagged = flagged_paths(proc)
     if not flagged:
         return []
     return ["tracked file(s) flagged assume-unchanged or skip-worktree hide their edits: %s. Stepan clears the "
@@ -262,7 +266,7 @@ def linked_process_repo(path: str, main_root: str) -> tuple[Optional[Repo], list
         return Repo(path, pl_process_worktree.admin_dir_of(path, main_root)), []
     except pl_process_worktree.NotAProcessWorktree as exc:
         # Not "run init": init refuses while this directory is in the way.
-        return None, ["%s; Stepan moves it aside" % exc]
+        return None, ["%s; %s" % (exc, exc.remedy)]
 
 
 def process_rules(state_root: str, issue: Optional[int], protected: Sequence[str],

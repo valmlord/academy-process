@@ -1789,6 +1789,17 @@ if [ "$RC" = 0 ] && [ -z "$OUT" ] && [ "$(plog_last event)" = session-context ] 
   ok "W15 a main-checkout session gets no context; log reason=main"
 else bad "W15 a main-checkout session gets no context; log reason=main (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
 
+# W15u: git does not list this directory, so the resolver gives main with source cwd; the session
+# loads no CLAUDE.md there, so it gets the fallback-resolution text, not silence.
+STRAY="$PB/.claude/worktrees/stray"
+mkdir -p "$STRAY"
+OUT=$(ctx "$(ctx_json "$STRAY" startup)" 2>/dev/null); RC=$?
+rmdir "$STRAY"
+if [ "$RC" = 0 ] && context_has "$OUT" "did not resolve to an accepted academy checkout (unaccepted worktree under" \
+    "Read $PB/.claude/CLAUDE.md first" && [ "$(plog_last reason)" = unaccepted-worktree ]; then
+  ok "W15u an unaccepted directory under .claude/worktrees gets the fallback-resolution text; log reason=unaccepted-worktree"
+else bad "W15u an unaccepted directory under .claude/worktrees gets the fallback-resolution text; log reason=unaccepted-worktree (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+
 # W16: common.sh stops at its python3 probe; pl_fail exits 0 for an observer and the trap prints.
 mkdir -p "$BASE/emptypath"
 CTX_IN=$(ctx_json "$PB" startup)
@@ -1826,6 +1837,15 @@ if ! test -r "$H/lib/pl_session_context.py"; then bad "W17 chmod restored"
 elif [ "$RC" = 0 ] && context_has "$OUT" "the session-context hook failed"; then
   ok "W17 a formatter crash prints exactly one fallback JSON object"
 else bad "W17 a formatter crash prints exactly one fallback JSON object (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+# The newest session-context line, not the newest line: a background watchdog of an earlier row may log after it.
+CTX_LOGGED=$(python3 -I - "$LOG" <<'PY' 2>/dev/null
+import json, sys
+lines = [json.loads(line) for line in open(sys.argv[1], encoding="utf-8") if '"session-context"' in line]
+print("%s %s" % (lines[-1].get("reason", ""), lines[-1].get("rc", "")) if lines else "")
+PY
+)
+if [ "$CTX_LOGGED" = "fallback:formatter 2" ]; then ok "W17 the fallback logs its reason and the formatter's exit code"
+else bad "W17 the fallback logs its reason and the formatter's exit code (newest session-context line: $CTX_LOGGED)"; fi
 
 # W18: exact equality, because a changed matcher or event keeps every script wired while it
 # switches a gate off. A PIPELINE task that changes the wiring updates this literal in the same commit.
@@ -2038,6 +2058,10 @@ pg switch -q -c feat/90-w
 capture wadv init TASK 90
 expect_out "W8 the process branch checked out in main's process repo: init refused, naming it and worktree list" 1 \
   "feat/90-w" "worktree list"
+# git prints "Preparing worktree (...)" before its fatal: line; the refusal quotes the cause.
+if has_all "$ERR" "git worktree add failed: fatal: " && ! has_all "$ERR" "Preparing worktree"; then
+  ok "W8 the refusal quotes git's fatal: line, not its progress line"
+else bad "W8 the refusal quotes git's fatal: line, not its progress line ($(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
 pg switch -q main && pg branch -q -D feat/90-w
 
 # W8b
@@ -2046,11 +2070,15 @@ wadv init TASK 90 >/dev/null 2>&1
 pg worktree lock "$WTP/.claude"
 rm -f "$WSTATE"
 capture wadv init TASK 90
-expect_out "W8b (a) a locked process worktree is half-created: init refused" 1 "half-created process worktree at $WTP/.claude"
+expect_out "W8b (a) a locked process worktree is half-created: init refused, hint unlocks first" 1 \
+  "half-created process worktree at $WTP/.claude" "worktree unlock $WTP/.claude, then"
 pg worktree unlock "$WTP/.claude"
 rm -f "$WTP/.claude/CLAUDE.md"
 capture wadv init TASK 90
 expect_out "W8b (b) a tracked file missing in the process worktree: init refused" 1 "half-created" "worktree remove --force"
+# worktree unlock fails on a worktree that is not locked, so the hint must not send Stepan there.
+if has_all "$ERR" "worktree unlock"; then bad "W8b (b) not locked: the hint names no worktree unlock ($(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"
+else ok "W8b (b) not locked: the hint names no worktree unlock"; fi
 
 # W9
 wt_fresh
@@ -2067,9 +2095,37 @@ pg config branch.feat/90-w.remote origin
 pg config branch.feat/90-w.merge refs/heads/main
 capture wadv init TASK 90
 expect_out "W9b a reused process branch tracking main is refused" 1 "tracks main" "branch --unset-upstream feat/90-w"
+# git takes the short form too: with push.default=upstream a bare push of merge=main lands on main.
+pg config branch.feat/90-w.merge main
+capture wadv init TASK 90
+expect_out "W9b an upstream in short form (merge=main) is refused" 1 "tracks main"
+pg config branch.feat/90-w.remote .
+rm -f "$WSTATE"
+capture wadv init TASK 90
+expect_out "W9b an upstream main on remote . is refused" 1 "tracks main"
+pg config branch.feat/90-w.remote origin
 pg config branch.feat/90-w.merge refs/heads/feat/90-w
 capture wadv init TASK 90
 expect_out "W9b an upstream of its own name is fine" 0
+
+# W9c: a product branch named like a remote-tracking ref would create refs/heads/origin/main in the
+# process clone, after which origin/main there means an unreviewed local commit.
+wt_fresh
+prod -C "$WTP" switch -q -c origin/main
+capture wadv init TASK 90
+expect_out "W9c a product branch origin/main is refused" 1 "the product branch origin/main would shadow another ref"
+if pg show-ref --verify --quiet refs/heads/origin/main || [ -e "$WTP/.claude" ]; then
+  bad "W9c the refusal creates no process branch and no .claude"
+else ok "W9c the refusal creates no process branch and no .claude"; fi
+prod -C "$WTP" switch -q feat/90-w && prod branch -q -D origin/main
+# A local origin/main left by anything else must not become the start point.
+wt_fresh
+pg branch -q origin/main "$(pg commit-tree "$(pg rev-parse 'refs/remotes/origin/main^{tree}')" -p refs/remotes/origin/main -m "unreviewed")" 2>/dev/null
+capture wadv init TASK 90
+if [ "$RC" = 0 ] && [ "$(wpg rev-parse HEAD)" = "$(pg rev-parse refs/remotes/origin/main)" ]; then
+  ok "W9c a new process branch starts at refs/remotes/origin/main, not a local branch origin/main"
+else bad "W9c a new process branch starts at refs/remotes/origin/main, not a local branch origin/main (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+pg branch -q -D origin/main
 
 # The process repo rules run on the worktree's process worktree.
 W_FOOTER="Refs valmlord/academy#90"
@@ -2107,6 +2163,18 @@ wpr
 expect_out "W5b a .git borrowing a sibling's admin dir: pr refused" 1 "not a process worktree" "belongs to another worktree"
 capture wadv init TASK 90
 expect_out "W5b a .git borrowing a sibling's admin dir: init refused" 1 "not a process worktree" "belongs to another worktree"
+
+# W5c: an unreadable admin dir is an access problem; "another worktree" or "move it aside" misinforms.
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+chmod 000 "$P/.git/worktrees"
+wpr
+chmod 755 "$P/.git/worktrees"
+if ! { test -r "$P/.git/worktrees" && test -x "$P/.git/worktrees"; }; then bad "W5c chmod restored"
+elif [ "$RC" = 1 ] && has_all "$ERR" "is unreadable (PermissionError)" "restores read access" \
+    && ! has_all "$ERR" "belongs to another worktree" && ! has_all "$ERR" "moves it aside"; then
+  ok "W5c an unreadable process admin dir: pr names the access problem"
+else bad "W5c an unreadable process admin dir: pr names the access problem (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
 
 # W11
 wt_fresh
@@ -2182,6 +2250,20 @@ rm -f "$WSTATE"
 wreport "$WTP"
 if [ "$RC" = 0 ] && [ -z "$OUT" ]; then ok "W10 (d) a clean process worktree: exit 0, no line"
 else bad "W10 (d) a clean process worktree: exit 0, no line (rc=$RC: $OUT)"; fi
+# (i) status shows a flagged file as clean, and worktree remove (no --force) would delete its edit.
+echo "an edit status does not show" >> "$WTP/.claude/CLAUDE.md"
+for flag in assume-unchanged skip-worktree; do
+  wpg update-index "--$flag" CLAUDE.md
+  wreport "$WTP"
+  expect_rc_out "W10 (i) a $flag edit: worktrees <it> exits 1 naming it" 1 \
+    "Worktree $WTP: flagged assume-unchanged or skip-worktree: CLAUDE.md"
+  wpg update-index "--no-$flag" CLAUDE.md
+done
+wpg checkout -q -- CLAUDE.md
+# (j) a typo must not read as "nothing unsaved".
+wreport "$BASE/no such worktree"
+expect_rc_out "W10 (j) worktrees <a path that matches no worktree> exits 2 naming it" 2 \
+  "Worktree report failed: $BASE/no such worktree matches no linked worktree"
 # (e) A git that fails only `worktree list` in a .claude repo; the product resolver's call passes.
 mkdir -p "$BASE/gitstub"
 {
