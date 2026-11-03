@@ -202,3 +202,11 @@ in "design 4.Q5", "(Arch A4)", "O N2", "decision A8" outside `design/flows/`, "r
 the architect fixed the 33 and round 2 was spent on the rest.
 Rule: For a "class of references" finding, grep the class with several neighbouring forms (section numbers, decision
 ids, review finding ids) before sending round 1, and state that the list is an example and the effect is the target.
+
+### 2026-11-03: Round-1 note asked the README to claim "h3 on pages" from the element rule alone (#83, judge_design round 2, consistency)
+Round-1 consistency note said the README `text-lg` row "should mention page-level h3" because `proto.css:114`
+sets `h3 { font-size: var(--text-lg) }`. No page renders that: the only page h3 outside prose is "Чему научитесь",
+which `proto.css:520` (`.outcomes > h3`) and the app (`module-section.tsx:33`) draw at `text-sm`. The researcher
+wrote the note in and the check now asserts the false text. That cost round 3.
+Rule: Before a note asks a README "Used for" cell to name a use, grep the element on every page and in the app
+and confirm at least one instance computes to that step; an element default that every use overrides is no use.
