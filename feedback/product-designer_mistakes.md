@@ -92,3 +92,23 @@ switch"), AC7 ("A run does not switch the tab") and the new AC17, on the core pa
 `?tab=` writer then publishes the wrong tab ("Войти снова" carries theory).
 Rule: After adding URL or selection state, run every simulated action from each tab and assert the tab and
 the URL are unchanged unless the acceptance notes say the action switches them.
+
+### 2026-11-03: Not-found Route reversed the "course id unknown" implication (#83, judge_ux round 1)
+`design/pages/not-found/acceptance.md:13-14` says that while the course cannot be read only way (1) reaches
+the page "and then the course id is unknown (`#state-no-course`)". The judged design (D2) and `ia.md` R6 say
+the converse: the id is unknown only when `course.yaml` itself is unreadable; when it parsed and a later file
+failed, the id is known and "Курс" stays. A dev following the note would hide "Курс" and "Открыть курс" on
+not-found for every course read failure, so the top bar would differ between pages in the same request,
+against R6. The check passed because it asserts only the quoted members, not the sentences around them.
+Rule: When a note restates a condition from `ia.md`, copy its direction and its trigger ("`course.yaml`
+unreadable"), and read every sentence of the note against the rule, not only the asserted phrases.
+
+### 2026-11-03: Course-error `<title>` stated three ways across the catalog prototype and two notes (#83, judge_ux round 1, accessibility)
+`design/pages/catalog/acceptance.md` Route (:6-7) and AC8 now say the catalog's `<title>` is "Не удалось
+загрузить курс" while the course cannot be read, but `catalog/prototype.html#state-course-error` renders
+`<title>` "ИИ для разработчиков" (measured at 320/375/1280, both themes) and the note gives no caveat, though it
+gives one for the top bar and the retry in the same rows. `lesson/acceptance.md:159` then lists `<title>` "Не
+удалось загрузить курс" as one of the "three things only" in which the lesson course error differs from the
+catalog, which contradicts the catalog's own Route. A dev or tester checking 2.4.2 gets two answers.
+Rule: When a note states a per-state `<title>` the static prototype cannot render, say so in that row, and
+when another page's note lists differences from it, compare against that page's note, not its prototype.

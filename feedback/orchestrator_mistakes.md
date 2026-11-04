@@ -317,3 +317,13 @@ asserted in code, so the script printed them and passed on an absent member.
 Rule: in a DESIGN brief that edits design/system/README.md, require each changed sentence to be checked against both
 proto.css and the app classes (file:line). When a brief asks for an executable check over a class of members, say
 that every member's expected count is asserted in code and that absence is a finding.
+
+### 2026-11-03: Scoped out an item the issue owner had assigned to design, without reading the comments (#83)
+
+The #83 architect brief put F3 (Radix Tabs ring on mousedown) out of scope as app behaviour. An owner comment on
+#83 asks design to decide whether it accepts the ring or wants `:focus-visible`-only rings for tab triggers; the
+brief was written from the issue body and the #85 PR body only. judge_design usability failed round 1 on it, and on
+follow-ups recorded only in git-ignored `plans/`.
+Rule: read `gh issue view <n> --comments` before writing the architect brief, list every owner comment as an
+in-scope item or a decision for Stepan, and require each out-of-scope item to be recorded in a committed file or a
+follow-up issue, never only in `plans/`.
