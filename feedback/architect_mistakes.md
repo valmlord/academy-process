@@ -1111,3 +1111,77 @@ TS6 pull node first, so a literal reader cannot fit those lines into case (b) "n
 Rule: State a closed case by the object a line names (the image), not by the log line's form. When you quote example
 forms, collect them from every log of the prescribed builds (`docker buildx history logs` piped through
 `grep docker.io/ | sort | uniq -c`) and say they are examples.
+
+### 2026-11-04: Scoped a security rule by check kind, missing the capped command checks (#68, security)
+The #68 design required `attempts.limit` only on ready quiz and bug-hunt checks, calling them "the
+security-relevant kinds", and left a missing or misspelled `attempts` block on a command check to human review
+(F5 deferred). #15 §2.5.6 computes the cap of 10 on `model-routing` and `cost-estimate` as an anti-enumeration
+control (uncapped, the adaptive attack passes in about 30-200 submissions), so a typo there ships an uncapped
+check with CI green. The same design said "no source gives an upper bound" while #15 states 3 for quiz and
+bug-hunt.
+Rule: Before scoping a security rule, list every place the source design calls the control a security property
+(grep the cap's number and "attack"/"enumerat" in it); a rule that covers a subset by kind needs a machine check
+for the rest, not a reviewer.
+
+### 2026-11-04: Defined "counted" in the contract ADR in words that prejudge the rule it defers (#68, architecture)
+The #68 design's counting sentence and ADR-0001 item 8 say "a result is counted only when the grader scored
+the submission", then hand timeout and budget-exhausted counting to ADR-0007 (#101). A timeout or an exhausted
+budget is not a scored submission, so the sentence already answers "not counted", while #101 counts
+budget-exhausted results, proposes counting timeouts, and ADR-0007 item 4 calls a timeout the learner's work
+missing the bar. Two ADRs would then disagree, and #34 would implement whichever it read first.
+Rule: When a contract defers part of a definition to another ADR, state only the fixed floor (what is never
+counted) and point to the other ADR for the rest; read the deferred-to issue and check every case it decides
+against your sentence.
+
+### 2026-11-04: Follow-ups and the module hand-over left only in a gitignored plans/ file (#68, architecture)
+The #68 design's section 7 (what #43 and #44 must add when their lessons go ready, including the
+`trace-attribution` task.md mismatch) has no issue target, and F1-F5 are written as "comment to add" with no
+step that posts them. `plans/` is in `.gitignore`, so all of it is lost when the worktree is archived, and the
+module authors meet R4 as a red CI with no explanation.
+Rule: Every follow-up and hand-over in a design names its issue and the step that posts it (before the PR
+opens, linked from the PR body); nothing a later task depends on lives only in plans/.
+
+### 2026-11-04: Parallel-branch rollout covered only "drafts rebase later", not merge order (#68, operations)
+The #68 design's failure table says drafts in other worktrees rebasing onto R4 break nothing, and the hand-over
+says R4 turns content:validate red when a module 03/04 lesson goes ready. It never says what happens when the
+two PRs overlap: main has no required-up-to-date protection (private repo, free plan: the protection API answers
+403), and PR CI runs on the merge commit as of its last push. A content PR that flips a quiz to ready, green
+before #68 merged and merged after it, turns main's content, checks (workspace starter-walk real-course guard)
+and e2e jobs red; if the content PR lands first, #68's fixed "18 lessons" table is incomplete.
+Rule: A design that tightens a contract other open branches feed names the merge order both ways (who rebases
+and re-runs CI, who migrates what) and every CI job that reads the affected data, since nothing on GitHub
+enforces an up-to-date base here.
+
+### 2026-11-04: ADR "never counted" floor copied category names without #15's condition (#68, judge_design round 2, security)
+Revision 2 of the #68 design states in ADR-0001 item 8 and §1.2 that format errors and stage-0 rejections are
+never counted, unconditionally. #15 §2.5.6, which the design cites for the caps, exempts a format error only when it
+is rejected before any comparison with the key (bug-hunt: "not scored"). Without that condition #101/#34 may label a
+result that already carried score or aggregate-count feedback a format error, and the cap of 10 on `model-routing`
+and `cost-estimate` stops bounding enumeration.
+Rule: An exemption from an anti-enumeration counter is written with the property that makes it safe (the result
+shows the learner nothing computed from grader material), never as a bare category name.
+
+### 2026-11-04: Rollout check diffed from a hard-coded base and only course/ (#68, judge_design round 2, operations)
+Revision 2 §7.1 (a) runs `git diff --name-only 39ef0b8 origin/main -- course/` before the PR opens and before merge.
+After the first rebase the fixed base keeps listing lessons already migrated, so "empty output" can never again
+mean "nothing to do"; and a main commit outside course/ (a test fixture with a ready quiz, a schema change) leaves
+the PR merging on CI computed against an older main, which is the round 1 problem itself.
+Rule: A "has main moved under this PR" check tests the effect (`git merge-base --is-ancestor origin/main HEAD`,
+else rebase and re-run CI), and any listing of what moved diffs from the current merge base, never a literal sha.
+
+### 2026-11-04: Moved a check from parsed to raw input and lost the parser's default (#68, judge_design round 3, architecture)
+Revision 3 runs U1 on the raw YAML before the parse result is inspected and makes it fail closed when `checks` is
+"not a list of check objects". The schema has `checks: z.array(Check).default([])`, so a ready lesson with no
+`checks:` key (a theory lesson; `apps/web/test/course-fixture.ts` has two) is valid and every loader accepts it, but
+U1 would report it with a false message. The design claimed "a non-array `checks` fails the array schema" and "U1
+adds no restriction on any valid lesson"; neither holds for the absent key.
+Rule: When a check moves from parsed to raw input, list every `.default()` / `.optional()` / transform on the path
+it reads and give the raw-input rule the same meaning for each (absent `checks` = empty list), with a test.
+
+### 2026-11-04: A corpus scan was offered as proof that a fail-closed rule adds no restriction (#68, judge_design round 3, operations)
+Revision 3 states that U1 "adds no restriction on any valid lesson (scan in §3)". The scan covered the lessons that
+exist in three checkouts, all of which happen to carry a `checks:` key. A valid shape absent from the corpus (a ready
+`type: theory` lesson without `checks:`, accepted by `Lesson` through `.default([])`) is reported by the new
+fail-closed branch, so the first such content PR would get a red `content` job on a valid lesson.
+Rule: A scan shows only that today's files pass. Before claiming a new rule restricts no valid input, walk the schema
+for valid shapes the corpus lacks (defaults, optional keys, every lesson `type`) and add a test for each.
