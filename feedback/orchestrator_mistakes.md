@@ -287,6 +287,27 @@ turn as the coder fix, and brief the tester to rehearse every procedure Stepan f
 only the hooks. Live checks that need a new session are proposed as cards or started on Stepan's own words: the
 app refuses to start sessions from a turn an agent's report started.
 
+### 2026-11-02: A design took away a capability Stepan used, and I did not ask him (#86)
+
+The #86 design decided "main checkout only, no worktrees" (design line 68, accepted by the judges in round 1).
+That ended parallel side sessions in worktrees, which Stepan had used before: a worktree no longer gets
+`.claude/`, so it has no hooks, agents or instructions. The decision sat in one line of a long design, I never
+put it to Stepan as a question, and he found out only when he asked for parallel work.
+Rule: when a design removes or changes something Stepan does today (a workflow, a command, a capability,
+parallel sessions), name the loss in plain words and ask him with AskUserQuestion before judge_design ends.
+A judge's acceptance is not his consent.
+
+### 2026-11-03: A process commit parked on a stale task branch while the task was paused (#31)
+
+I committed #31's design lessons to the process branch `feat/31-workspace-service` before pausing #31 for #89,
+then moved `.claude` to a new branch from main. The lessons left the working tree with that branch, #89 and #80
+merged around it, and at #31's commit phase the old branch sat on a superseded main with the lessons missing from
+the files. I had to re-apply them by hand.
+Rule: when a task is paused, do not leave its process edits committed on a task branch that the next task will
+not build on; either open its process PR before the pause or leave the edits uncommitted on main's files and
+commit them on a fresh branch at the task's commit phase. Also: a design that the code outgrows (two amendments,
+25 accepted deviations) gets its implementation-deltas file before judge_code, not after the judges ask.
+
 ### 2026-11-03: Architect brief checked README truth against the CSS only (#80)
 
 judge_design round 1 failed twice on items my brief shaped: I asked that every README statement "match the CSS after

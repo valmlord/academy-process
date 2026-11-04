@@ -210,3 +210,26 @@ which `proto.css:520` (`.outcomes > h3`) and the app (`module-section.tsx:33`) d
 wrote the note in and the check now asserts the false text. That cost round 3.
 Rule: Before a note asks a README "Used for" cell to name a use, grep the element on every page and in the app
 and confirm at least one instance computes to that step; an element default that every use overrides is no use.
+
+### 2026-11-02: Named KELVIN SIGN as the case that needs NFKC without checking `toLowerCase` (#31, security)
+Round-2 N1 direction named `Checks` and KELVIN SIGN as the unit cases of the folded check. The architect wrote a
+mutation row "lower-case without NFKC -> KELVIN SIGN red". In JS `"K".toLowerCase()` is already `"k"`, so that
+case stays green under the mutation; only fullwidth (and LONG S, U+017F) need NFKC. Caught in round 3, non-blocking.
+Rule: When a direction names example inputs for each step of a transformation, run each input through each step
+alone (a one-line `node -e`) before sending, so every named case really depends on the step it is meant to test.
+
+### 2026-11-02: Prescribed a compose guard on the source file's syntax, checked against rendered output (#31, operations)
+Round-2 A2 asked the isolated-recipe guard for "no `name:` on networks and volumes". The guard parses
+`docker compose config --format json`, which renders `name:` on every network and volume, so the faithfully applied
+wording can never pass. Found in round 3; it fails closed, but it would have stalled S39.
+Rule: When prescribing a check on rendered config, run the render once and phrase the property on what it actually
+prints (here: every name starts with the project prefix, none external), not on the source file's syntax.
+
+### 2026-11-02: Prescribed the protected set as the academy stack, not "everything this run did not create" (#31, security)
+Round-6 blocking 1 told the architect to define the owner set as the academy objects (by label, name, image) and to
+forbid effects on it. The architect applied it faithfully, so in round 7 Stepan's other projects' containers (env
+secrets) and the images his stack runs but does not build (`postgres:17.6-alpine`) were still open to a bare inspect,
+exec or retag. That cost a round.
+Rule: When prescribing a protected set for an agent on a shared host, start from the complement ("everything this run
+did not create") and name the owner's known objects as detection subsets. Before sending, ask what else on the host
+holds secrets or feeds the owner's stack.
