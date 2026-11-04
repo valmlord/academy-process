@@ -327,3 +327,15 @@ follow-ups recorded only in git-ignored `plans/`.
 Rule: read `gh issue view <n> --comments` before writing the architect brief, list every owner comment as an
 in-scope item or a decision for Stepan, and require each out-of-scope item to be recorded in a committed file or a
 follow-up issue, never only in `plans/`.
+
+### 2026-11-04: judge_design rounds spent on sample states nobody had walked as one timeline (#72)
+
+judge_design on #72 took six rounds. Rounds 1-3 closed real flow gaps (deep-link focus, the attempt summary
+against #69's per-check words), but every blocker from round 3 on was a prototype sample in the design note:
+a row whose panel had another item count, every dashboard row linked to one state, a "Где трудно" list that
+needed attempts the 5-row list could not hide, cost rows opening states without cost, and finally samples that
+#69's run composition made impossible. Each fix redrew samples in isolation, and the next round found the next
+impossible pair. Round 6 passed once the architect rebuilt every sample from one dated timeline.
+Rule: when a DESIGN brief asks for page work items with sample states, require in round 1 one sample timeline
+(learner, lessons, checks, attempts with dates and costs) from which every state and every link target is
+derived, checked against the run and counting rules of the flows it depends on; brief the judges to walk it.

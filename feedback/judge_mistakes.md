@@ -233,3 +233,23 @@ exec or retag. That cost a round.
 Rule: When prescribing a protected set for an agent on a shared host, start from the complement ("everything this run
 did not create") and name the owner's known objects as detection subsets. Before sending, ask what else on the host
 holds secrets or feeds the owner's stack.
+
+### 2026-11-04: Usability judge checked the summary rule but not the design note's drawn examples (#72, judge_design round 2)
+Round 2 checked A72-6 and A72-8 against #69 at the rule level and did not recount the §5.2 states. In those
+states, "№ 3" ("1 из 2") is expanded into a three-item panel. Found in round 3.
+Rule: When a review checks a counting or summary rule, also recount each example state the design note names
+for the author phase, not only the rule text.
+
+### 2026-11-04: Walked only some prototype samples against the icon and count rule (#72, judge_design round 2, consistency)
+Round 2 checked the dashboard `attempts-mixed` rows against A72-8 but not the lesson samples of the same
+design note. `history` gave "№ 3" "1 из 2" while `history-open` expands it to three items; it surfaced in
+round 3.
+Rule: When a rule maps summaries to items or icons, recount every sample state in the design note that names
+both, on every page, not one table of them.
+
+### 2026-11-04: Recounted the samples but never followed the prescribed links between them (#72, judge_design rounds 1-3, usability)
+The design note's single dashboard-row href (`#state-history-deep-link`) was there from round 1. Three rounds
+checked the deep-link table and the sample summaries but not which lesson state each dashboard sample row
+opens, so the running and no-result rows landing on an expanded attempt surfaced only in round 4.
+Rule: In judge_design, for every cross-page link the design note prescribes, walk each source sample to its
+target state and check it against the arrival table row for that sample's case.

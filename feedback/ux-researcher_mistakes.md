@@ -208,3 +208,111 @@ this class (a statement not scoped to the case); fixing the listed members only 
 Rule: When a design adds a state to a page, grep every rule that describes that page's structure, Tab order and
 entry causes (`main holds`, `Tab order`, `Route`, the page's own region and control names), and scope each one or
 list it as unchanged with the reason; state each set (such as "the ways into not-found") once and point to it.
+
+### 2026-11-04: Deep-link focus rule did not cover every value the linking rows carry (#72, judge_design round 1, accessibility)
+F19 says `?attempt=` expands and focuses that attempt's disclosure, with a fallback only for ids that are not
+a finished attempt. But F18.3 links every attempt row, including a finished attempt with no check result, which
+A72-14 makes a plain list item with nothing to expand or focus; and the arrival while the history read fails had no
+stated outcome. Two reachable arrivals had no focus target.
+Rule: For every deep link that moves focus, enumerate each value the linking page can emit times each state of
+the target section (loaded, empty, error, item rendered as non-interactive) and state the focus target for each.
+
+### 2026-11-04: Ranking rule and status words checked at one corner only (#72, judge_design round 1, usability)
+A72-2 sorts closed checks first in "Где трудно" and drops a check only when it passes later. A closed check is
+final, so after five closed checks the list never changes again, and its reason ("where to go back now") does
+not fit a check where nothing can be done. The attempt summary gives "Сбой проверки, попытка не засчитана" only to
+runner errors, so a format-error or an uncounted-timeout attempt reads "Пройдено проверок: 0 из 1", the same as a
+counted failure. A72-8 says the word carries the meaning, but the `aria-hidden` icon is the only difference.
+The "Words" paragraph also says "attempt is always the record" while F18.4 in the same file shows the per-check
+"Неудачных попыток: N".
+Rule: For every list rule, walk the end state where a member can never leave (final states, the cap reached) and
+say what the list shows then. For every summary set, list each result kind and check that two kinds the learner
+must tell apart never get the same text. Grep the file for every "always" or "never" claim about a word.
+
+### 2026-11-04: Icon rule named a shape the system does not have, and pointers checked by memory (#72, judge_design round 1, consistency)
+A72-8 gives a running attempt "the `info` ring without spin". No `.status-icon` variant is that: `info` is an "i"
+glyph, `running` is the spinning ring that #69 pairs with "Идёт". So either the design adds a variant it says it
+does not add, or one word gets two icons on two pages. The same rule's "check mark when every result passed" is
+vacuously true for an attempt with no result, which reads "Сбой проверки, попытка не засчитана" (warning in
+#69). The new page-copy row `ia.md:81` points to "the lesson row above", which sits below it, and ADR item 11
+calls a mentor review "an agent call", which the vocabulary forbids.
+Rule: Every icon a flow names is a `data-status` value grepped in `proto.css`, and the same word gets the same
+value as in its source set; every "all/every" rule is checked on the empty set. Every "above/below/row X" pointer
+and every English term in a new doc line is grepped against the file and the vocabulary before hand-off.
+
+### 2026-11-04: Mapped a snapshot status to an animated icon (#72, judge_design round 2, accessibility)
+A72-8 mapped the dashboard's "Идёт" to `.status-icon[data-status="running"]`, which spins with
+`animation: ... infinite` (`proto.css:270`). On the Проверки tab that ring is live and stops with the run; on
+the dashboard the row is a snapshot that is never updated until reload, so the ring would spin forever after
+the run ended, with no pause control (WCAG 2.2.2), and it contradicted the decision's own "the ring is a
+snapshot". Cost a review round.
+Rule: When a flow reuses an icon in a new place, read its CSS for animation; an animated icon only where the
+state it shows is live and ends, a static form wherever the page shows a snapshot.
+
+### 2026-11-04: Outcome sweep enumerated status kinds, not kind x counting rule; new focus target landed on stale copy (#72, judge_design round 2)
+Sweep 2 listed every #69 status word but not the S1 case: a failure on a check that already passed (spends no
+attempt, `checks.md` F14 note). Its bucket in "attempt summary" is undefined, and whichever #34 picks falsifies
+A72-6 ("words alone tell counted from uncounted") or A72-8 ("row and panel differ only for two cases"). The new
+deep-link row 3 also moves focus to the F19 empty text "Нажмите "Проверить"" while that button is disabled by the
+running first attempt.
+Rule: Sweep outcomes over the product of result kind and every counting rule (S1, S2, budget, server flags), not
+the status table alone; and for every new focus target, read the text that follows it in that exact state.
+
+### 2026-11-04: New summary note borrowed #69's "попытка не засчитана" for a different set (#72, judge_design round 2, consistency)
+The round-1 fix added the attempt-summary note "Проверок с незасчитанной попыткой: N", defined as uncounted
+results with runner errors left out and budget-spent-not-counted results put in. #69 defines "попытка не
+засчитана" as every result that does not count, the runner error included ("Сбой проверки, попытка не
+засчитана"), and the budget variant's word does not say it. So the row's count disagrees with the words in its
+own panel, in both directions (design note `attempts-mixed`: the panel shows two "попытка не засчитана", the row
+says 1). Cost a review round.
+Rule: A new string built from an existing concept's words counts exactly that concept's set. Before adding it,
+list the results whose existing word contains those words and check the new count equals them; if it cannot,
+word it so it does not name the concept.
+
+### 2026-11-04: Example attempt's summary did not recount to its own drawn panel (#72, judge_design round 3, usability)
+Round 3 swept every result kind and combination in the abstract (sweeps 5 and 6) but not the concrete
+prototype states. Design note §5.2 has "№ 3" reading "Пройдено проверок: 1 из 2. Проверок с незасчитанной
+попыткой: 1" in `history`, while `history-open` expands it to three items (a pass, a runner error and a
+removed check), and gives the removed check's item no status word. A72-6 counts every panel item in M, so the
+author would draw a row that contradicts its panel. That cost round 4.
+Rule: After a counting rule changes, recount every worked example and every prototype state that names both a
+summary and its items (design note, flow file, ia.md examples) against the rule, item by item.
+
+### 2026-11-04: Claimed a word had no icon without reading the prototype that draws it (#72, judge_design round 3, consistency)
+A72-8 justified a new static `.status-icon` value for the dashboard's "Идёт проверка" by saying #69 shows that
+word "with no icon", so "no word gets two icons". #69's lesson prototype draws the tab's ", идёт проверка"
+next to `data-status="running"` (`prototype.html:175`) and the bar's "Идёт проверка" beside a `.spinner`
+(`:507`, `:515`), and `checks.md:328` names the spinner. The new value would give the run word a second
+icon, and the declaration sent to the ui-designer ("pairs only with "Идёт проверка"") was false.
+Rule: Before claiming how an existing word is drawn (icon, no icon, which value), grep the word and its
+visually hidden forms in `design/pages/*/prototype.html` and read the markup next to it.
+
+### 2026-11-04: Made an error appear in the background with no announcement (#72, judge_design round 4, accessibility)
+Round 4 changed F19 so that a failed history re-read after the first run replaces "Попыток пока нет" with the
+error state "История попыток недоступна", and stated "nothing is announced" (`progress.md:208-212`). Until
+round 3 a failed re-read changed nothing visible, so silence was fine. Now an error message appears without
+focus and without a role, which is WCAG 4.1.3 (failure F103); a screen reader user whose focus is on the h3
+(deep link row 3) is not told either, since a focused heading's text change is not reliably read. That cost
+round 5.
+Rule: Whenever an edit makes new text appear without a focus move (an error, a result, a state word), say how
+it is announced (a live container that exists from load, listed in `ia.md` R2) or why it is not a status
+message; "nothing in this flow is live" stops covering it the moment it shows something.
+
+### 2026-11-04: Prototype links sent every dashboard row to one deep-link state (#72, judge_design round 4, usability)
+Design note §5.1 prescribed one href for every "Последние попытки" row, `#state-history-deep-link` ("№ 3"
+expanded and focused, deep-link row 1). The `attempts` state draws an "Идёт проверка" row and a no-result row,
+whose arrivals are rows 3 and 2 (heading focused, nothing expanded; a plain item). The states drawn for those
+rows (`history-deep-link-running`, `-plain`) were reachable from no row, so the prototype click path would
+contradict A72-9 and the deep-link table.
+Rule: When a page links to states of another page, map each drawn source sample to the target state of its own
+case (one row of the arrival table each) and recount that the target shows what the source row says.
+
+### 2026-11-04: Re-drawn samples broke the newest-five rule and left the cost rows' targets on another release (#72, judge_design round 5, usability)
+Round 5 made every dashboard attempt row lesson L's. `attempts-mixed` kept "Где трудно" as `attempts` (lesson
+P's checks with 3 and 9 failed results, so at least 9 older attempts of a `ready` lesson) and drew 3 rows, while
+F18.3 lists the 5 newest attempts over every `ready` lesson. The #37 cost states kept the #35 links, so a row
+reading "Потрачено: $0.08" opens the attempt without its cost; Sweep 9 claimed a match through `history-cost`,
+which no row opens.
+Rule: After re-drawing a sample, re-derive every section of the same state from the same data (the rows a list
+rule would select, the counters that imply attempts) and walk each link of every state that reuses the sample,
+checking the target's release as well as its case.
