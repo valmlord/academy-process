@@ -924,3 +924,190 @@ on the missing folder exits 0 with no "is not a working tree" message at all. W1
 self-test pinned a path the doc never lets Stepan take. Same class as the round-2 lesson above, one branch later.
 Rule: For every documented branch of a procedure ("if X already happened"), run the doc's commands in the doc's
 order on that exact setup, gates included, and make the test row run the same sequence.
+
+### 2026-11-03: Hardening specified for create only, while the ADR reads it as a property of every workspace (#31, judge_code round 1, security)
+Revision 11 pinned the container create body as an exact allowlist, and design 6.1's dispatch table starts every
+existing container whose labels match the key (never-started, adopted after a 409, and every stopped one that ran
+before) without saying which HostConfig it carries. `LABEL_SCHEMA` is bumped only for label-parse changes, so a later
+spec change (#88's egress filter, a tighter limit) never reaches existing workspaces, yet ADR-0002 item 6 says the
+egress residuals "last until the egress filter ships". The tester found the never-started half (F3); nobody had
+stated the scope.
+Rule: For every security property set at object creation, state in the ADR whether it holds for objects created
+earlier, and name the mechanism (schema bump, spec-version label, compare-and-recreate) that carries a later change
+to them; a follow-up that relies on it gets the same sentence.
+
+### 2026-11-02: Security properties stated by spelling, by name, or by an untestable probe (#31)
+
+The #31 design refused `checks/` in the starter by comparing path segments as text (a symlinked segment or `Checks`
+on the case-insensitive Mac bind mount still packs the grader files), let `DELETE` remove a volume by name while
+claiming foreign objects with our name are never changed, guarded the container hardening with a denylist of
+forbidden fields, checked "workspaces cannot reach the service port" with a DNS name that never resolves there, and
+filed workspace -> `host.docker.internal` -> Postgres superuser (shell in the db container, adjacent to the
+socket-holding service) as a residual without Stepan's decision.
+Rule: State every isolation property by its effect and give it a check that fails on the bad case: compare file
+identity (dev, ino) not names, verify labels before every destructive call, assert exact allowlists of security
+fields, probe reachability by IP with a positive control, and put any residual that contradicts an ADR's decision to
+Stepan as an open question.
+
+### 2026-11-02: LEARN steps unsized, and library failure shapes and contracts assumed (#31, architecture)
+
+The #31 design gave no LOC estimate per step while S8, S11, S13 and S20 each bundle 90-150 lines; S1's "done when"
+claimed a lockfile diff without fastify, which the lockfile does not hold; the error contract ignored Fastify's own
+400/415 errors and 404 handler; the classifier expected ETIMEDOUT where docker-modem's timeout yields ECONNRESET;
+the convergence table re-created containers without re-ensuring the network; reconcile's lesson set had no rule for
+one invalid lesson among valid ones; I-hardening asserted CapEff, which is zero for any non-root user anyway.
+Rule: In a LEARN design, estimate every step's LOC and split above 60; derive each failure shape and each
+framework-level response from the library source or docs, not from the name of the option; and for every guard,
+write the variant without the guarded property and confirm the assertion fails on it.
+
+### 2026-11-02: Test and recipe isolation designed for a quiet daemon and a careful shell (#31)
+
+The #31 design asserted in integration teardown that every object present at the start still exists, while turbo
+runs the db and web suites in parallel and they remove their own testcontainers; let test decoys and helpers carry
+no marker the teardown could find, with no sweep of crashed runs; made the S23 recipe's isolation depend on
+exports surviving in one shell (a `down` elsewhere hits project `academy`, and web still resolves to
+`academy-web:local`); left the compose `environment` block for the tunables unspecified; let GC force-remove a
+running workspace when the bind-mounted working tree is on another branch; and claimed the socket probe on the CI
+runner with no CI step that checks it.
+Rule: Design operational checks for a shared, busy host: assert only what this run owns, mark every object a test
+creates, carry the project/tag explicitly on every command of a manual recipe, list every env var each process
+receives, never force-remove a running workspace on derived state, and back every "verified on CI" with a CI step.
+
+### 2026-11-02: A fix verified on the host while the failure lives in the container, and a residual left as a pointer (#31, security round 2)
+
+Revision 2 of #31 refused `Checks` by `(dev, ino)` but tested it only in a host temp directory on APFS, while the
+service compares inodes on Docker Desktop's bind mount of the course, where inode numbering is unverified. It also
+recorded the Q-W1 residual as "Q-W1's answer and the residual it accepts", keeping ADR-0002's "no access to internal
+services" and describing the reopened db port as "can reach Postgres" (it is a superuser with a default password and
+`COPY TO PROGRAM`), without web's adjacency to the socket holder or LAN reachability, and accepted W2 as REACHABLE on
+"Docker Desktop" without saying how that is detected.
+Rule: Run each isolation check in the environment where the attack happens (inside the container, on the real mount),
+or name the probe that proves the host test transfers; and write a residual as the full text the ADR will carry,
+including the worst consequence and the ADR sentence it amends.
+
+### 2026-11-02: A cleanup that deletes other runs' objects without the label check, and a consumer list built from config only (#31, operations round 2)
+Revision 2 of #31 added a setup sweep that removes leftovers of earlier test runs, but its own removal helper refuses
+everything not of this run, so the sweep runs outside it, with no per-object inspect and no red run; a filter bug would
+remove `academy-db-1` and then the freed `academy_db-data`. The db port change listed host-port consumers from config
+and CI only and missed the web's connect hint (`docker compose up -d --wait db`, which cannot fix a db that is up but
+unpublished) and the README procedures that start the db and then connect from the host.
+Rule: Every function that deletes objects it did not create inspects each one and applies a unit-tested predicate
+before acting, with a mutation in the table; and when a change removes something others rely on, grep messages, hints
+and docs for it, not only config and scripts.
+
+### 2026-11-02: Step order checked per row, not against what later rows write (#31, architecture round 2)
+
+Revision 2 of #31 sized every LEARN step and stated "each done-when uses only files that exist at that step", but
+S37's done-when needs `.env.example` lines that S38 writes, S32's auth mutation targets `/v1/settings`, which S33
+registers, and S21/S22 test-first cases exercise `ensureRunning`, which only S23 assembles; a `DockerRuntime
+implements WorkspaceRuntime` written at S21 would also turn commit 8's typecheck red until S26.
+Rule: After decomposing, walk the steps in order and, for each done-when and each commit, list every file, route,
+function and interface member it touches and the step that creates it; any later step is a defect. Name the entry
+point every test-first test calls.
+
+### 2026-11-02: A new test pinned the opposite of the algorithm it serves, and tests referenced a deleted revision (#31, architecture round 3)
+
+Revision 3 of #31 added I-gc-primitives, asserting that `removeContainer`/`stopContainer` refuse a container whose
+labels do not parse, and 5.1 said "every destructive call refuses both" `other-schema` and `invalid`; but reconcile
+(6.5) must stop running `invalid` containers and remove stopped ones through exactly those primitives. The unit tests
+use a fake, so the contradiction would ship green and leave such containers running forever. The same revision kept
+"as rev. 1" for I-half (a)-(e), I-idem, I-oom, I-pids, U-lock and U-idle, while rev. 1 had been overwritten in the
+git-ignored `plans/`, so the tester could not write them test-first and the "I-half (b)" mutation had no target.
+Rule: When adding a test for a primitive, read every caller's rule for that primitive and make the asserted predicate
+the one the callers need; and a design file is self-contained: never refer to an earlier revision of itself.
+
+### 2026-11-02: Written-out integration tests had no isolation unit, and one asserted a state the spec rules out (#31, operations round 4)
+
+Revision 4 wrote out I-idem, I-half, I-network-pruned, I-gc-primitives and I-reconcile-invalid with exact object
+counts "filtered by the test instance", while instances were per test file and nothing removed objects between
+tests: earlier tests' containers make the counts red and keep the instance network busy, so I-network-pruned cannot
+remove it. I-pids case 3 ran `kill -9 -1` as uid 1000 and expected the container to keep running, but 4.5's own
+spec runs `sleep infinity` as uid 1000 under docker-init, so it dies and the container stops.
+Rule: For every test that asserts counts or removes shared objects, state what else exists in its scope at that
+moment and who removes it; and check each expected state against the container spec (uids, PID 1, Cmd) it runs on.
+
+### 2026-11-02: Agent hard rules protected three names and a verb list, and allowed the read that leaks the secrets (#31, judge_design round 6, security)
+
+Revision 6 wrote H1-H10 as the only protection of the owner's stack for an agent coder and tester. H2 forbade naming
+project `academy`, `academy_db-data` and `academy-web:local` in a listed set of verbs, so `docker stop academy-db-1`,
+`docker exec academy-db-1 psql ...`, `docker run -v academy_db-data:...` and `network connect` to the owner's networks
+all passed the rule, and H3 even named "by exact name" as the allowed removal form. H2 also allowed `docker inspect` of
+owner objects by name, which prints `BETTER_AUTH_SECRET` (interpolated from the root `.env`) from the web container's
+`Config.Env`: the secret H4 protects, by another path.
+Rule: A rule that protects objects defines the protected set by label and name pattern and forbids the effect (change,
+exec, mount, attach, read env); verbs are examples. For every secret a rule protects at its source, list every place
+the secret is copied to (container env, logs, rendered config) and close each read path too.
+
+### 2026-11-02: Spawn entry checks admitted only a fresh start, not the resume the stop rule creates (#31, architecture round 6)
+
+Revision 6 split the coder work into spawns A-E with a stop rule (stop after any commit, or mid-commit with the dirty
+files listed; the orchestrator re-spawns "the remaining range"), but every entry check was written for a spawn
+starting at its first commit on a clean tree ("HEAD equals A's hash", "log prints nothing", "HEAD is commit 14",
+TS1 "15 (or 16)" commits). A re-spawn after a context stop, the exact #30 failure the split exists for, would fail
+its own entry check and stop; allowed `fix(workspace)` commits break the commit-number checks too.
+Rule: When a design defines a stop-and-resume protocol, walk the resume at every possible stop point (after each
+commit, mid-commit) against the entry checks, and key resume checks on the hand-off notes (HEAD, commit list, dirty
+files), never on fixed commit numbers.
+
+### 2026-11-02: Owner snapshot recorded names and states, so a recreate or `down -v` + `up` diffed identical (#31, operations round 6)
+
+Revision 6's tester procedure guarded Stepan's stack with a before/after snapshot of volume names, image Id and
+container `Names State Image`, taken only at the tester's start. A recreate, restart or `down -v` + `up` of project
+`academy` leaves those strings identical (shown with a throwaway container: empty diff after a recreate), and spawns
+B and C, which run the predicate-based removal code against the same daemon, had no snapshot at all.
+Rule: An "untouched" snapshot records identities and lifetimes (container Id, StartedAt, RestartCount, port bindings,
+volume CreatedAt, network Id), is proven by recreating a throwaway object and seeing the diff, and brackets every
+phase that mutates the daemon, not only the last one.
+
+### 2026-11-02: One protection, two scopes: H3 and the harness said "not created by this run", H2 said "the academy list" (#31, judge_design round 7, security)
+
+Revision 7 scoped removals (H3) and the harness's no-`{{json .}}` rule (12.2) to every object the run did not create.
+But it limited H2's effect ban and its formatted-read rule, the text every brief quotes, to the academy owner set. A
+bare `docker inspect` of another compose project's container (its env secrets), a `docker exec`/`stop` of it, or a
+`docker tag` onto `postgres:17.6-alpine`, which Stepan's stack runs, broke no rule.
+Rule: When a design states one safety property in several places, write its scope once, as the widest the property
+needs (here "everything on the daemon this run did not create"). The named lists are subsets used for detection, not
+the boundary of what is allowed.
+
+### 2026-11-02: Widened the protected set, then wrote an open-ended exception that hands any protected image back (#31, judge_design round 8, security)
+
+Revision 8 added class (5), every image this run did not build, to H2. In the same paragraph it wrote the exception
+"creating this run's own container or image from an image already on the daemon uses the image as a base: it is this
+run's own create". The examples were node, postgres and the reaper, but the sentence named no closed list. So
+`docker run --rm <another project's image> env`, or `cat` of a `.env` baked into it, or a build `FROM` it, counted as
+this run's own create, although H2 forbids reading the filesystem or environment of a protected object. R8-O1 used the
+same opening for P-SNAP: `<img>` became "any alpine- or debian-based image" on the daemon, and P-SNAP step 5 runs
+`docker start` on it. That executes the image's own ENTRYPOINT (`academy-web:local`, or another project's image)
+inside a step that R7 had pinned to `node:22.23.4-alpine`.
+Rule: An exception to a protection is a closed list of named objects, never a general class. Check every exception
+against each forbidden effect (read secrets, execute, retag, replace) before writing it. An ops-convenience change must
+not widen which protected objects a step runs code from.
+
+### 2026-11-02: Widened H2 to every node image but left the recipe's node removal in place (#31, judge_design round 8, operations)
+
+Revision 8 put "every `node` image" into H2 class (5) and listed `docker image rm node:22.23.4-alpine` as a forbidden
+example. H3's exact-name list still did not include a pulled image. The 12.6 teardown still removes
+`node:22.23.4-alpine` when its snapshot shows the image was absent, and the new 12.6 last line says the recipe "never
+acts on the protected set". A coder quoting H2 at S39 has to stop under H10, and on this Mac node is absent, so the
+branch is live.
+Rule: When a revision widens a protected set or adds a forbidden example, grep every procedure in the design (recipe,
+harness, teardown, P-SNAP) for commands on the newly protected objects, and either change the procedure or write a
+closed exception in the same revision.
+
+### 2026-11-02: A closed "only pulls" list omitted BuildKit's own fetches (#31)
+Revision 9 made H9 say "The only pulls on this daemon are ... Any other pull is an H10 stop", but the prescribed
+`:t31` builds (12.6 `up --build`, S36/TS6 `docker build`) make BuildKit resolve the `# syntax=docker/dockerfile:1`
+frontend of `apps/web/Dockerfile` on every build and fetch an absent `node:22.23.4-alpine` base, as the daemon's own
+build history shows. The stop rule fires on the recipe it governs, the same mechanism as round 8.
+Rule: Before closing a list of what a step may pull, run, or touch, read the build logs (`docker buildx history logs`)
+and the Dockerfiles of every prescribed build, and list every image they resolve, `# syntax` frontends included.
+
+### 2026-11-02: Closed a build-log case by line form and missed half the forms (#31, judge_design round 10, operations)
+Revision 10 wrote that H9's build case "shows only as" three log lines. Every `:t31` build on this daemon also prints
+`resolve docker.io/docker/dockerfile:1@sha256:... done`, `[stage n/m] FROM docker.io/library/node:22.23.4-alpine@sha256:...`
+and `resolve docker.io/library/node:...@sha256:... done`, and a no-`# syntax` node build prints the last two. S36 and
+TS6 pull node first, so a literal reader cannot fit those lines into case (b) "node when absent" and stops under
+"any other build fetch". This is the third round with the same mechanism.
+Rule: State a closed case by the object a line names (the image), not by the log line's form. When you quote example
+forms, collect them from every log of the prescribed builds (`docker buildx history logs` piped through
+`grep docker.io/ | sort | uniq -c`) and say they are examples.
