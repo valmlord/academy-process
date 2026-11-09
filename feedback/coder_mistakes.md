@@ -219,3 +219,42 @@ created from".
 Rule: Call `mutex.run` synchronously at the top of every locked operation and do all work inside it; never mutate
 shared state (tracker, cache) from a snapshot taken before an await unless under the same lock with a freshness
 check; a deviation that touches ordering needs a test whose start state makes the two orders diverge.
+
+### 2026-11-09: ARGs declared at the top of each Dockerfile stage broke the layer-cache property a comment still claims (#33, judge_code round 1, architecture)
+Design 3.4 orders the final stage so that "a Claude Code bump rebuilds only the last big layer", and
+`images/workspace/Dockerfile:148` repeats it. Coder delta 1 redeclared `GO_VERSION`, `NODE_VERSION` and
+`CLAUDE_VERSION` at the top of the final stage (`:121-123`) and declared every fetch-stage pin at the top of `fetch`
+(`:31-41`). Docker's reference: every `RUN` after an `ARG` uses it implicitly as an environment variable, so a changed
+value is a cache miss for all of them. A version bump therefore re-runs the apt RUN, the identity RUN and the Go and
+Node downloads, and every final-stage layer is new. The delta recorded the scoping but not its cache effect, and the
+only cache test was a CLI `--label` change, which no ARG touches. Separately, the build script header (`:7`) still
+said "On every failure <image> keeps its previous Id" after revision 5 added FAIL lines where the tag has moved.
+Rule: Declare each Dockerfile ARG immediately before the first instruction that reads it (label-only ARGs right
+before `LABEL`); when a comment claims a cache property, prove it by changing that ARG's value and checking which
+steps say CACHED. After changing behaviour, reread the file's header comment against every new path.
+
+### 2026-11-09: The B1 fix added a cache comment that is false as written (#33, judge_code round 2, architecture)
+The round-1 fix moved the label ARGs right before `LABEL` and commented them
+`# Read only by LABEL, so declared here: a version bump changes no layer of this stage.`
+(`images/workspace/Dockerfile:168`, copied into design 3.4 step 8). The placement is right and the cache evidence
+is real, but the sentence is not: a `BASE_IMAGE` bump changes every layer of the stage, a Go bump the
+`/usr/local/go` COPY layer, a Claude Code bump the `/opt/claude` COPY layer, which the comment at `:150` in the same
+stage says outright. What the placement guarantees is narrower: these four declarations put no ARG into any RUN
+of the stage, so they cause no cache miss by themselves. The fix was asked to make every caching comment true, and
+the new comment was the one left unchecked.
+Rule: A comment that states a cache property names the mechanism it covers ("no RUN of this stage sees these ARGs")
+and is checked against every value it mentions; when two comments in one stage describe the same bump, read them
+side by side before committing.
+
+### 2026-11-09: A reworded cache comment kept the same overclaim (#33, judge_code round 3)
+The round-2 fix of images/workspace/Dockerfile:168 replaced "a version bump changes no layer of this stage" with
+"no RUN of this stage sees them, and a version bump re-runs none of them". The first clause is true; the second is
+still false for three of the four ARGs it sits above: a BASE_IMAGE bump changes `FROM ${BASE_IMAGE}` and re-runs every
+RUN of the final stage (apt, usermod, test -x); a GO_VERSION or NODE_VERSION bump changes the fetch output, so the
+`COPY --from=fetch` of Go or Node misses and the later `RUN test -x` re-runs. Only CLAUDE_VERSION re-runs no RUN here.
+The design delta that quotes the new comment lists "a base bump changes every layer of the final stage" two lines
+above it. The rewording narrowed the noun (layer -> RUN) but kept the universal "a version bump", and nobody walked
+the four values through the instruction order.
+Rule: When fixing a false comment, check the replacement against every value it quantifies over, by tracing the cache
+chain (FROM, COPY --from, then every later instruction), not only the mechanism that was wrong. Claim what the
+declaration does ("declaring them here invalidates no RUN"), not what a bump does, unless every bump was checked.
