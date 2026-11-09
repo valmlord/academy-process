@@ -368,3 +368,12 @@ skipped, but the size should have been named before judge_design. judge_design t
 Rule: re-tier from the architect's own size estimate and tell Stepan when it crosses a tier. When re-briefing the
 architect after a FAIL, ask it to check each prescribed fix against its source (the cited design, the schema's
 defaults, the property behind a listed case) before writing it in, not to copy the judge's sentence.
+
+### 2026-11-09: Two optional README notes I asked for cost a judge round (#33 merge hotfix)
+
+Round 1 of the merge hotfix failed on one ADR line. In the fix brief I also asked for two non-blocking README additions
+(a TERMINAL_SHELL=/bin/sh fallback, a detailed #32 rollback list). Both were new procedure text that nobody ran end to
+end, and round 2 failed on both.
+Rule: a fix round after a FAIL carries the blocker and its class only. Non-blocking notes that add procedure text go to a
+follow-up or are dropped unless Stepan asks for them, and any procedure text added gets the same run-it rehearsal as the
+original steps.
