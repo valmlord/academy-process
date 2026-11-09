@@ -1111,3 +1111,145 @@ TS6 pull node first, so a literal reader cannot fit those lines into case (b) "n
 Rule: State a closed case by the object a line names (the image), not by the log line's form. When you quote example
 forms, collect them from every log of the prescribed builds (`docker buildx history logs` piped through
 `grep docker.io/ | sort | uniq -c`) and say they are examples.
+
+### 2026-11-04: A long-lived connection authorized once silently weakened an ADR's revocation guarantee (#32, judge_design round 1, security)
+The #32 design authorizes the terminal WebSocket once, with a 30 s ticket, and the relay keeps it open until the
+session's `expiresAt`, up to 7 days. The residual (8.2, ADR-0011 Consequences) names only "sign-out in another tab".
+It does not say that ADR-0008 item 10 ("re-keying deletes every session, so a leaked password's sessions die with it")
+and item 5 (the e2e proves sign-out revokes on the server) stop holding for an open terminal. A leaked password's
+terminal survives the documented recovery. No recovery step is given, Stepan was not asked, and no test shows what a
+deleted session does to an open relay.
+Rule: When a design adds a connection that is authorized once and stays open, list every ADR item that promises
+revocation (sign-out, re-key, account deletion). For each, bound the lag with a test, or give a documented recovery
+step and get the owner's explicit decision on the residual.
+
+### 2026-11-04: Long-lived session object specified by its happy path; packaging fact assumed (#32, judge_design round 1, architecture)
+The #32 design checked Next's internals carefully but left the session and relay lifecycles to the coder: the resume
+snapshot is serialized while up to 1 MiB is still unparsed by the headless terminal (bytes lost on resume); the old
+tab's asynchronous `close` after a takeover can detach the new tab; no single teardown names the headless terminal,
+timers and listeners for each end path; the relay's 10 s connect timeout can stay on the upgraded socket (the same
+mechanism the design neutralised for docker-modem). It also claimed `zod` is in the standalone `node_modules` "because
+the bundle uses it", while Turbopack bundles zod and tracing copies only runtime requires, so the custom server cannot
+import it in the image. And the D6 write path had a writer test but no test of the browser calling it.
+Rule: For every long-lived object (session, relay pair, socket), write the event order for attach, detach, takeover and
+each end path, including late events from the replaced party, plus one teardown that releases every resource, each with
+a test. Every npm import of code that runs outside the bundle is checked against the traced tree, not the bundle.
+
+### 2026-11-04: Register guards that pass while watching nothing (#32, judge_design round 1, operations)
+R-SNAP ran `bash <clone>/plans/32-owner-snapshot.sh`, but `/plans/` is git-ignored, so no clone has the script: both
+runs exit 127 with empty output and `diff` of the two empty files passes. R-RUNS used `docker volume ls --format
+'{{.CreatedAt}}'`, a field `volume ls` does not have, so it prints nothing on stdout in the very case it exists to catch.
+Rule: Every guard command in a register states its success as "rc 0 and a positive marker" (last line `== end`, an
+explicit count), never only "prints nothing" or "diff is empty". Check each path exists where the command runs and
+each `--format` field against the command's own formatter.
+
+### 2026-11-04: CJS interop and a pre-decided stop left to the coder (#32, judge_design round 1, operations)
+`import { Terminal } from "@xterm/headless"` passes tsc (NodeNext) and vitest but throws "Named export 'Terminal' not
+found" under plain Node, so the service image would crash at startup. `import next from "next"` fails tsc under NodeNext,
+while the type-correct `next.default` is undefined at runtime. The design also told the coder to stop if
+`@fastify/websocket`'s non-upgrade GET answer is outside the closed error set, and 11.3.4 always answers an empty 404,
+so the stop was certain. A `wsHandler` route with its own HTTP handler avoids it.
+Rule: For every new CommonJS package imported from ESM code that runs outside a bundler, name the import form and
+add one plain-`node` import of the built module to a step check. A "stop if X" condition that the pinned source already
+decides is resolved in the design, not passed to the coder.
+
+### 2026-11-04: Section 6 omitted what the e2e suite now writes into the owner's own stack (#32, judge_design round 1, operations)
+The README runs `pnpm test:e2e` against Stepan's own compose stack as his only user. After #32 the terminal specs type
+into his real workspaces, take over his tabs and write `lesson_progress` rows that are never cleared. Section 6 did not
+mention this.
+Rule: When a change adds a durable write or a side effect to a flow that tests drive, check whether the documented test
+command runs against the owner's own data, and put the effect, or an opt-in gate, in section 6.
+
+### 2026-11-04: A pre-auth upgrade handler with no error containment, and an S-B1 test its own verifier refuses (#32, judge_design round 2, security)
+Revision 3 moved the terminal upgrade out of Next into `publicServer.on("upgrade")` but never said that the dispatch
+catches errors, or that the raw socket gets an `error` listener before anything else. Node's HTTP server removes its own
+socket error handler before it emits `upgrade` (that is why `ws`'s `handleUpgrade` starts with
+`socket.on("error", socketOnError)`), and Next's `start-server.js:236-243` wraps its upgrade handler in try/catch. The
+custom server replaces that code and does neither. The ticket verify also checks the MAC by string length, then calls
+`timingSafeEqual(Buffer.from(given), Buffer.from(expected))`. A percent-encoded non-ASCII character in the MAC passes
+the length check, gives buffers of different byte lengths, and `timingSafeEqual` throws `RangeError`. Thrown inside the
+listener, or rejected from an async `handle`, this crashes web for every user, without authentication, from anything that
+reaches 127.0.0.1:3080, including a workspace container on Docker Desktop (ADR-0002 residual 3). Separately, U-relay-cap
+mints a ticket with `dl` 7 days ahead, which the design's own verify refuses (`dl > now + 3600 s`), so the S-B1 guard
+cannot pass as written.
+Rule: Every handler that receives a raw socket before authentication attaches an `error` listener first, runs inside one
+try/catch or `.catch` that destroys the socket, and has a test that it survives a reset and a malformed request. Check
+each input's charset and byte length before any primitive that throws on bad input. Build every guard test's fixture
+through the real verifier and confirm it is accepted.
+
+### 2026-11-04: Round-1 lifecycle fixes added async gaps and timers whose overlaps were never walked (#32, judge_design round 2, architecture)
+Revision 3's A-B2 flush made attach asynchronous, but takeover still looks only at `session.client`, which is null
+during the flush: two attaches inside one flush (U-registry-race's own scenario, a renewal racing another tab, two
+restored tabs) both get `attached` and the first becomes a silent zombie with no 4001, and `Session.end` never closes
+a socket whose flush is pending. The renewal timer had no rule for leaving the running state (a taken-over tab silently
+takes the session back 15 minutes later, against D4) and loops at once when the deadline is within the 60 s margin,
+which happens at every natural session expiry because the DAL reads with `disableRefresh`. The flow-control gates
+reset only on attach, so a client that detaches while paused freezes the shell until someone re-attaches. A
+`markStopping` with no session has nobody to clear it. Step 6 imports zod in `apps/web`, which has no zod dependency.
+Rule: For every async step and timer a fix adds, walk what happens when a second event of each kind arrives inside
+the gap and when the object leaves its state during it; for every gate or mark, name who clears it on every exit
+path, including "nothing was there". Check each new import against the importing package's own dependency list.
+
+### 2026-11-04: Dedicated e2e lessons checked against named lessons only; leak.spec opens every lesson (#32, judge_design round 2, operations)
+Revision 3 gives `terminal.spec.ts` and `region-keys.spec.ts` dedicated lessons "asserted different from every lesson
+other specs open by name". `leak.spec.ts` opens every lesson in a loop, so with auto-start (D5) and takeover (D4) a
+parallel worker takes the terminal spec's session over with 4001 mid-test; the three region-keys engines also share one
+lesson in parallel. The guard as written cannot see a loop.
+Rule: When a test needs exclusive use of a shared resource (one user's session, one workspace), prove exclusivity by
+scheduling (project dependencies, serial workers) or a runtime check, after grepping every spec for loops over the same
+collection, not by comparing the names other specs mention.
+
+### 2026-11-04: A bash function placed "at the end" but called mid-script, at a point whose state was not walked (#32, judge_design round 2, operations)
+Section 9 put `run_e2e_stages` at the end of `isolated-stack.sh` and called it "after check-image-migrations.sh".
+Bash runs top to bottom, so the call exits 127. Only one call position works anyway: after line 255 db loses its host
+port, which the seed and E-echo need, and after line 251 the probes that e2e-cleanup prepares for have already run.
+Rule: For a script change, name the exact line a new call goes after, define every function above its first call, and
+list the stack state at that line (ports published, services up) that the new step depends on.
+
+### 2026-11-04: Changed the byte encoding of a compare but kept the mutation row written for the old one (#32, judge_design round 3, security)
+Revision 4 compares the MAC as `timingSafeEqual(Buffer.from(mac, "latin1"), Buffer.from(expected, "latin1"))`. Latin1
+writes one byte per UTF-16 code unit, so the round-2 input (42 base64url characters plus `é`) gives a 43-byte buffer and
+never throws. The mutation row "compare without the charset check -> U-ticket: the non-ASCII MAC throws RangeError"
+therefore stays green, and no other U-ticket case diverges without the token regex: the guard S2-B1 asked for has no
+test that can fail. Latin1 also maps U+0141 to 0x41 (`A`), so without the regex a MAC with one character shifted by
+0x100 is accepted.
+Rule: When a fix changes how an input is encoded, re-run every test input and mutation row of that input through the
+new encoding (one `node -e` per case) and replace the cases whose correct and mutated outcomes now coincide.
+
+### 2026-11-04: State tables walked per state, not per object that outlives a socket or a promise (#32, judge_design round 3, architecture)
+Revision 4's tables gave every state an action, but not every object that crosses a state change. The browser's
+processed-bytes counter and `ackTimer` are not tied to a socket, so bytes parsed from the old socket are acknowledged on
+the renewal socket, whose service counter `sent` restarts at 0 (row 7), and the service closes it 1008. Row 27 sets
+`renewal = null` without closing it, so a slow renewal socket attaches later and the tab takes itself over (4001, TO)
+with a leaked socket that row 38 can no longer close; an `openTerminal`/`startEnvironment` result arriving after unmount
+does the same to the next mount. No cell sends `resize` after `attached`, so every first attach leaves the shell at
+80x24. On the service, row 16 ignores only a 404 from `resizeExec`; any other rejection inside a `message` listener is
+an unhandled rejection, and the service has no handler, so the process (every shell) dies.
+Rule: In a state table, list the objects that survive a transition (counters, timers, sockets, in-flight promises) and
+give each an owner and a disposal in every row that replaces or drops it; every async call started from a listener
+names its rejection's action; every "set X = null" for a socket says "close X".
+
+### 2026-11-04: A prescribed shell command that the CLI rejects, and two specs of one output that disagree (#32, judge_design round 3, operations)
+Section 9 row 6 told the coder to run `docker image ls -q academy-web:$TAG academy-workspace-service:$TAG`. The docker
+CLI takes at most one reference (`cli.RequiresMaxArgs(1)` in `cli/command/image/list.go`; usage
+`ls [OPTIONS] [REPOSITORY[:TAG]]` in the 29.9.2 binary). Simulated with a stub docker: in `found=$(...)` form, `set -e`
+ends every run with rc 1 and no STOP line; in `[ -n "$(...)" ]` form, the check passes silently and misses a planted
+`academy-web:t32`. R-PREFLIGHT plants only a volume, so it could not catch either. Separately, 3.1 says `main.ts` logs
+`web: startup failed: <error name>`, while R-SMOKE expects `StandaloneConfigError: .next/required-server-files.json
+missing`. The prototype prints `web: startup failed: StandaloneConfigError`, so the check cannot pass.
+Rule: Before prescribing a CLI command verbatim, read its usage line (or the source's argument rule) for every
+argument form you give it, and say how a non-zero exit is handled under `set -e`. When one output is specified in two
+places (code and check), write it once and quote that line in the other place.
+
+### 2026-11-04: Prescribed a synchronous `term.reset()` while the design itself leaves writes queued (#32, judge_design round 4, architecture)
+3.6.1 rows 6, 6a, 24 and 24a call `term.reset()` and then write the snapshot. xterm 6.0.0 documents that `reset()`
+"does not clear input buffers and does not reset the parser, thus the terminal will continue to apply pending input
+data" (`src/browser/CoreBrowserTerminal.ts:1260-1267`); `CoreTerminal.reset` (`src/common/CoreTerminal.ts:244-250`)
+never touches the `WriteBuffer` or `_parser`. Revision 5's own G3 test builds the exact state where this bites: a
+frame of the old socket is still queued when row 24 switches. Those bytes are parsed after the reset, before the
+snapshot (duplicated scrollback, an alt-screen switch applied under the snapshot), and a parser left inside an OSC or
+CSI sequence by a connection cut swallows the head of the snapshot. RIS (`ESC c`) written in band runs
+`InputHandler.fullReset` (`_parser.reset()`, then the same `reset()`) in order with the queue.
+Rule: When a design calls a library method on an object that has a queue (a terminal write buffer, a stream, a
+batching renderer), read the method's doc and body for what it does to queued work, and walk the row with work still
+queued; prefer the in-band form when order matters.
