@@ -336,3 +336,13 @@ build cache that agents may not prune, so the cache went from 0 to 43 GB over on
 Rule: every brief that may build images or run a stack states the host-free floor, a build-cache ceiling, the
 maximum number of stack runs and "never prune"; check `df -h /` and `docker system df` between spawns and tell
 Stepan when the cache passes the ceiling instead of starting another run.
+### 2026-11-04: A contract change sized from the issue label, and a design that took four rounds (#68)
+
+#68 was labelled tier:task and the issue said "migrate the six module 00 lessons"; the researcher found 18 ready
+lessons on main, the design estimated ~25 files, and I kept the TASK tier. The phases match PROJECT, so nothing was
+skipped, but the size should have been named before judge_design. judge_design then took four rounds: each round's fix
+(a judge's prescription copied into the design) carried a new defect the next round found (a counting floor without
+#15's safety condition, a rollout rule that listed cases, a raw-YAML rule that ignored zod defaults).
+Rule: re-tier from the architect's own size estimate and tell Stepan when it crosses a tier. When re-briefing the
+architect after a FAIL, ask it to check each prescribed fix against its source (the cited design, the schema's
+defaults, the property behind a listed case) before writing it in, not to copy the judge's sentence.
