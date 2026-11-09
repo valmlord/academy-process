@@ -202,3 +202,10 @@ in "design 4.Q5", "(Arch A4)", "O N2", "decision A8" outside `design/flows/`, "r
 the architect fixed the 33 and round 2 was spent on the rest.
 Rule: For a "class of references" finding, grep the class with several neighbouring forms (section numbers, decision
 ids, review finding ids) before sending round 1, and state that the list is an example and the effect is the target.
+
+### 2026-11-09: Accepted a focus fallback placement without checking the element that is "never removed" (#69, accessibility)
+In judge_design round 3 the accessibility judge accepted design note §3.2 "`.check-row-panel`: its row button"
+as the prototype fallback, and checked only the controls B8-B14 list as removed. The row button itself is
+swapped markup in the prototype, so a focused row button falls to `main`. This surfaced only in judge_ux.
+Rule: When a design says "X is never removed, so focus stays", check how the prototype draws X across
+states. If it is per-state markup, require a fallback that covers X itself, and a test pair that focuses X.

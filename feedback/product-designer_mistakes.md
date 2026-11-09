@@ -92,3 +92,17 @@ switch"), AC7 ("A run does not switch the tab") and the new AC17, on the core pa
 `?tab=` writer then publishes the wrong tab ("Войти снова" carries theory).
 Rule: After adding URL or selection state, run every simulated action from each tab and assert the tab and
 the URL are unchanged unless the acceptance notes say the action switches them.
+
+### 2026-11-09: A focused row button falls to `main` on a background change (#69, judge_ux round 1)
+`data-focus-fallback` was put on the check bar and on every `.check-row-panel`, but not on anything that
+contains the row button itself. The prototype draws each state's rows as separate markup, so a background
+change hides the focused `.check-row-trigger` and the focus repair finds no ancestor fallback and focuses
+`main`. Measured headless at 1280 and 375 px in 9 transitions each (for example `#state-results-limit-known`
+-> `setState("check-running")`): focus lands on `main#main`. `checks.md` says the row buttons are never removed,
+so in B8-B14 focus stays on that row's button. The 26 background pairs focused "Подробности", "Проверить",
+"К окружению", "Переподключиться", "Открыть результаты" and "Отмена", never a row button, which is the
+element most likely to have focus in Проверки. So the run could not catch this.
+Rule: In a prototype that swaps markup per state, every element that "is never removed" in the flows needs
+a fallback to its own counterpart in the next state (here `data-focus-fallback` on each row `li`). The
+background focus pairs include focus on each kind of element that a background change can hide, not only
+the controls the flows list as removed.
