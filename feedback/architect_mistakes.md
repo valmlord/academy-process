@@ -924,3 +924,523 @@ on the missing folder exits 0 with no "is not a working tree" message at all. W1
 self-test pinned a path the doc never lets Stepan take. Same class as the round-2 lesson above, one branch later.
 Rule: For every documented branch of a procedure ("if X already happened"), run the doc's commands in the doc's
 order on that exact setup, gates included, and make the test row run the same sequence.
+
+### 2026-11-03: Hardening specified for create only, while the ADR reads it as a property of every workspace (#31, judge_code round 1, security)
+Revision 11 pinned the container create body as an exact allowlist, and design 6.1's dispatch table starts every
+existing container whose labels match the key (never-started, adopted after a 409, and every stopped one that ran
+before) without saying which HostConfig it carries. `LABEL_SCHEMA` is bumped only for label-parse changes, so a later
+spec change (#88's egress filter, a tighter limit) never reaches existing workspaces, yet ADR-0002 item 6 says the
+egress residuals "last until the egress filter ships". The tester found the never-started half (F3); nobody had
+stated the scope.
+Rule: For every security property set at object creation, state in the ADR whether it holds for objects created
+earlier, and name the mechanism (schema bump, spec-version label, compare-and-recreate) that carries a later change
+to them; a follow-up that relies on it gets the same sentence.
+
+### 2026-11-02: Security properties stated by spelling, by name, or by an untestable probe (#31)
+
+The #31 design refused `checks/` in the starter by comparing path segments as text (a symlinked segment or `Checks`
+on the case-insensitive Mac bind mount still packs the grader files), let `DELETE` remove a volume by name while
+claiming foreign objects with our name are never changed, guarded the container hardening with a denylist of
+forbidden fields, checked "workspaces cannot reach the service port" with a DNS name that never resolves there, and
+filed workspace -> `host.docker.internal` -> Postgres superuser (shell in the db container, adjacent to the
+socket-holding service) as a residual without Stepan's decision.
+Rule: State every isolation property by its effect and give it a check that fails on the bad case: compare file
+identity (dev, ino) not names, verify labels before every destructive call, assert exact allowlists of security
+fields, probe reachability by IP with a positive control, and put any residual that contradicts an ADR's decision to
+Stepan as an open question.
+
+### 2026-11-02: LEARN steps unsized, and library failure shapes and contracts assumed (#31, architecture)
+
+The #31 design gave no LOC estimate per step while S8, S11, S13 and S20 each bundle 90-150 lines; S1's "done when"
+claimed a lockfile diff without fastify, which the lockfile does not hold; the error contract ignored Fastify's own
+400/415 errors and 404 handler; the classifier expected ETIMEDOUT where docker-modem's timeout yields ECONNRESET;
+the convergence table re-created containers without re-ensuring the network; reconcile's lesson set had no rule for
+one invalid lesson among valid ones; I-hardening asserted CapEff, which is zero for any non-root user anyway.
+Rule: In a LEARN design, estimate every step's LOC and split above 60; derive each failure shape and each
+framework-level response from the library source or docs, not from the name of the option; and for every guard,
+write the variant without the guarded property and confirm the assertion fails on it.
+
+### 2026-11-02: Test and recipe isolation designed for a quiet daemon and a careful shell (#31)
+
+The #31 design asserted in integration teardown that every object present at the start still exists, while turbo
+runs the db and web suites in parallel and they remove their own testcontainers; let test decoys and helpers carry
+no marker the teardown could find, with no sweep of crashed runs; made the S23 recipe's isolation depend on
+exports surviving in one shell (a `down` elsewhere hits project `academy`, and web still resolves to
+`academy-web:local`); left the compose `environment` block for the tunables unspecified; let GC force-remove a
+running workspace when the bind-mounted working tree is on another branch; and claimed the socket probe on the CI
+runner with no CI step that checks it.
+Rule: Design operational checks for a shared, busy host: assert only what this run owns, mark every object a test
+creates, carry the project/tag explicitly on every command of a manual recipe, list every env var each process
+receives, never force-remove a running workspace on derived state, and back every "verified on CI" with a CI step.
+
+### 2026-11-02: A fix verified on the host while the failure lives in the container, and a residual left as a pointer (#31, security round 2)
+
+Revision 2 of #31 refused `Checks` by `(dev, ino)` but tested it only in a host temp directory on APFS, while the
+service compares inodes on Docker Desktop's bind mount of the course, where inode numbering is unverified. It also
+recorded the Q-W1 residual as "Q-W1's answer and the residual it accepts", keeping ADR-0002's "no access to internal
+services" and describing the reopened db port as "can reach Postgres" (it is a superuser with a default password and
+`COPY TO PROGRAM`), without web's adjacency to the socket holder or LAN reachability, and accepted W2 as REACHABLE on
+"Docker Desktop" without saying how that is detected.
+Rule: Run each isolation check in the environment where the attack happens (inside the container, on the real mount),
+or name the probe that proves the host test transfers; and write a residual as the full text the ADR will carry,
+including the worst consequence and the ADR sentence it amends.
+
+### 2026-11-02: A cleanup that deletes other runs' objects without the label check, and a consumer list built from config only (#31, operations round 2)
+Revision 2 of #31 added a setup sweep that removes leftovers of earlier test runs, but its own removal helper refuses
+everything not of this run, so the sweep runs outside it, with no per-object inspect and no red run; a filter bug would
+remove `academy-db-1` and then the freed `academy_db-data`. The db port change listed host-port consumers from config
+and CI only and missed the web's connect hint (`docker compose up -d --wait db`, which cannot fix a db that is up but
+unpublished) and the README procedures that start the db and then connect from the host.
+Rule: Every function that deletes objects it did not create inspects each one and applies a unit-tested predicate
+before acting, with a mutation in the table; and when a change removes something others rely on, grep messages, hints
+and docs for it, not only config and scripts.
+
+### 2026-11-02: Step order checked per row, not against what later rows write (#31, architecture round 2)
+
+Revision 2 of #31 sized every LEARN step and stated "each done-when uses only files that exist at that step", but
+S37's done-when needs `.env.example` lines that S38 writes, S32's auth mutation targets `/v1/settings`, which S33
+registers, and S21/S22 test-first cases exercise `ensureRunning`, which only S23 assembles; a `DockerRuntime
+implements WorkspaceRuntime` written at S21 would also turn commit 8's typecheck red until S26.
+Rule: After decomposing, walk the steps in order and, for each done-when and each commit, list every file, route,
+function and interface member it touches and the step that creates it; any later step is a defect. Name the entry
+point every test-first test calls.
+
+### 2026-11-02: A new test pinned the opposite of the algorithm it serves, and tests referenced a deleted revision (#31, architecture round 3)
+
+Revision 3 of #31 added I-gc-primitives, asserting that `removeContainer`/`stopContainer` refuse a container whose
+labels do not parse, and 5.1 said "every destructive call refuses both" `other-schema` and `invalid`; but reconcile
+(6.5) must stop running `invalid` containers and remove stopped ones through exactly those primitives. The unit tests
+use a fake, so the contradiction would ship green and leave such containers running forever. The same revision kept
+"as rev. 1" for I-half (a)-(e), I-idem, I-oom, I-pids, U-lock and U-idle, while rev. 1 had been overwritten in the
+git-ignored `plans/`, so the tester could not write them test-first and the "I-half (b)" mutation had no target.
+Rule: When adding a test for a primitive, read every caller's rule for that primitive and make the asserted predicate
+the one the callers need; and a design file is self-contained: never refer to an earlier revision of itself.
+
+### 2026-11-02: Written-out integration tests had no isolation unit, and one asserted a state the spec rules out (#31, operations round 4)
+
+Revision 4 wrote out I-idem, I-half, I-network-pruned, I-gc-primitives and I-reconcile-invalid with exact object
+counts "filtered by the test instance", while instances were per test file and nothing removed objects between
+tests: earlier tests' containers make the counts red and keep the instance network busy, so I-network-pruned cannot
+remove it. I-pids case 3 ran `kill -9 -1` as uid 1000 and expected the container to keep running, but 4.5's own
+spec runs `sleep infinity` as uid 1000 under docker-init, so it dies and the container stops.
+Rule: For every test that asserts counts or removes shared objects, state what else exists in its scope at that
+moment and who removes it; and check each expected state against the container spec (uids, PID 1, Cmd) it runs on.
+
+### 2026-11-02: Agent hard rules protected three names and a verb list, and allowed the read that leaks the secrets (#31, judge_design round 6, security)
+
+Revision 6 wrote H1-H10 as the only protection of the owner's stack for an agent coder and tester. H2 forbade naming
+project `academy`, `academy_db-data` and `academy-web:local` in a listed set of verbs, so `docker stop academy-db-1`,
+`docker exec academy-db-1 psql ...`, `docker run -v academy_db-data:...` and `network connect` to the owner's networks
+all passed the rule, and H3 even named "by exact name" as the allowed removal form. H2 also allowed `docker inspect` of
+owner objects by name, which prints `BETTER_AUTH_SECRET` (interpolated from the root `.env`) from the web container's
+`Config.Env`: the secret H4 protects, by another path.
+Rule: A rule that protects objects defines the protected set by label and name pattern and forbids the effect (change,
+exec, mount, attach, read env); verbs are examples. For every secret a rule protects at its source, list every place
+the secret is copied to (container env, logs, rendered config) and close each read path too.
+
+### 2026-11-02: Spawn entry checks admitted only a fresh start, not the resume the stop rule creates (#31, architecture round 6)
+
+Revision 6 split the coder work into spawns A-E with a stop rule (stop after any commit, or mid-commit with the dirty
+files listed; the orchestrator re-spawns "the remaining range"), but every entry check was written for a spawn
+starting at its first commit on a clean tree ("HEAD equals A's hash", "log prints nothing", "HEAD is commit 14",
+TS1 "15 (or 16)" commits). A re-spawn after a context stop, the exact #30 failure the split exists for, would fail
+its own entry check and stop; allowed `fix(workspace)` commits break the commit-number checks too.
+Rule: When a design defines a stop-and-resume protocol, walk the resume at every possible stop point (after each
+commit, mid-commit) against the entry checks, and key resume checks on the hand-off notes (HEAD, commit list, dirty
+files), never on fixed commit numbers.
+
+### 2026-11-02: Owner snapshot recorded names and states, so a recreate or `down -v` + `up` diffed identical (#31, operations round 6)
+
+Revision 6's tester procedure guarded Stepan's stack with a before/after snapshot of volume names, image Id and
+container `Names State Image`, taken only at the tester's start. A recreate, restart or `down -v` + `up` of project
+`academy` leaves those strings identical (shown with a throwaway container: empty diff after a recreate), and spawns
+B and C, which run the predicate-based removal code against the same daemon, had no snapshot at all.
+Rule: An "untouched" snapshot records identities and lifetimes (container Id, StartedAt, RestartCount, port bindings,
+volume CreatedAt, network Id), is proven by recreating a throwaway object and seeing the diff, and brackets every
+phase that mutates the daemon, not only the last one.
+
+### 2026-11-02: One protection, two scopes: H3 and the harness said "not created by this run", H2 said "the academy list" (#31, judge_design round 7, security)
+
+Revision 7 scoped removals (H3) and the harness's no-`{{json .}}` rule (12.2) to every object the run did not create.
+But it limited H2's effect ban and its formatted-read rule, the text every brief quotes, to the academy owner set. A
+bare `docker inspect` of another compose project's container (its env secrets), a `docker exec`/`stop` of it, or a
+`docker tag` onto `postgres:17.6-alpine`, which Stepan's stack runs, broke no rule.
+Rule: When a design states one safety property in several places, write its scope once, as the widest the property
+needs (here "everything on the daemon this run did not create"). The named lists are subsets used for detection, not
+the boundary of what is allowed.
+
+### 2026-11-02: Widened the protected set, then wrote an open-ended exception that hands any protected image back (#31, judge_design round 8, security)
+
+Revision 8 added class (5), every image this run did not build, to H2. In the same paragraph it wrote the exception
+"creating this run's own container or image from an image already on the daemon uses the image as a base: it is this
+run's own create". The examples were node, postgres and the reaper, but the sentence named no closed list. So
+`docker run --rm <another project's image> env`, or `cat` of a `.env` baked into it, or a build `FROM` it, counted as
+this run's own create, although H2 forbids reading the filesystem or environment of a protected object. R8-O1 used the
+same opening for P-SNAP: `<img>` became "any alpine- or debian-based image" on the daemon, and P-SNAP step 5 runs
+`docker start` on it. That executes the image's own ENTRYPOINT (`academy-web:local`, or another project's image)
+inside a step that R7 had pinned to `node:22.23.4-alpine`.
+Rule: An exception to a protection is a closed list of named objects, never a general class. Check every exception
+against each forbidden effect (read secrets, execute, retag, replace) before writing it. An ops-convenience change must
+not widen which protected objects a step runs code from.
+
+### 2026-11-02: Widened H2 to every node image but left the recipe's node removal in place (#31, judge_design round 8, operations)
+
+Revision 8 put "every `node` image" into H2 class (5) and listed `docker image rm node:22.23.4-alpine` as a forbidden
+example. H3's exact-name list still did not include a pulled image. The 12.6 teardown still removes
+`node:22.23.4-alpine` when its snapshot shows the image was absent, and the new 12.6 last line says the recipe "never
+acts on the protected set". A coder quoting H2 at S39 has to stop under H10, and on this Mac node is absent, so the
+branch is live.
+Rule: When a revision widens a protected set or adds a forbidden example, grep every procedure in the design (recipe,
+harness, teardown, P-SNAP) for commands on the newly protected objects, and either change the procedure or write a
+closed exception in the same revision.
+
+### 2026-11-02: A closed "only pulls" list omitted BuildKit's own fetches (#31)
+Revision 9 made H9 say "The only pulls on this daemon are ... Any other pull is an H10 stop", but the prescribed
+`:t31` builds (12.6 `up --build`, S36/TS6 `docker build`) make BuildKit resolve the `# syntax=docker/dockerfile:1`
+frontend of `apps/web/Dockerfile` on every build and fetch an absent `node:22.23.4-alpine` base, as the daemon's own
+build history shows. The stop rule fires on the recipe it governs, the same mechanism as round 8.
+Rule: Before closing a list of what a step may pull, run, or touch, read the build logs (`docker buildx history logs`)
+and the Dockerfiles of every prescribed build, and list every image they resolve, `# syntax` frontends included.
+
+### 2026-11-02: Closed a build-log case by line form and missed half the forms (#31, judge_design round 10, operations)
+Revision 10 wrote that H9's build case "shows only as" three log lines. Every `:t31` build on this daemon also prints
+`resolve docker.io/docker/dockerfile:1@sha256:... done`, `[stage n/m] FROM docker.io/library/node:22.23.4-alpine@sha256:...`
+and `resolve docker.io/library/node:...@sha256:... done`, and a no-`# syntax` node build prints the last two. S36 and
+TS6 pull node first, so a literal reader cannot fit those lines into case (b) "node when absent" and stops under
+"any other build fetch". This is the third round with the same mechanism.
+Rule: State a closed case by the object a line names (the image), not by the log line's form. When you quote example
+forms, collect them from every log of the prescribed builds (`docker buildx history logs` piped through
+`grep docker.io/ | sort | uniq -c`) and say they are examples.
+
+### 2026-11-04: Exact smoke commands that cannot run as written under the flags they sit beside (#33, judge_design round 1, architecture)
+Design 5.1 gives the volume setup as `docker run --user 0:0 --cap-drop ALL --cap-add CHOWN ... install -d -m 0755 -o 1000 -g 1000 /workspace/home /workspace/home/work`.
+`install` chowns `/workspace/home` to 1000 right after creating it, then root without `CAP_DAC_OVERRIDE` must
+create `work` inside a `1000:1000 0755` directory and gets EACCES: every smoke run, and so every
+`build-workspace-image.sh` run, fails at setup. Design 5.2 S12 asserts "no output" from
+`command -v curl wget gcc cc sudo` inside `docker exec sh -c`; `/bin/sh` on Ubuntu is dash, whose `command -v`
+looks up only the first operand (checked: `dash -c 'command -v nonexist ls'` prints nothing, rc 127), so a gcc,
+wget or sudo in the image could never turn the row red.
+Rule: For every exact command in a design, trace it under the exact privileges and the exact shell it runs with
+(capabilities after `--cap-drop`, `/bin/sh` of the image), and give multi-name checks one name per invocation.
+
+### 2026-11-04: The delivery script moved the owner's tag before its own check, with no way back (#33, judge_design round 1, operations)
+Design 4.1 builds with `docker build -t "$image"` and runs `smoke.sh` afterwards. When the smoke fails (or is
+interrupted), `academy-workspace:dev`, the only image name the service uses, already points at the unverified build;
+the previous image is left untagged and its Id is recorded nowhere. README 8.1 and section 9 say only "it ends with
+`SMOKE result OK`": nothing tells Stepan to stop before deleting the `.env` line, how to put the old image back, or
+how to roll #33 back (README has a rollback paragraph for #31). In the same design, S6 checks
+`for d in ...; do test ! -e "$d/claude"; done` in `sh -c`: a loop's status is its last iteration's, so a `claude` in
+any directory but the last one passes (checked with dash: `/usr/bin/ls` present in the middle iteration, loop rc 0),
+and the R-e5 red run plants it in `/usr/bin`, the last iteration, so the red run cannot show the hole.
+Rule: A script that tags an owner's image verifies under a candidate name or records the previous Id and restores it
+on failure, and the README states the failure path and the rollback. Every loop or list in an exact check fails on
+the first bad element (`|| exit 1`), and its red run plants the fault in a non-last element.
+
+### 2026-11-04: The fake-docker exception to "agents never build :dev" never checks that the stub is the docker it runs (#33, judge_design round 2, security)
+Design D5 and 13 [O2]/[O2b] let the coder (step 5), the tester and the operations judge run
+`PATH="$scratch/nodocker:$PATH" bash scripts/build-workspace-image.sh academy-workspace:dev` on the strength of a stub
+`docker` alone. Nothing proves the stub is what resolves: agent Bash calls do not keep shell variables, so in a call
+that did not set `scratch` the prefix is `/nodocker` and `command -v docker` prints `/usr/local/bin/docker` (checked
+in this session). The expected result of a working guard (rc 2, no `fake docker called`) is the same whether or not
+the stub resolved, so a missing stub is invisible exactly until the guard is broken, and the coder runs [O2b] right
+after writing the guard, before any other test of it. Then the real daemon builds `academy-workspace:dev-candidate`
+and moves Stepan's `academy-workspace:dev`: decision 5 broken by the very check meant to protect it.
+Rule: A safety net that lets an agent run a forbidden command must be verified in the same command before it is
+relied on (the stub answers with its marker and exit code), and must not depend on a variable from an earlier call;
+better, build PATH so the real tool is unreachable at all (`PATH=<absolute stub dir>:/usr/bin:/bin`).
+
+### 2026-11-04: README commands proven in non-interactive zsh, broken in the owner's interactive zsh (#33, judge_design round 2, operations)
+Revision 2's README 8.1 step 4 puts a trailing `# comment` on every command (`bash scripts/build-workspace-image.sh   # must end with "SMOKE result OK"; on FAIL stop here (step 2)`,
+`docker compose up -d --build --wait workspace   # recreates ...`, the `sed`, `grep`, `echo` and `printenv` lines, and
+the rollback block). Stepan's interactive zsh has no `interactivecomments` (`zsh -i -c setopt` lists only `interactive`),
+so `#` is an ordinary word and `;` inside the comment ends the command. Pasted, the build line exits 2 with the usage
+error, `compose up` gets services named `#`, `recreates`, ..., and the `sed` line still deletes the `.env` override:
+the exact "delete before building" order the README warns against. The 5.6 evidence ran the lines with `zsh` on a
+script, where comments always work.
+Rule: Run every README command block the way the owner runs it (pasted into `zsh -i` with his own config), not as a
+script; keep comments out of copy-paste blocks.
+
+### 2026-11-04: The delivery script told the owner to delete an image Id without checking it is not the current one (#33, judge_design round 2, operations)
+Design 4.1 step 7 prints "the previous image stays on disk untagged; docker image rm ${prev} frees it" whenever `prev`
+is an Id. A rebuild with unchanged inputs and the same context label is fully cached and BuildKit gives it the same
+Id, so `prev` is the new `:dev` itself; after the README's container removal, following the message deletes
+`academy-workspace:dev` and every lesson answers `image-missing`.
+Rule: A printed clean-up instruction names an object only after the script has proven it is not the one just
+delivered (`prev != new`), and says "unchanged" otherwise.
+
+### 2026-11-04: The fake-docker harness proves the stub runs only after the row that would hurt (#33, judge_design round 3, security)
+Revision 3's harness (`plans/33-fake-docker-guard.sh`) checks that `docker` on its own `PATH` is the stub, but the
+script under test can still reach the real client by an absolute path (`/usr/local/bin/docker`) or a `PATH=` line of
+its own. The positive control that would catch it (`t33-stubcheck`) only increments `failures` and the harness goes
+on to `academy-workspace:dev` with `CLAUDECODE` removed, so one coder slip runs a real `docker build -t
+academy-workspace:dev-candidate` (a protected D2 name) before the run turns red. Reproduced with stubs only
+(scratchpad `sec3/repo2`): both rows report `docker-called=no` after the "absolute" docker was reached.
+Rule: A control that proves a safety precondition gates the risky step: run it first and stop on its failure; never
+let it only change the final verdict after the risky step has run.
+
+### 2026-11-04: A long-lived connection authorized once silently weakened an ADR's revocation guarantee (#32, judge_design round 1, security)
+The #32 design authorizes the terminal WebSocket once, with a 30 s ticket, and the relay keeps it open until the
+session's `expiresAt`, up to 7 days. The residual (8.2, ADR-0011 Consequences) names only "sign-out in another tab".
+It does not say that ADR-0008 item 10 ("re-keying deletes every session, so a leaked password's sessions die with it")
+and item 5 (the e2e proves sign-out revokes on the server) stop holding for an open terminal. A leaked password's
+terminal survives the documented recovery. No recovery step is given, Stepan was not asked, and no test shows what a
+deleted session does to an open relay.
+Rule: When a design adds a connection that is authorized once and stays open, list every ADR item that promises
+revocation (sign-out, re-key, account deletion). For each, bound the lag with a test, or give a documented recovery
+step and get the owner's explicit decision on the residual.
+
+### 2026-11-04: Long-lived session object specified by its happy path; packaging fact assumed (#32, judge_design round 1, architecture)
+The #32 design checked Next's internals carefully but left the session and relay lifecycles to the coder: the resume
+snapshot is serialized while up to 1 MiB is still unparsed by the headless terminal (bytes lost on resume); the old
+tab's asynchronous `close` after a takeover can detach the new tab; no single teardown names the headless terminal,
+timers and listeners for each end path; the relay's 10 s connect timeout can stay on the upgraded socket (the same
+mechanism the design neutralised for docker-modem). It also claimed `zod` is in the standalone `node_modules` "because
+the bundle uses it", while Turbopack bundles zod and tracing copies only runtime requires, so the custom server cannot
+import it in the image. And the D6 write path had a writer test but no test of the browser calling it.
+Rule: For every long-lived object (session, relay pair, socket), write the event order for attach, detach, takeover and
+each end path, including late events from the replaced party, plus one teardown that releases every resource, each with
+a test. Every npm import of code that runs outside the bundle is checked against the traced tree, not the bundle.
+
+### 2026-11-04: Register guards that pass while watching nothing (#32, judge_design round 1, operations)
+R-SNAP ran `bash <clone>/plans/32-owner-snapshot.sh`, but `/plans/` is git-ignored, so no clone has the script: both
+runs exit 127 with empty output and `diff` of the two empty files passes. R-RUNS used `docker volume ls --format
+'{{.CreatedAt}}'`, a field `volume ls` does not have, so it prints nothing on stdout in the very case it exists to catch.
+Rule: Every guard command in a register states its success as "rc 0 and a positive marker" (last line `== end`, an
+explicit count), never only "prints nothing" or "diff is empty". Check each path exists where the command runs and
+each `--format` field against the command's own formatter.
+
+### 2026-11-04: CJS interop and a pre-decided stop left to the coder (#32, judge_design round 1, operations)
+`import { Terminal } from "@xterm/headless"` passes tsc (NodeNext) and vitest but throws "Named export 'Terminal' not
+found" under plain Node, so the service image would crash at startup. `import next from "next"` fails tsc under NodeNext,
+while the type-correct `next.default` is undefined at runtime. The design also told the coder to stop if
+`@fastify/websocket`'s non-upgrade GET answer is outside the closed error set, and 11.3.4 always answers an empty 404,
+so the stop was certain. A `wsHandler` route with its own HTTP handler avoids it.
+Rule: For every new CommonJS package imported from ESM code that runs outside a bundler, name the import form and
+add one plain-`node` import of the built module to a step check. A "stop if X" condition that the pinned source already
+decides is resolved in the design, not passed to the coder.
+
+### 2026-11-04: Section 6 omitted what the e2e suite now writes into the owner's own stack (#32, judge_design round 1, operations)
+The README runs `pnpm test:e2e` against Stepan's own compose stack as his only user. After #32 the terminal specs type
+into his real workspaces, take over his tabs and write `lesson_progress` rows that are never cleared. Section 6 did not
+mention this.
+Rule: When a change adds a durable write or a side effect to a flow that tests drive, check whether the documented test
+command runs against the owner's own data, and put the effect, or an opt-in gate, in section 6.
+
+### 2026-11-04: A pre-auth upgrade handler with no error containment, and an S-B1 test its own verifier refuses (#32, judge_design round 2, security)
+Revision 3 moved the terminal upgrade out of Next into `publicServer.on("upgrade")` but never said that the dispatch
+catches errors, or that the raw socket gets an `error` listener before anything else. Node's HTTP server removes its own
+socket error handler before it emits `upgrade` (that is why `ws`'s `handleUpgrade` starts with
+`socket.on("error", socketOnError)`), and Next's `start-server.js:236-243` wraps its upgrade handler in try/catch. The
+custom server replaces that code and does neither. The ticket verify also checks the MAC by string length, then calls
+`timingSafeEqual(Buffer.from(given), Buffer.from(expected))`. A percent-encoded non-ASCII character in the MAC passes
+the length check, gives buffers of different byte lengths, and `timingSafeEqual` throws `RangeError`. Thrown inside the
+listener, or rejected from an async `handle`, this crashes web for every user, without authentication, from anything that
+reaches 127.0.0.1:3080, including a workspace container on Docker Desktop (ADR-0002 residual 3). Separately, U-relay-cap
+mints a ticket with `dl` 7 days ahead, which the design's own verify refuses (`dl > now + 3600 s`), so the S-B1 guard
+cannot pass as written.
+Rule: Every handler that receives a raw socket before authentication attaches an `error` listener first, runs inside one
+try/catch or `.catch` that destroys the socket, and has a test that it survives a reset and a malformed request. Check
+each input's charset and byte length before any primitive that throws on bad input. Build every guard test's fixture
+through the real verifier and confirm it is accepted.
+
+### 2026-11-04: Round-1 lifecycle fixes added async gaps and timers whose overlaps were never walked (#32, judge_design round 2, architecture)
+Revision 3's A-B2 flush made attach asynchronous, but takeover still looks only at `session.client`, which is null
+during the flush: two attaches inside one flush (U-registry-race's own scenario, a renewal racing another tab, two
+restored tabs) both get `attached` and the first becomes a silent zombie with no 4001, and `Session.end` never closes
+a socket whose flush is pending. The renewal timer had no rule for leaving the running state (a taken-over tab silently
+takes the session back 15 minutes later, against D4) and loops at once when the deadline is within the 60 s margin,
+which happens at every natural session expiry because the DAL reads with `disableRefresh`. The flow-control gates
+reset only on attach, so a client that detaches while paused freezes the shell until someone re-attaches. A
+`markStopping` with no session has nobody to clear it. Step 6 imports zod in `apps/web`, which has no zod dependency.
+Rule: For every async step and timer a fix adds, walk what happens when a second event of each kind arrives inside
+the gap and when the object leaves its state during it; for every gate or mark, name who clears it on every exit
+path, including "nothing was there". Check each new import against the importing package's own dependency list.
+
+### 2026-11-04: Dedicated e2e lessons checked against named lessons only; leak.spec opens every lesson (#32, judge_design round 2, operations)
+Revision 3 gives `terminal.spec.ts` and `region-keys.spec.ts` dedicated lessons "asserted different from every lesson
+other specs open by name". `leak.spec.ts` opens every lesson in a loop, so with auto-start (D5) and takeover (D4) a
+parallel worker takes the terminal spec's session over with 4001 mid-test; the three region-keys engines also share one
+lesson in parallel. The guard as written cannot see a loop.
+Rule: When a test needs exclusive use of a shared resource (one user's session, one workspace), prove exclusivity by
+scheduling (project dependencies, serial workers) or a runtime check, after grepping every spec for loops over the same
+collection, not by comparing the names other specs mention.
+
+### 2026-11-04: A bash function placed "at the end" but called mid-script, at a point whose state was not walked (#32, judge_design round 2, operations)
+Section 9 put `run_e2e_stages` at the end of `isolated-stack.sh` and called it "after check-image-migrations.sh".
+Bash runs top to bottom, so the call exits 127. Only one call position works anyway: after line 255 db loses its host
+port, which the seed and E-echo need, and after line 251 the probes that e2e-cleanup prepares for have already run.
+Rule: For a script change, name the exact line a new call goes after, define every function above its first call, and
+list the stack state at that line (ports published, services up) that the new step depends on.
+
+### 2026-11-04: Changed the byte encoding of a compare but kept the mutation row written for the old one (#32, judge_design round 3, security)
+Revision 4 compares the MAC as `timingSafeEqual(Buffer.from(mac, "latin1"), Buffer.from(expected, "latin1"))`. Latin1
+writes one byte per UTF-16 code unit, so the round-2 input (42 base64url characters plus `é`) gives a 43-byte buffer and
+never throws. The mutation row "compare without the charset check -> U-ticket: the non-ASCII MAC throws RangeError"
+therefore stays green, and no other U-ticket case diverges without the token regex: the guard S2-B1 asked for has no
+test that can fail. Latin1 also maps U+0141 to 0x41 (`A`), so without the regex a MAC with one character shifted by
+0x100 is accepted.
+Rule: When a fix changes how an input is encoded, re-run every test input and mutation row of that input through the
+new encoding (one `node -e` per case) and replace the cases whose correct and mutated outcomes now coincide.
+
+### 2026-11-04: State tables walked per state, not per object that outlives a socket or a promise (#32, judge_design round 3, architecture)
+Revision 4's tables gave every state an action, but not every object that crosses a state change. The browser's
+processed-bytes counter and `ackTimer` are not tied to a socket, so bytes parsed from the old socket are acknowledged on
+the renewal socket, whose service counter `sent` restarts at 0 (row 7), and the service closes it 1008. Row 27 sets
+`renewal = null` without closing it, so a slow renewal socket attaches later and the tab takes itself over (4001, TO)
+with a leaked socket that row 38 can no longer close; an `openTerminal`/`startEnvironment` result arriving after unmount
+does the same to the next mount. No cell sends `resize` after `attached`, so every first attach leaves the shell at
+80x24. On the service, row 16 ignores only a 404 from `resizeExec`; any other rejection inside a `message` listener is
+an unhandled rejection, and the service has no handler, so the process (every shell) dies.
+Rule: In a state table, list the objects that survive a transition (counters, timers, sockets, in-flight promises) and
+give each an owner and a disposal in every row that replaces or drops it; every async call started from a listener
+names its rejection's action; every "set X = null" for a socket says "close X".
+
+### 2026-11-04: A prescribed shell command that the CLI rejects, and two specs of one output that disagree (#32, judge_design round 3, operations)
+Section 9 row 6 told the coder to run `docker image ls -q academy-web:$TAG academy-workspace-service:$TAG`. The docker
+CLI takes at most one reference (`cli.RequiresMaxArgs(1)` in `cli/command/image/list.go`; usage
+`ls [OPTIONS] [REPOSITORY[:TAG]]` in the 29.9.2 binary). Simulated with a stub docker: in `found=$(...)` form, `set -e`
+ends every run with rc 1 and no STOP line; in `[ -n "$(...)" ]` form, the check passes silently and misses a planted
+`academy-web:t32`. R-PREFLIGHT plants only a volume, so it could not catch either. Separately, 3.1 says `main.ts` logs
+`web: startup failed: <error name>`, while R-SMOKE expects `StandaloneConfigError: .next/required-server-files.json
+missing`. The prototype prints `web: startup failed: StandaloneConfigError`, so the check cannot pass.
+Rule: Before prescribing a CLI command verbatim, read its usage line (or the source's argument rule) for every
+argument form you give it, and say how a non-zero exit is handled under `set -e`. When one output is specified in two
+places (code and check), write it once and quote that line in the other place.
+
+### 2026-11-04: Prescribed a synchronous `term.reset()` while the design itself leaves writes queued (#32, judge_design round 4, architecture)
+3.6.1 rows 6, 6a, 24 and 24a call `term.reset()` and then write the snapshot. xterm 6.0.0 documents that `reset()`
+"does not clear input buffers and does not reset the parser, thus the terminal will continue to apply pending input
+data" (`src/browser/CoreBrowserTerminal.ts:1260-1267`); `CoreTerminal.reset` (`src/common/CoreTerminal.ts:244-250`)
+never touches the `WriteBuffer` or `_parser`. Revision 5's own G3 test builds the exact state where this bites: a
+frame of the old socket is still queued when row 24 switches. Those bytes are parsed after the reset, before the
+snapshot (duplicated scrollback, an alt-screen switch applied under the snapshot), and a parser left inside an OSC or
+CSI sequence by a connection cut swallows the head of the snapshot. RIS (`ESC c`) written in band runs
+`InputHandler.fullReset` (`_parser.reset()`, then the same `reset()`) in order with the queue.
+Rule: When a design calls a library method on an object that has a queue (a terminal write buffer, a stream, a
+batching renderer), read the method's doc and body for what it does to queued work, and walk the row with work still
+queued; prefer the in-band form when order matters.
+
+### 2026-11-04: Scoped a security rule by check kind, missing the capped command checks (#68, security)
+The #68 design required `attempts.limit` only on ready quiz and bug-hunt checks, calling them "the
+security-relevant kinds", and left a missing or misspelled `attempts` block on a command check to human review
+(F5 deferred). #15 §2.5.6 computes the cap of 10 on `model-routing` and `cost-estimate` as an anti-enumeration
+control (uncapped, the adaptive attack passes in about 30-200 submissions), so a typo there ships an uncapped
+check with CI green. The same design said "no source gives an upper bound" while #15 states 3 for quiz and
+bug-hunt.
+Rule: Before scoping a security rule, list every place the source design calls the control a security property
+(grep the cap's number and "attack"/"enumerat" in it); a rule that covers a subset by kind needs a machine check
+for the rest, not a reviewer.
+
+### 2026-11-04: Defined "counted" in the contract ADR in words that prejudge the rule it defers (#68, architecture)
+The #68 design's counting sentence and ADR-0001 item 8 say "a result is counted only when the grader scored
+the submission", then hand timeout and budget-exhausted counting to ADR-0007 (#101). A timeout or an exhausted
+budget is not a scored submission, so the sentence already answers "not counted", while #101 counts
+budget-exhausted results, proposes counting timeouts, and ADR-0007 item 4 calls a timeout the learner's work
+missing the bar. Two ADRs would then disagree, and #34 would implement whichever it read first.
+Rule: When a contract defers part of a definition to another ADR, state only the fixed floor (what is never
+counted) and point to the other ADR for the rest; read the deferred-to issue and check every case it decides
+against your sentence.
+
+### 2026-11-04: Follow-ups and the module hand-over left only in a gitignored plans/ file (#68, architecture)
+The #68 design's section 7 (what #43 and #44 must add when their lessons go ready, including the
+`trace-attribution` task.md mismatch) has no issue target, and F1-F5 are written as "comment to add" with no
+step that posts them. `plans/` is in `.gitignore`, so all of it is lost when the worktree is archived, and the
+module authors meet R4 as a red CI with no explanation.
+Rule: Every follow-up and hand-over in a design names its issue and the step that posts it (before the PR
+opens, linked from the PR body); nothing a later task depends on lives only in plans/.
+
+### 2026-11-04: Parallel-branch rollout covered only "drafts rebase later", not merge order (#68, operations)
+The #68 design's failure table says drafts in other worktrees rebasing onto R4 break nothing, and the hand-over
+says R4 turns content:validate red when a module 03/04 lesson goes ready. It never says what happens when the
+two PRs overlap: main has no required-up-to-date protection (private repo, free plan: the protection API answers
+403), and PR CI runs on the merge commit as of its last push. A content PR that flips a quiz to ready, green
+before #68 merged and merged after it, turns main's content, checks (workspace starter-walk real-course guard)
+and e2e jobs red; if the content PR lands first, #68's fixed "18 lessons" table is incomplete.
+Rule: A design that tightens a contract other open branches feed names the merge order both ways (who rebases
+and re-runs CI, who migrates what) and every CI job that reads the affected data, since nothing on GitHub
+enforces an up-to-date base here.
+
+### 2026-11-04: ADR "never counted" floor copied category names without #15's condition (#68, judge_design round 2, security)
+Revision 2 of the #68 design states in ADR-0001 item 8 and §1.2 that format errors and stage-0 rejections are
+never counted, unconditionally. #15 §2.5.6, which the design cites for the caps, exempts a format error only when it
+is rejected before any comparison with the key (bug-hunt: "not scored"). Without that condition #101/#34 may label a
+result that already carried score or aggregate-count feedback a format error, and the cap of 10 on `model-routing`
+and `cost-estimate` stops bounding enumeration.
+Rule: An exemption from an anti-enumeration counter is written with the property that makes it safe (the result
+shows the learner nothing computed from grader material), never as a bare category name.
+
+### 2026-11-04: Rollout check diffed from a hard-coded base and only course/ (#68, judge_design round 2, operations)
+Revision 2 §7.1 (a) runs `git diff --name-only 39ef0b8 origin/main -- course/` before the PR opens and before merge.
+After the first rebase the fixed base keeps listing lessons already migrated, so "empty output" can never again
+mean "nothing to do"; and a main commit outside course/ (a test fixture with a ready quiz, a schema change) leaves
+the PR merging on CI computed against an older main, which is the round 1 problem itself.
+Rule: A "has main moved under this PR" check tests the effect (`git merge-base --is-ancestor origin/main HEAD`,
+else rebase and re-run CI), and any listing of what moved diffs from the current merge base, never a literal sha.
+
+### 2026-11-04: Moved a check from parsed to raw input and lost the parser's default (#68, judge_design round 3, architecture)
+Revision 3 runs U1 on the raw YAML before the parse result is inspected and makes it fail closed when `checks` is
+"not a list of check objects". The schema has `checks: z.array(Check).default([])`, so a ready lesson with no
+`checks:` key (a theory lesson; `apps/web/test/course-fixture.ts` has two) is valid and every loader accepts it, but
+U1 would report it with a false message. The design claimed "a non-array `checks` fails the array schema" and "U1
+adds no restriction on any valid lesson"; neither holds for the absent key.
+Rule: When a check moves from parsed to raw input, list every `.default()` / `.optional()` / transform on the path
+it reads and give the raw-input rule the same meaning for each (absent `checks` = empty list), with a test.
+
+### 2026-11-04: A corpus scan was offered as proof that a fail-closed rule adds no restriction (#68, judge_design round 3, operations)
+Revision 3 states that U1 "adds no restriction on any valid lesson (scan in §3)". The scan covered the lessons that
+exist in three checkouts, all of which happen to carry a `checks:` key. A valid shape absent from the corpus (a ready
+`type: theory` lesson without `checks:`, accepted by `Lesson` through `.default([])`) is reported by the new
+fail-closed branch, so the first such content PR would get a red `content` job on a valid lesson.
+Rule: A scan shows only that today's files pass. Before claiming a new rule restricts no valid input, walk the schema
+for valid shapes the corpus lacks (defaults, optional keys, every lesson `type`) and add a test for each.
+
+### 2026-11-09: Rerouted an input class without grepping the tests that send it (#112, judge_design round 1, architecture)
+The design sends every non-terminal upgrade, `//[` included, to the request listener through `shouldUpgradeCallback`
+and changes the shared harness to use it, then states "All existing relay tests ... must stay green unchanged".
+Three tests send `//[` or `/elsewhere` through that harness and expect the relay's containment: relay-robust.test.ts:77
+(400 for a malformed URL), relay.test.ts:316 (one F4d line for 100 malformed URLs) and relay.test.ts:329 (S5-N1, a
+flood of one contained kind does not hide another). Under the design each gets the stand-in's keep-alive 308, never
+closes within the 5 s test timeout, and logs nothing. Two of them pin a security finding, and the design does not
+say what replaces them.
+Rule: When a design changes where an input goes, grep every test for that input (here `//[`, other non-terminal
+paths) before writing "unchanged", and for each test that changes, name its replacement and the mutation that
+turns it red.
+
+### 2026-11-09: Live-check layout copied two of the Dockerfile's runner COPY lines and left out the migrations (#112, judge_design round 1, operations)
+Design 8.4 step 2 assembles the image layout in place by copying `dist/server` and `.next/static` only. The
+Dockerfile runner stage also copies `packages/db/drizzle` (and `public`), because Turbopack resolves the migrations
+folder from the standalone root (`[turbopack]_runtime.js` ABSOLUTE_ROOT + `packages/db/dist/migrate.js` -> `../drizzle`),
+which gives `apps/web/.next/standalone/packages/db/drizzle`. The build does not trace it there, so web would exit 1
+at stage apply and step 4's "wait for `web: database migrations applied`" never happens: L1-L6 cannot run.
+Rule: When a test plan rebuilds an image layout outside Docker, copy every runner-stage COPY line of the Dockerfile
+(or say why one is skipped), and run the entry once in that layout before sending the design.
+
+### 2026-11-09: A mutation that changes code the test's input never reaches (#112, judge_design round 2, architecture)
+Design 7.1 W1 lists M2 "restore the `emit` to a `nextFacing` with a silent listener -> no status line -> red". W1
+runs through `createPublicServer`, whose `shouldUpgradeCallback` sends every non-terminal path to the request
+listener, so the dispatch (where M2 changes code) never sees W1's requests: under M2 alone W1 still gets 308 and stays
+green. The mutation only goes red together with M1 (no callback), which the design does not say, and the patch must
+also stand in for the removed `nextFacing` dep inside app.ts.
+Rule: For every mutation, trace the test's input through the mutated code path; if an earlier layer (a filter, a
+callback, a guard) keeps the input away from the mutated line, the mutation must also remove that layer, written as
+one exact patch.
+
+### 2026-11-09: Mutation guards that fail silently and are followed by `;` (#112, judge_design round 2, operations)
+Design 8.3 step 1 chains `[ ! -e "$B" ] && cp && patch --forward && ! cmp -s "$F" "$B"`, then `;` runs the test.
+Dry-run on a scratch copy: a left-over backup and a patch that leaves the file unchanged both make the chain return
+1 with no output, and the test still runs on an unmutated (or stale) file. For M3 against W4 the expected result is
+"stays green", so a guard failure there is reported as the expected outcome. A plain `diff -u <src> <copy>` also
+writes headers that `patch -p1` cannot resolve ("File to patch:", rc 1), and a refused hunk leaves `<file>.rej` next
+to the source.
+Rule: A guard in a test procedure must print a distinct line and stop the call when it fails (`|| { echo "GUARD
+FAILED <M>"; exit 1; }` before the test), and a patch-file recipe must give the exact command that produces paths
+the apply step strips correctly (`diff -u --label a/<path> --label b/<path>`), plus cleanup of `.rej`/`.orig`.
+
+### 2026-11-09: New early exit left a neighbouring doc comment false; a mutation row's red set not walked per test (#103, judge_design round 1, architecture)
+The design makes the lesson branch `continue` before `unknownCheckKeys` when the YAML fails, but leaves its doc
+comment (validate.ts:65-69, "runs whether or not the lesson parses") untouched; once a YAML parse can fail there, the
+comment is false on its plain reading. C9 M4 (failed lesson not counted) lists T3-T5 as red and omits T6, whose only
+lesson fails and whose `[1, 1, 1]` count becomes `[1, 1, 0]`; the tester is told to report any deviation as a design
+defect, so a correct mutation run would be reported as one.
+Rule: When a change adds an early exit before a function call, reread that function's doc comment against the new
+path; for every mutation row, evaluate each new test's assertions under the mutation, not only the ones it targets.

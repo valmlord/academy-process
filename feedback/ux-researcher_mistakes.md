@@ -232,3 +232,59 @@ followed the table faithfully, and the headless run checks each state alone, so 
 Rule: For every new state with a run control, name a target state whose rows continue that state's data (same
 counters, same limit form, the meta of the running word) or add one; reusing an older state is allowed only after
 diffing its rows against the source state.
+
+### 2026-11-03: Acceptance check asserts the not-found members but not the lesson and catalog keyboard members (#83, judge_design accessibility)
+plans/83-app-shell-states-check.mjs counts every not-found member in code, but for W2 and W3 it only asks that
+"Не удалось загрузить курс" occur twice anywhere in design/pages/lesson/acceptance.md, and it reads no catalog or
+dashboard acceptance file at all. Appending the string twice under "Open questions" satisfies it (run), while the
+lesson `F6` row for the course error, its Tab order, AC19 (three retry focus outcomes), AC20 and the D5 heading
+mapping, catalog AC8's not-found focus outcome (D7) and the "Course id unknown" scoping lines can all be missing.
+The not-found "focus does not move on arrival" half of AC9 is not measured either.
+Rule: Every work item that changes a keyboard or focus contract (F6 rows, Tab order, retry focus, heading levels)
+gets a code assertion of its own row or AC, located by its heading or row key, never a string count over the file.
+
+### 2026-11-03: Declined a decision the issue assigned to design, and recorded scope only in git-ignored plans/ (#83, judge_design usability)
+Issue #83's owner comment asks design to "decide whether the design accepts" the Radix Tabs ring on first
+mouse click (F3). The design answered "app behaviour, not a design rule ... dev decides", and the F3, G1 and
+`.checks-panel h2` (#69) hand-offs exist only in `plans/83-app-shell-states-design.md`, which is git-ignored:
+no lesson acceptance open question, no follow-up issue, nothing on #69. The same phase also left two rows
+describing a "Course id unknown" member unscoped or misstated: the ia.md R2 retry sentence names targets
+("the catalog h1, the lesson h1, or ... the error's own h1") for a list that includes the dashboard and the
+lesson text-load retries, whose targets are the Card heading and the tab panel; the inventory Purpose says
+not-found "links to the catalog" without the no-course exception.
+Rule: An item the issue explicitly asks design to decide is decided (even "accepted, because ...") in a
+committed design file; anything handed off goes to a durable place (issue, comment on the owning issue, Open
+questions); every enumeration in a rule is checked against each member it lists.
+
+### 2026-11-03: "Reuse the drawn composition unchanged" pointed at markup that lacks the attribute the design requires (#83, judge_design consistency)
+D3 says the lesson course error is the catalog's `#state-course-error` "unchanged", with the h1 as Alert title
+carrying `tabindex="-1"` so a second failed retry can focus it (also `catalog.md:38`, `lesson-environment.md:89,95`,
+`ia.md:171-172`; the app's `course-error.tsx:26` has `id="course-error-title" tabIndex={-1}`). The drawn reference,
+`design/pages/catalog/prototype.html:67`, is `<h1 class="alert-title text-sm">` with no id and no tabindex, and W3
+says "No change to either prototype", so the lesson acceptance would send dev to a drawing that contradicts its own
+spec. The acceptance check asserts neither this attribute nor that the new `.prose h4` rule uses the scale tokens
+(`--text-lg`, `--text-lg-line`, `--space-6`) rather than equal raw lengths: computed px cannot tell them apart.
+Rule: Before declaring "reuse X unchanged", diff X's markup against every attribute the design states for it and
+against the app component; a mismatch is a work item, and the check asserts the attribute and the token names.
+
+### 2026-11-03: README truth table accepted "h3 on pages" without checking a single page h3 (#83, judge_design round 2)
+The D5 truth table marked the README `text-lg` row "card and dialog titles; h3 on pages; h4 in prose" as holding,
+citing only `proto.css:114` for h3 and only the app's `.prose h4` for the app column. Every page h3 outside prose
+(catalog "Чему научитесь") is `text-sm` (`proto.css:520`, `apps/web/components/catalog/module-section.tsx:33`), so
+the phrase is false on both sides, and the check script locks it in. The phrase came from a judge note; the truth
+table exists to catch exactly that.
+Rule: A README truth-table row verifies every phrase in the sentence against both proto.css and the app, by
+grepping the rendered uses, including phrases a judge asked for.
+
+### 2026-11-03: New lesson course-error state left R4 and the not-found route set unscoped (#83, judge_design round 2, usability)
+Round 2 added the lesson page whose course cannot be read and scoped R3 to it ("none of the three regions
+exists"), but `ia.md` R4 still says, with no exception, that the lesson page's `main` holds "Урок", "Проверка" and
+"Окружение" and gives a Tab order through breadcrumbs ("Курс", module), a line the design's own grep terms
+(`"Курс"`, `breadcrumb`) match. The not-found entry set was also stated three ways: the inventory Route
+(the file the not-found acceptance Route copies) and `lesson-environment.md` F7 error states and retry clause
+omit a lesson URL whose course id is not the course's, which the app sends to not-found
+(`lessons/[lessonId]/page.tsx:71-72`) and `catalog.md` F5 and the R2 table header include. Round 1 U3 was
+this class (a statement not scoped to the case); fixing the listed members only left these.
+Rule: When a design adds a state to a page, grep every rule that describes that page's structure, Tab order and
+entry causes (`main holds`, `Tab order`, `Route`, the page's own region and control names), and scope each one or
+list it as unchanged with the reason; state each set (such as "the ways into not-found") once and point to it.
