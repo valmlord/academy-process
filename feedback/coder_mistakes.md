@@ -258,3 +258,21 @@ the four values through the instruction order.
 Rule: When fixing a false comment, check the replacement against every value it quantifies over, by tracing the cache
 chain (FROM, COPY --from, then every later instruction), not only the mechanism that was wrong. Claim what the
 declaration does ("declaring them here invalidates no RUN"), not what a bump does, unless every bump was checked.
+
+### 2026-11-04: Edited a test after the last formatter run and committed a lint-red step (#32, spawn B)
+Step 8 (b9b8092) was committed after a late edit to `apps/web/server/relay.test.ts`; `pnpm lint` failed on one formatter
+diff, and amend was not allowed, so a separate formatting commit (73ad8fa) followed. The step commit alone is lint-red.
+Rule: run `pnpm lint` as the very last command before every `git commit`, after any later edit, and do not commit if it
+is red.
+
+### 2026-11-09: Fixed a proven defect by adding a framework internal, with no automatic guard and no ADR entry (#32, spawn D)
+0f3a7f9 fixed D1 (merge-blocking SessionReadError on the sign-out redirect) by setting `__NEXT_PRIVATE_ORIGIN` in
+`start()`. That makes the custom server depend on a fourth Next internal, one Next's own source marks "TODO: Remove"
+(`action-handler.js:143,280`). U-origin tests only the derivation; removing the assignment, or a Next bump that drops
+the variable, brings D1 back and no check fails: the tester's mutation run ended `T32 RESULT OK` with sign-out green,
+and only a manual grep of the web log showed the error. ADR-0011's "a Next upgrade must re-verify" list and design 8.2's
+"R-SMOKE and the e2e guard them" were not updated, so both now claim more than is true. The coder notes recorded the gap
+as a residual instead of closing it.
+Rule: when a fix couples to a framework internal, add it to the ADR's upgrade-reverify list and the residuals in the
+same commit, and give the fix an automatic check that goes red when the fix line is removed; watch it go red before
+calling the defect fixed. "Guarded by reading the log" is not a guard.
