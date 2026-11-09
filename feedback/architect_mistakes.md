@@ -1393,3 +1393,12 @@ exist in three checkouts, all of which happen to carry a `checks:` key. A valid 
 fail-closed branch, so the first such content PR would get a red `content` job on a valid lesson.
 Rule: A scan shows only that today's files pass. Before claiming a new rule restricts no valid input, walk the schema
 for valid shapes the corpus lacks (defaults, optional keys, every lesson `type`) and add a test for each.
+
+### 2026-11-09: New early exit left a neighbouring doc comment false; a mutation row's red set not walked per test (#103, judge_design round 1, architecture)
+The design makes the lesson branch `continue` before `unknownCheckKeys` when the YAML fails, but leaves its doc
+comment (validate.ts:65-69, "runs whether or not the lesson parses") untouched; once a YAML parse can fail there, the
+comment is false on its plain reading. C9 M4 (failed lesson not counted) lists T3-T5 as red and omits T6, whose only
+lesson fails and whose `[1, 1, 1]` count becomes `[1, 1, 0]`; the tester is told to report any deviation as a design
+defect, so a correct mutation run would be reported as one.
+Rule: When a change adds an early exit before a function call, reread that function's doc comment against the new
+path; for every mutation row, evaluate each new test's assertions under the mutation, not only the ones it targets.
