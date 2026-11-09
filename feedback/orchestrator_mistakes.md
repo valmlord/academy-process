@@ -328,6 +328,27 @@ Rule: read `gh issue view <n> --comments` before writing the architect brief, li
 in-scope item or a decision for Stepan, and require each out-of-scope item to be recorded in a committed file or a
 follow-up issue, never only in `plans/`.
 
+### 2026-11-09: My own suggested comment wording cost a judge round (#33)
+
+judge_code round 2 failed on a false Dockerfile comment. In the coder brief I wrote a replacement sentence myself
+("no RUN of this stage sees them, and a version bump re-runs none of them") and the coder used it verbatim; its second
+clause was false for a base, Go or Node bump, and round 3 failed on it. The #15 rule (a judge's wording is a hint) applies
+to my own wording too.
+Rule: when a fix is a sentence about behaviour, do not hand the coder a ready sentence; ask for one that claims only what
+the code and the evidence show, and have the coder list each case the sentence covers with the evidence for it.
+
+### 2026-11-09: Docker disk and parallel sessions were not in the brief until they bit (#33)
+
+The Docker VM disk filled once (another session's builds), and later the build cache stood at 43.5 GB before my
+coder's first build. The owner snapshot then showed a parallel session's `:t32` images. Each cost a stop and a question
+to Stepan. The guard harness for the fake-docker runs also took four design rounds (sec r4 N1 still lists `env -P`,
+`bash -l` and `env -i` forms as residual), because the first versions proved the stub resolved but not that the script
+used it.
+Rule: for any task that builds images, put in the first coder and tester briefs: `docker system df` and `df -h /`
+before and after, a stop threshold, own images removed right after each check, and an owner-snapshot exclusion for
+every parallel session's tags known at init. For any stub harness, gate every risky row on a positive control that
+proves the script under test reached the stub.
+
 ### 2026-11-09: Briefed stack runs without a disk and build-cache budget (#32)
 
 The first #32 tester run copied the tree several times while images built; the host disk filled, the Docker VM
@@ -347,3 +368,12 @@ skipped, but the size should have been named before judge_design. judge_design t
 Rule: re-tier from the architect's own size estimate and tell Stepan when it crosses a tier. When re-briefing the
 architect after a FAIL, ask it to check each prescribed fix against its source (the cited design, the schema's
 defaults, the property behind a listed case) before writing it in, not to copy the judge's sentence.
+
+### 2026-11-09: Two optional README notes I asked for cost a judge round (#33 merge hotfix)
+
+Round 1 of the merge hotfix failed on one ADR line. In the fix brief I also asked for two non-blocking README additions
+(a TERMINAL_SHELL=/bin/sh fallback, a detailed #32 rollback list). Both were new procedure text that nobody ran end to
+end, and round 2 failed on both.
+Rule: a fix round after a FAIL carries the blocker and its class only. Non-blocking notes that add procedure text go to a
+follow-up or are dropped unless Stepan asks for them, and any procedure text added gets the same run-it rehearsal as the
+original steps.

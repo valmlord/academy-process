@@ -1112,6 +1112,72 @@ Rule: State a closed case by the object a line names (the image), not by the log
 forms, collect them from every log of the prescribed builds (`docker buildx history logs` piped through
 `grep docker.io/ | sort | uniq -c`) and say they are examples.
 
+### 2026-11-04: Exact smoke commands that cannot run as written under the flags they sit beside (#33, judge_design round 1, architecture)
+Design 5.1 gives the volume setup as `docker run --user 0:0 --cap-drop ALL --cap-add CHOWN ... install -d -m 0755 -o 1000 -g 1000 /workspace/home /workspace/home/work`.
+`install` chowns `/workspace/home` to 1000 right after creating it, then root without `CAP_DAC_OVERRIDE` must
+create `work` inside a `1000:1000 0755` directory and gets EACCES: every smoke run, and so every
+`build-workspace-image.sh` run, fails at setup. Design 5.2 S12 asserts "no output" from
+`command -v curl wget gcc cc sudo` inside `docker exec sh -c`; `/bin/sh` on Ubuntu is dash, whose `command -v`
+looks up only the first operand (checked: `dash -c 'command -v nonexist ls'` prints nothing, rc 127), so a gcc,
+wget or sudo in the image could never turn the row red.
+Rule: For every exact command in a design, trace it under the exact privileges and the exact shell it runs with
+(capabilities after `--cap-drop`, `/bin/sh` of the image), and give multi-name checks one name per invocation.
+
+### 2026-11-04: The delivery script moved the owner's tag before its own check, with no way back (#33, judge_design round 1, operations)
+Design 4.1 builds with `docker build -t "$image"` and runs `smoke.sh` afterwards. When the smoke fails (or is
+interrupted), `academy-workspace:dev`, the only image name the service uses, already points at the unverified build;
+the previous image is left untagged and its Id is recorded nowhere. README 8.1 and section 9 say only "it ends with
+`SMOKE result OK`": nothing tells Stepan to stop before deleting the `.env` line, how to put the old image back, or
+how to roll #33 back (README has a rollback paragraph for #31). In the same design, S6 checks
+`for d in ...; do test ! -e "$d/claude"; done` in `sh -c`: a loop's status is its last iteration's, so a `claude` in
+any directory but the last one passes (checked with dash: `/usr/bin/ls` present in the middle iteration, loop rc 0),
+and the R-e5 red run plants it in `/usr/bin`, the last iteration, so the red run cannot show the hole.
+Rule: A script that tags an owner's image verifies under a candidate name or records the previous Id and restores it
+on failure, and the README states the failure path and the rollback. Every loop or list in an exact check fails on
+the first bad element (`|| exit 1`), and its red run plants the fault in a non-last element.
+
+### 2026-11-04: The fake-docker exception to "agents never build :dev" never checks that the stub is the docker it runs (#33, judge_design round 2, security)
+Design D5 and 13 [O2]/[O2b] let the coder (step 5), the tester and the operations judge run
+`PATH="$scratch/nodocker:$PATH" bash scripts/build-workspace-image.sh academy-workspace:dev` on the strength of a stub
+`docker` alone. Nothing proves the stub is what resolves: agent Bash calls do not keep shell variables, so in a call
+that did not set `scratch` the prefix is `/nodocker` and `command -v docker` prints `/usr/local/bin/docker` (checked
+in this session). The expected result of a working guard (rc 2, no `fake docker called`) is the same whether or not
+the stub resolved, so a missing stub is invisible exactly until the guard is broken, and the coder runs [O2b] right
+after writing the guard, before any other test of it. Then the real daemon builds `academy-workspace:dev-candidate`
+and moves Stepan's `academy-workspace:dev`: decision 5 broken by the very check meant to protect it.
+Rule: A safety net that lets an agent run a forbidden command must be verified in the same command before it is
+relied on (the stub answers with its marker and exit code), and must not depend on a variable from an earlier call;
+better, build PATH so the real tool is unreachable at all (`PATH=<absolute stub dir>:/usr/bin:/bin`).
+
+### 2026-11-04: README commands proven in non-interactive zsh, broken in the owner's interactive zsh (#33, judge_design round 2, operations)
+Revision 2's README 8.1 step 4 puts a trailing `# comment` on every command (`bash scripts/build-workspace-image.sh   # must end with "SMOKE result OK"; on FAIL stop here (step 2)`,
+`docker compose up -d --build --wait workspace   # recreates ...`, the `sed`, `grep`, `echo` and `printenv` lines, and
+the rollback block). Stepan's interactive zsh has no `interactivecomments` (`zsh -i -c setopt` lists only `interactive`),
+so `#` is an ordinary word and `;` inside the comment ends the command. Pasted, the build line exits 2 with the usage
+error, `compose up` gets services named `#`, `recreates`, ..., and the `sed` line still deletes the `.env` override:
+the exact "delete before building" order the README warns against. The 5.6 evidence ran the lines with `zsh` on a
+script, where comments always work.
+Rule: Run every README command block the way the owner runs it (pasted into `zsh -i` with his own config), not as a
+script; keep comments out of copy-paste blocks.
+
+### 2026-11-04: The delivery script told the owner to delete an image Id without checking it is not the current one (#33, judge_design round 2, operations)
+Design 4.1 step 7 prints "the previous image stays on disk untagged; docker image rm ${prev} frees it" whenever `prev`
+is an Id. A rebuild with unchanged inputs and the same context label is fully cached and BuildKit gives it the same
+Id, so `prev` is the new `:dev` itself; after the README's container removal, following the message deletes
+`academy-workspace:dev` and every lesson answers `image-missing`.
+Rule: A printed clean-up instruction names an object only after the script has proven it is not the one just
+delivered (`prev != new`), and says "unchanged" otherwise.
+
+### 2026-11-04: The fake-docker harness proves the stub runs only after the row that would hurt (#33, judge_design round 3, security)
+Revision 3's harness (`plans/33-fake-docker-guard.sh`) checks that `docker` on its own `PATH` is the stub, but the
+script under test can still reach the real client by an absolute path (`/usr/local/bin/docker`) or a `PATH=` line of
+its own. The positive control that would catch it (`t33-stubcheck`) only increments `failures` and the harness goes
+on to `academy-workspace:dev` with `CLAUDECODE` removed, so one coder slip runs a real `docker build -t
+academy-workspace:dev-candidate` (a protected D2 name) before the run turns red. Reproduced with stubs only
+(scratchpad `sec3/repo2`): both rows report `docker-called=no` after the "absolute" docker was reached.
+Rule: A control that proves a safety precondition gates the risky step: run it first and stop on its failure; never
+let it only change the final verdict after the risky step has run.
+
 ### 2026-11-04: A long-lived connection authorized once silently weakened an ADR's revocation guarantee (#32, judge_design round 1, security)
 The #32 design authorizes the terminal WebSocket once, with a 30 s ticket, and the relay keeps it open until the
 session's `expiresAt`, up to 7 days. The residual (8.2, ADR-0011 Consequences) names only "sign-out in another tab".
