@@ -1393,3 +1393,45 @@ exist in three checkouts, all of which happen to carry a `checks:` key. A valid 
 fail-closed branch, so the first such content PR would get a red `content` job on a valid lesson.
 Rule: A scan shows only that today's files pass. Before claiming a new rule restricts no valid input, walk the schema
 for valid shapes the corpus lacks (defaults, optional keys, every lesson `type`) and add a test for each.
+
+### 2026-11-09: Rerouted an input class without grepping the tests that send it (#112, judge_design round 1, architecture)
+The design sends every non-terminal upgrade, `//[` included, to the request listener through `shouldUpgradeCallback`
+and changes the shared harness to use it, then states "All existing relay tests ... must stay green unchanged".
+Three tests send `//[` or `/elsewhere` through that harness and expect the relay's containment: relay-robust.test.ts:77
+(400 for a malformed URL), relay.test.ts:316 (one F4d line for 100 malformed URLs) and relay.test.ts:329 (S5-N1, a
+flood of one contained kind does not hide another). Under the design each gets the stand-in's keep-alive 308, never
+closes within the 5 s test timeout, and logs nothing. Two of them pin a security finding, and the design does not
+say what replaces them.
+Rule: When a design changes where an input goes, grep every test for that input (here `//[`, other non-terminal
+paths) before writing "unchanged", and for each test that changes, name its replacement and the mutation that
+turns it red.
+
+### 2026-11-09: Live-check layout copied two of the Dockerfile's runner COPY lines and left out the migrations (#112, judge_design round 1, operations)
+Design 8.4 step 2 assembles the image layout in place by copying `dist/server` and `.next/static` only. The
+Dockerfile runner stage also copies `packages/db/drizzle` (and `public`), because Turbopack resolves the migrations
+folder from the standalone root (`[turbopack]_runtime.js` ABSOLUTE_ROOT + `packages/db/dist/migrate.js` -> `../drizzle`),
+which gives `apps/web/.next/standalone/packages/db/drizzle`. The build does not trace it there, so web would exit 1
+at stage apply and step 4's "wait for `web: database migrations applied`" never happens: L1-L6 cannot run.
+Rule: When a test plan rebuilds an image layout outside Docker, copy every runner-stage COPY line of the Dockerfile
+(or say why one is skipped), and run the entry once in that layout before sending the design.
+
+### 2026-11-09: A mutation that changes code the test's input never reaches (#112, judge_design round 2, architecture)
+Design 7.1 W1 lists M2 "restore the `emit` to a `nextFacing` with a silent listener -> no status line -> red". W1
+runs through `createPublicServer`, whose `shouldUpgradeCallback` sends every non-terminal path to the request
+listener, so the dispatch (where M2 changes code) never sees W1's requests: under M2 alone W1 still gets 308 and stays
+green. The mutation only goes red together with M1 (no callback), which the design does not say, and the patch must
+also stand in for the removed `nextFacing` dep inside app.ts.
+Rule: For every mutation, trace the test's input through the mutated code path; if an earlier layer (a filter, a
+callback, a guard) keeps the input away from the mutated line, the mutation must also remove that layer, written as
+one exact patch.
+
+### 2026-11-09: Mutation guards that fail silently and are followed by `;` (#112, judge_design round 2, operations)
+Design 8.3 step 1 chains `[ ! -e "$B" ] && cp && patch --forward && ! cmp -s "$F" "$B"`, then `;` runs the test.
+Dry-run on a scratch copy: a left-over backup and a patch that leaves the file unchanged both make the chain return
+1 with no output, and the test still runs on an unmutated (or stale) file. For M3 against W4 the expected result is
+"stays green", so a guard failure there is reported as the expected outcome. A plain `diff -u <src> <copy>` also
+writes headers that `patch -p1` cannot resolve ("File to patch:", rc 1), and a refused hunk leaves `<file>.rej` next
+to the source.
+Rule: A guard in a test procedure must print a distinct line and stop the call when it fails (`|| { echo "GUARD
+FAILED <M>"; exit 1; }` before the test), and a patch-file recipe must give the exact command that produces paths
+the apply step strips correctly (`diff -u --label a/<path> --label b/<path>`), plus cleanup of `.rej`/`.orig`.

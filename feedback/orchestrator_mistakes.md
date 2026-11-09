@@ -377,3 +377,13 @@ end, and round 2 failed on both.
 Rule: a fix round after a FAIL carries the blocker and its class only. Non-blocking notes that add procedure text go to a
 follow-up or are dropped unless Stepan asks for them, and any procedure text added gets the same run-it rehearsal as the
 original steps.
+
+### 2026-11-09: Design rounds spent on the test plan, not the fix (#112)
+
+judge_design took three rounds (Stepan approved the third). The fix itself (shouldUpgradeCallback, no timer) passed
+all three judges in round 1; every blocker after that was in the test plan: existing tests the new harness reroutes,
+a mutation whose input never reaches the mutated line, a live-check layout that skipped Dockerfile COPY lines, and a
+mutation recipe whose guards failed silently. Each would have shown up in one scripted run.
+Rule: when a design prescribes mutations, a rebuilt image layout or a shell procedure, the architect brief asks for
+(1) a trace of every mutation's input through the code to the mutated line, (2) a grep of every existing test that
+sends a rerouted input, and (3) a dry run of each procedure, including every guard failure, before judge_design.
