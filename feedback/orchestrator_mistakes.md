@@ -328,6 +328,15 @@ Rule: read `gh issue view <n> --comments` before writing the architect brief, li
 in-scope item or a decision for Stepan, and require each out-of-scope item to be recorded in a committed file or a
 follow-up issue, never only in `plans/`.
 
+### 2026-11-09: Briefed stack runs without a disk and build-cache budget (#32)
+
+The first #32 tester run copied the tree several times while images built; the host disk filled, the Docker VM
+went read-only and Stepan's Postgres was hit. After the restart every isolated stack run still added about 3 GB of
+build cache that agents may not prune, so the cache went from 0 to 43 GB over one task.
+Rule: every brief that may build images or run a stack states the host-free floor, a build-cache ceiling, the
+maximum number of stack runs and "never prune"; check `df -h /` and `docker system df` between spawns and tell
+Stepan when the cache passes the ceiling instead of starting another run.
+
 ### 2026-11-04: A contract change sized from the issue label, and a design that took four rounds (#68)
 
 #68 was labelled tier:task and the issue said "migrate the six module 00 lessons"; the researcher found 18 ready

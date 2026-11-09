@@ -234,6 +234,39 @@ Rule: When prescribing a protected set for an agent on a shared host, start from
 did not create") and name the owner's known objects as detection subsets. Before sending, ask what else on the host
 holds secrets or feeds the owner's stack.
 
+### 2026-11-04: Prescribed a string-length check before `timingSafeEqual` over UTF-8 bytes (#32, security round 1)
+Round-1 S-N1 prescribed "compare the expected MAC's base64url string (length check, timingSafeEqual over string bytes)".
+The architect applied it word for word. String length is not byte length: a percent-decoded non-ASCII character keeps
+the string length at 43 and makes the UTF-8 buffer 44 bytes, so `timingSafeEqual` throws `RangeError` on a pre-auth
+path. Round 1 also did not check that the new upgrade listener catches errors and adds a socket `error` listener.
+Both surfaced in round 2.
+Rule: Before prescribing a crypto comparison, state the input's charset and its byte-length check, and name what
+the primitive throws on. For every new pre-auth socket handler, check error containment in round 1.
+
+### 2026-11-04: Prescribed a standalone smoke inside the clone, where Node resolves the workspace's node_modules (#32, judge_design round 2, operations)
+Round-1 O-B1 prescribed copying the built server into `<clone>/apps/web/.next/standalone/apps/web/server` and importing
+it there. From that path Node walks up into `<clone>/apps/web/node_modules`, so `yaml`, `drizzle-orm`, `better-auth`
+and `@academy/db` all resolve; only `zod` (not a web dependency) failed. The architect applied it, and design 3.1 then
+claimed "a new npm import turns it red". Copied out of the clone, every untraced package fails.
+Rule: A layout smoke runs in a copy outside the repository tree. Before prescribing it, try two neighbouring imports
+(a direct dependency of the package, a workspace package) and confirm both fail there.
+
+### 2026-11-04: A planted-object proof that the old behaviour also passes (#32, judge_design round 2, operations)
+Round-1 S-N8 asked to prove "preflight before the trap" with a planted academy-t32-labelled object surviving the
+refusal. The teardown never removes a label-only volume (it removes MANAGED objects, `academy-t32_db-data` by name and
+`:t32` images; `down` has no `-v`), so in a simulation the trap-first order also prints STOP, exits 1 and keeps the
+volume. R-PREFLIGHT could not fail.
+Rule: For a "survives" proof, plant an object the old code path would actually remove (read its removal list first)
+and also assert the old path's own output (here no TEARDOWN or RESULT line) is absent. Simulate both orders first.
+
+### 2026-11-04: Three architecture rounds accepted `term.reset()` without reading xterm's own doc of it (#32, judge_design round 4, architecture)
+"The client resets the terminal and writes the snapshot" was in the design from round 1. Rounds 1-3 walked the state
+rows but never opened xterm 6.0.0's `reset()`, whose doc says it keeps queued input and the parser state
+(`CoreBrowserTerminal.ts:1260-1267`). The source was in the scratch clone's `node_modules` all along. It surfaced only
+in round 4, once the A3-B1 test made a queued write at the switch explicit.
+Rule: For every library call a state row depends on (reset, dispose, close, pause), read its doc comment and body in
+the installed version during round 1, and say what it does to queued work.
+
 ### 2026-11-04: Round-1 prescription for the "never counted" floor dropped #15's safety condition (#68, judge_design round 2, security)
 Round-1 architecture finding 1 prescribed the ADR-0001 floor as a bare list ("format errors, stage-0 rejections,
 platform `error` results") and the round-1 security review did not check it against #15 §2.5.6, which exempts a
