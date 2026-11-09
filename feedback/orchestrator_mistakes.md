@@ -377,3 +377,12 @@ end, and round 2 failed on both.
 Rule: a fix round after a FAIL carries the blocker and its class only. Non-blocking notes that add procedure text go to a
 follow-up or are dropped unless Stepan asks for them, and any procedure text added gets the same run-it rehearsal as the
 original steps.
+
+### 2026-11-09: Tiered from the issue's "<= 5 LOC" feel, then from the architect's estimate; both were low (#103)
+
+#103 was labelled tier:hotfix. I picked TASK from a read of the code (readYaml plus three call sites), the
+architect estimated about 95 lines, and the real diff was 170+/16- in three files (tests 106), so PROJECT by line
+count. The phases match, so nothing was skipped, but the size reached Stepan only in the final report. The number
+that was right came from the operations judge, who implemented the design in a scratch clone during judge_design.
+Rule: when an operations judge implements the design in a scratch clone, take its `git diff --stat` as the size,
+re-tier from it before planner and tell Stepan then if it crosses a tier. Count test lines: the tier table does.
