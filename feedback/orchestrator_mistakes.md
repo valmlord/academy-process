@@ -387,3 +387,12 @@ mutation recipe whose guards failed silently. Each would have shown up in one sc
 Rule: when a design prescribes mutations, a rebuilt image layout or a shell procedure, the architect brief asks for
 (1) a trace of every mutation's input through the code to the mutated line, (2) a grep of every existing test that
 sends a rerouted input, and (3) a dry run of each procedure, including every guard failure, before judge_design.
+
+### 2026-11-09: Tiered from the issue's "<= 5 LOC" feel, then from the architect's estimate; both were low (#103)
+
+#103 was labelled tier:hotfix. I picked TASK from a read of the code (readYaml plus three call sites), the
+architect estimated about 95 lines, and the real diff was 170+/16- in three files (tests 106), so PROJECT by line
+count. The phases match, so nothing was skipped, but the size reached Stepan only in the final report. The number
+that was right came from the operations judge, who implemented the design in a scratch clone during judge_design.
+Rule: when an operations judge implements the design in a scratch clone, take its `git diff --stat` as the size,
+re-tier from it before planner and tell Stepan then if it crosses a tier. Count test lines: the tier table does.

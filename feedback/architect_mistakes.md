@@ -1435,3 +1435,12 @@ to the source.
 Rule: A guard in a test procedure must print a distinct line and stop the call when it fails (`|| { echo "GUARD
 FAILED <M>"; exit 1; }` before the test), and a patch-file recipe must give the exact command that produces paths
 the apply step strips correctly (`diff -u --label a/<path> --label b/<path>`), plus cleanup of `.rej`/`.orig`.
+
+### 2026-11-09: New early exit left a neighbouring doc comment false; a mutation row's red set not walked per test (#103, judge_design round 1, architecture)
+The design makes the lesson branch `continue` before `unknownCheckKeys` when the YAML fails, but leaves its doc
+comment (validate.ts:65-69, "runs whether or not the lesson parses") untouched; once a YAML parse can fail there, the
+comment is false on its plain reading. C9 M4 (failed lesson not counted) lists T3-T5 as red and omits T6, whose only
+lesson fails and whose `[1, 1, 1]` count becomes `[1, 1, 0]`; the tester is told to report any deviation as a design
+defect, so a correct mutation run would be reported as one.
+Rule: When a change adds an early exit before a function call, reread that function's doc comment against the new
+path; for every mutation row, evaluate each new test's assertions under the mutation, not only the ones it targets.
