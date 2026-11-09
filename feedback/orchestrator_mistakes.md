@@ -336,6 +336,7 @@ build cache that agents may not prune, so the cache went from 0 to 43 GB over on
 Rule: every brief that may build images or run a stack states the host-free floor, a build-cache ceiling, the
 maximum number of stack runs and "never prune"; check `df -h /` and `docker system df` between spawns and tell
 Stepan when the cache passes the ceiling instead of starting another run.
+
 ### 2026-11-04: A contract change sized from the issue label, and a design that took four rounds (#68)
 
 #68 was labelled tier:task and the issue said "migrate the six module 00 lessons"; the researcher found 18 ready

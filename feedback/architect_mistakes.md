@@ -1253,6 +1253,7 @@ CSI sequence by a connection cut swallows the head of the snapshot. RIS (`ESC c`
 Rule: When a design calls a library method on an object that has a queue (a terminal write buffer, a stream, a
 batching renderer), read the method's doc and body for what it does to queued work, and walk the row with work still
 queued; prefer the in-band form when order matters.
+
 ### 2026-11-04: Scoped a security rule by check kind, missing the capped command checks (#68, security)
 The #68 design required `attempts.limit` only on ready quiz and bug-hunt checks, calling them "the
 security-relevant kinds", and left a missing or misspelled `attempts` block on a command check to human review

@@ -266,6 +266,7 @@ rows but never opened xterm 6.0.0's `reset()`, whose doc says it keeps queued in
 in round 4, once the A3-B1 test made a queued write at the switch explicit.
 Rule: For every library call a state row depends on (reset, dispose, close, pause), read its doc comment and body in
 the installed version during round 1, and say what it does to queued work.
+
 ### 2026-11-04: Round-1 prescription for the "never counted" floor dropped #15's safety condition (#68, judge_design round 2, security)
 Round-1 architecture finding 1 prescribed the ADR-0001 floor as a bare list ("format errors, stage-0 rejections,
 platform `error` results") and the round-1 security review did not check it against #15 §2.5.6, which exempts a
