@@ -327,3 +327,16 @@ follow-ups recorded only in git-ignored `plans/`.
 Rule: read `gh issue view <n> --comments` before writing the architect brief, list every owner comment as an
 in-scope item or a decision for Stepan, and require each out-of-scope item to be recorded in a committed file or a
 follow-up issue, never only in `plans/`.
+
+### 2026-11-10: Eleven design rounds on one class, closed by one rule only in round 9 (#70)
+
+judge_design for the quiz flows took 11 rounds. From round 2 on almost every blocker was one more case of "where does
+focus go when an answer arrives and the learner is not on the panel": tab switch, Safari mouse focus on `body`, open
+menus and dialogs, the idle warning, a control the answer removes. Each fix named the cases the judges listed, and the
+next round found the next one. Round 9 replaced the cases with one R2 rule ("focus after a background change", a
+fallback order per region) and the tail ended in two rounds. Rounds 3-4 were also spent on prototype mechanics traced
+against a sibling task's unmerged proto.js; they went to the author phase only after Stepan decided it.
+Rule: at the second FAIL of the same shape, brief the architect for one general rule over the whole class (list the
+members, then one rule with a fallback), not the listed cases. Do not judge behaviour that depends on another
+branch's uncommitted code in judge_design: state the required behaviour in the flows and test the mechanics in the
+author phase, after that branch merges.

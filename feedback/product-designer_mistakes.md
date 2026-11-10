@@ -112,3 +112,21 @@ gives one for the top bar and the retry in the same rows. `lesson/acceptance.md:
 catalog, which contradicts the catalog's own Route. A dev or tester checking 2.4.2 gets two answers.
 Rule: When a note states a per-state `<title>` the static prototype cannot render, say so in that row, and
 when another page's note lists differences from it, compare against that page's note, not its prototype.
+
+### 2026-11-10: Quiz states carried the v1 empty text and a first-attempt send state into later attempts (#70, judge_ux round 1, usability)
+Three gaps of one kind: a v1 or first-attempt element reused in quiz states where its facts are false.
+(1) `lesson/prototype.html:1192` shows "Попыток пока нет. Нажмите "Проверить", когда будете готовы." in
+quiz-failed, -last-attempt, -closed, -row-closed, -limit-unknown, -answered-away, -notice-two-pane and -refused,
+right under the quiz row's "Неудачных попыток: N из 3". `checks.md:522-524` ties that text to "every check as
+"Не запускалась"", which no longer holds once the quiz row shows a sent attempt. In F15.6 (`#state-quiz-row-closed`)
+the learner reads "Закрыта: не пройдено, Неудачных попыток: 3 из 3" and then "Попыток пока нет".
+(2) `#quiz-send` (`:1464`) always goes to the one `quiz-sending` state, whose header is "Попытка 1 из 3"
+(`:1208`) and whose quiz row is "Ответы не отправлялись, 0 из 3" (`:1007`). So a send from quiz-failed,
+-last-attempt or -refused drops the attempt line and the "Осталась 1 попытка" warning. This is not in
+"Prototype limitations", and quiz-run.js asserts H1 for every send, so the regression counts as expected.
+(3) The refusal that finds the quiz passed or closed (`quiz.md:640-644`, AC43) is neither drawn nor listed as
+not drawn. Its composition (refusal title, then "Квиз пройден" or the close line, icon) is left to dev.
+AC56 also names only limitation 1 as an exception, though limitations 2-3 are Back and Forward cases its own sweep runs.
+Rule: For every element shared across quiz states, check its facts against each state's attempt number and quiz
+row, and do the same for every state a control leads to. Each quiz.md state is drawn or listed in "Prototype
+limitations", and every limitation the headless AC runs into is named as an exception in that AC.
