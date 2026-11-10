@@ -219,3 +219,88 @@ created from".
 Rule: Call `mutex.run` synchronously at the top of every locked operation and do all work inside it; never mutate
 shared state (tracker, cache) from a snapshot taken before an await unless under the same lock with a freshness
 check; a deviation that touches ordering needs a test whose start state makes the two orders diverge.
+
+### 2026-11-09: ARGs declared at the top of each Dockerfile stage broke the layer-cache property a comment still claims (#33, judge_code round 1, architecture)
+Design 3.4 orders the final stage so that "a Claude Code bump rebuilds only the last big layer", and
+`images/workspace/Dockerfile:148` repeats it. Coder delta 1 redeclared `GO_VERSION`, `NODE_VERSION` and
+`CLAUDE_VERSION` at the top of the final stage (`:121-123`) and declared every fetch-stage pin at the top of `fetch`
+(`:31-41`). Docker's reference: every `RUN` after an `ARG` uses it implicitly as an environment variable, so a changed
+value is a cache miss for all of them. A version bump therefore re-runs the apt RUN, the identity RUN and the Go and
+Node downloads, and every final-stage layer is new. The delta recorded the scoping but not its cache effect, and the
+only cache test was a CLI `--label` change, which no ARG touches. Separately, the build script header (`:7`) still
+said "On every failure <image> keeps its previous Id" after revision 5 added FAIL lines where the tag has moved.
+Rule: Declare each Dockerfile ARG immediately before the first instruction that reads it (label-only ARGs right
+before `LABEL`); when a comment claims a cache property, prove it by changing that ARG's value and checking which
+steps say CACHED. After changing behaviour, reread the file's header comment against every new path.
+
+### 2026-11-09: The B1 fix added a cache comment that is false as written (#33, judge_code round 2, architecture)
+The round-1 fix moved the label ARGs right before `LABEL` and commented them
+`# Read only by LABEL, so declared here: a version bump changes no layer of this stage.`
+(`images/workspace/Dockerfile:168`, copied into design 3.4 step 8). The placement is right and the cache evidence
+is real, but the sentence is not: a `BASE_IMAGE` bump changes every layer of the stage, a Go bump the
+`/usr/local/go` COPY layer, a Claude Code bump the `/opt/claude` COPY layer, which the comment at `:150` in the same
+stage says outright. What the placement guarantees is narrower: these four declarations put no ARG into any RUN
+of the stage, so they cause no cache miss by themselves. The fix was asked to make every caching comment true, and
+the new comment was the one left unchecked.
+Rule: A comment that states a cache property names the mechanism it covers ("no RUN of this stage sees these ARGs")
+and is checked against every value it mentions; when two comments in one stage describe the same bump, read them
+side by side before committing.
+
+### 2026-11-09: A reworded cache comment kept the same overclaim (#33, judge_code round 3)
+The round-2 fix of images/workspace/Dockerfile:168 replaced "a version bump changes no layer of this stage" with
+"no RUN of this stage sees them, and a version bump re-runs none of them". The first clause is true; the second is
+still false for three of the four ARGs it sits above: a BASE_IMAGE bump changes `FROM ${BASE_IMAGE}` and re-runs every
+RUN of the final stage (apt, usermod, test -x); a GO_VERSION or NODE_VERSION bump changes the fetch output, so the
+`COPY --from=fetch` of Go or Node misses and the later `RUN test -x` re-runs. Only CLAUDE_VERSION re-runs no RUN here.
+The design delta that quotes the new comment lists "a base bump changes every layer of the final stage" two lines
+above it. The rewording narrowed the noun (layer -> RUN) but kept the universal "a version bump", and nobody walked
+the four values through the instruction order.
+Rule: When fixing a false comment, check the replacement against every value it quantifies over, by tracing the cache
+chain (FROM, COPY --from, then every later instruction), not only the mechanism that was wrong. Claim what the
+declaration does ("declaring them here invalidates no RUN"), not what a bump does, unless every bump was checked.
+
+### 2026-11-04: Edited a test after the last formatter run and committed a lint-red step (#32, spawn B)
+Step 8 (b9b8092) was committed after a late edit to `apps/web/server/relay.test.ts`; `pnpm lint` failed on one formatter
+diff, and amend was not allowed, so a separate formatting commit (73ad8fa) followed. The step commit alone is lint-red.
+Rule: run `pnpm lint` as the very last command before every `git commit`, after any later edit, and do not commit if it
+is red.
+
+### 2026-11-09: Fixed a proven defect by adding a framework internal, with no automatic guard and no ADR entry (#32, spawn D)
+0f3a7f9 fixed D1 (merge-blocking SessionReadError on the sign-out redirect) by setting `__NEXT_PRIVATE_ORIGIN` in
+`start()`. That makes the custom server depend on a fourth Next internal, one Next's own source marks "TODO: Remove"
+(`action-handler.js:143,280`). U-origin tests only the derivation; removing the assignment, or a Next bump that drops
+the variable, brings D1 back and no check fails: the tester's mutation run ended `T32 RESULT OK` with sign-out green,
+and only a manual grep of the web log showed the error. ADR-0011's "a Next upgrade must re-verify" list and design 8.2's
+"R-SMOKE and the e2e guard them" were not updated, so both now claim more than is true. The coder notes recorded the gap
+as a residual instead of closing it.
+Rule: when a fix couples to a framework internal, add it to the ADR's upgrade-reverify list and the residuals in the
+same commit, and give the fix an automatic check that goes red when the fix line is removed; watch it go red before
+calling the defect fixed. "Guarded by reading the log" is not a guard.
+
+### 2026-11-09: Merge fix updated "#33 will" sentences in README and ADR-0002 but missed ADR-0011 (#33 HOTFIX merge, judge_code)
+f2cb73b rewrote #105's forward references to #33 in README, .env.example, config.ts and ADR-0002 item 13, but
+docs/adr/0011-browser-terminal.md:98 (written by #105) still says "tmux/dtach in the container: needs the image
+(#33); revisit there". #33 now ships the image without tmux and records no revisit; the follow-up that weighs tmux
+is #110. A reader of ADR-0011 is sent to #33 for a decision that is not there. `rg '#33' docs/` lists the line.
+Rule: When a merge lands the issue another branch pointed forward to, run `rg '#<issue>'` over every file the other
+branch touched (docs/adr included) and make each hit state a current fact or point to the issue that now owns it.
+
+### 2026-11-09: Fallback undo step placed in another section, not in the runbook step that must undo it (#33, judge_code round 2, operations)
+2e32272 told Stepan, in "Browser terminal", to add `TERMINAL_SHELL=/bin/sh` to `.env` while on the Alpine override
+and to "delete that line together with the override in step 4b". Step 4b's block deletes only `^WORKSPACE_IMAGE=`,
+its expected output and prose never mention `TERMINAL_SHELL`, and 4c checks only `printenv WORKSPACE_IMAGE`. Someone
+following 4a-4e in order keeps the line, and the lesson image's terminal silently runs dash instead of bash.
+Rule: When a runbook gains a temporary workaround, put its undo inside the numbered step that ends it (command,
+expected output and a check in the verify step), not only in prose elsewhere that points at that step.
+
+### 2026-11-09: Revert guidance names a subset of the conflict hunks, and following it breaks the build (#33, judge_code round 2, architecture)
+2e32272's README rollback note for #32 says to resolve the revert conflicts by removing "the `TERMINAL_SHELL` lines
+(`docker-compose.yml`, `.env.example`, `services/workspace/src/config.ts` and its unit tests)". The simulated revert
+(`git merge-tree --write-tree --merge-base=a2cef86 HEAD a2cef86^`) shows every one of those hunks also holds the
+#32 `TERMINAL_SCROLLBACK_LINES` / `terminalScrollbackLines` lines, and the conflict in
+`services/workspace/test/unit/compose.test.ts` is a compose test, not a config.ts test. Kept as listed, the revert
+leaves `TERMINAL_SCROLLBACK_LINES` in `CONFIG_DEFAULTS` (typed by a `ConfigVariable` that no longer has it) and
+`terminalScrollbackLines` in `Config` with no parser filling it: tsc and config.test.ts go red. The kept ci.yml hunk
+also keeps #32's comment about terminal specs that no longer exist.
+Rule: Guidance for resolving a revert lists the conflicting files and hunks from the simulation itself, every
+line of each hunk, and is checked by finishing the simulated resolution and running typecheck and tests.
