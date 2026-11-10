@@ -318,6 +318,16 @@ Rule: in a DESIGN brief that edits design/system/README.md, require each changed
 proto.css and the app classes (file:line). When a brief asks for an executable check over a class of members, say
 that every member's expected count is asserted in code and that absence is a finding.
 
+### 2026-11-10: Extra judge round planned for one judge only, and a check fix not re-run by the student (#44)
+
+After the two-round limit Stepan approved a third round, and I planned to re-run only the judge that failed.
+The parent session caught it: a round counts only with all three judges in one message. Separately, two student
+cheater rounds each found new passing cheats in checks that the designer had already "closed", and assessment
+then found three more bypass families in docker-static over rounds 2-3.
+Rule: an extra judge round always spawns all three judges, scoped to the changes. When a check is rewritten to
+close a cheat, brief the designer to run a differential or adversarial corpus against the real tool's parser or
+semantics (not only the reported forms), and plan one focused student cheater rerun before the judges.
+
 ### 2026-11-03: Scoped out an item the issue owner had assigned to design, without reading the comments (#83)
 
 The #83 architect brief put F3 (Radix Tabs ring on mousedown) out of scope as app behaviour. An owner comment on
