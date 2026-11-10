@@ -420,3 +420,13 @@ Rule: when a design pre-decides a keep/drop rule, the architect brief requires t
 metric (here: build-cache record size per step from `buildx du --verbose`), with a negative control that shows the
 metric moves. Every architect re-brief says: you have no shell; record only results a named run produced, labelled
 with that run.
+
+### 2026-11-10: A judge_code brief let the operations judge mutate product files in the task worktree (#121)
+
+The #121 judge_code round 1 brief asked the operations judge to spot-check mutation rows "on a copy". It mutated the
+live files in the task worktree with `*.judgebak` backups, while the architecture judge was reading the same files; the
+architecture judge saw `http/errors.ts.judgebak` appear and vanish and had to check its reads against the saved diff.
+The tree came back byte-identical (cmp against plans/121-clamp-log-error-fields.diff), so nothing was lost, but a
+crash mid-row would have left a mutated file in the diff to be committed, and parallel judges may review a mutant.
+Rule: a judge brief that allows mutations names the place: a scratch `git worktree add` under the scratchpad (or a
+copied tree), never the task worktree. Before commit, cmp the tree against the saved diff and check no backup files.
