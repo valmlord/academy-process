@@ -73,3 +73,20 @@ markup and grep the gallery for the old one.
 biome before reporting, so PR #67 went red on `pnpm lint` and the pipeline had to be re-opened for a format pass.
 Rule: run `node_modules/.bin/biome check design/` before reporting any change to a `.js` or `.json` file under
 `design/`; it must report no error.
+
+### 2026-11-10: New `window.proto` member left out of README's member list (#72, judge_ux round 1, consistency)
+`statusTextGapMs` was added to `window.proto` (`proto.js:1014`) and mentioned in README "Attempt row" and the
+status-text gap bullet, but the list "`window.proto` exposes ..." (README:442-445) still names only the five old
+members, so the one list a dev reads as complete misses it.
+Rule: When adding to an exported API (`window.proto`, a class list, a `data-status` set), grep README for every
+enumeration of that API and update each one, not only the paragraph that motivates the addition.
+
+### 2026-11-10: Gallery heading sizes "fixed" to sizes the pages do not use (#72 judge_ux round 2)
+Round 1 noted that the demoted `h4` headings of "Composition: attempt rows" render at the UA size. The fix
+(`components.html:24-27`) added `.gallery-h2` at `text-xl` for "Последние попытки" and "Где трудно", with the
+comment "The page h2 and h3 sizes". The dashboard sizes those h2 at `text-lg` (`dashboard/prototype.html:15`,
+`dashboard/acceptance.md:54`): measured 18px on the page and 20px in the gallery. The gallery also keeps the
+plain `.stack` (16px heading-to-list gap) while both pages now use `.stack[data-gap="2"]` (8px). The sample
+misinforms and its comment lies.
+Rule: Before setting a size in a gallery sample, read the page's own rule for that element and measure both;
+a sample matches the page it samples, not the global element default.

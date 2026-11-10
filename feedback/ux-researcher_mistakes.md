@@ -316,3 +316,17 @@ which no row opens.
 Rule: After re-drawing a sample, re-derive every section of the same state from the same data (the rows a list
 rule would select, the counters that imply attempts) and walk each link of every state that reuses the sample,
 checking the target's release as well as its case.
+
+### 2026-11-10: Flow cited another task's prototype by line number, stale after the merge (#72, judge_ux round 1, consistency)
+progress.md A72-8 pointed at `design/pages/lesson/prototype.html:175`, `:515` and `:507` on #69's branch. After
+#69 merged and #72 added its states, `:175` is the hidden "Урок" region heading and the cited elements sit at
+`:223`, `:1795` and `:1784`, so the flow sends dev to the wrong element.
+Rule: In a flow, cite a prototype element by id, class or selector, never by line number; a line number into a
+file another task is still rewriting is wrong the day that task lands.
+
+### 2026-11-10: Stated the plain item's computed name without its focus condition (#72, judge_ux round 3, accessibility)
+progress.md A72-19 (:500-502) says "Chromium computes its name from its contents (name source `contents`,
+measured)" without a condition. Measured: only while the `li` has focus; unfocused it has no name. ia.md:545
+puts the same sentence in the focus-on-load column, where it holds.
+Rule: A flow sentence that reports a browser measurement carries the measurement's condition (focused,
+expanded, theme) with it.

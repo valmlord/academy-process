@@ -339,3 +339,13 @@ impossible pair. Round 6 passed once the architect rebuilt every sample from one
 Rule: when a DESIGN brief asks for page work items with sample states, require in round 1 one sample timeline
 (learner, lessons, checks, attempts with dates and costs) from which every state and every link target is
 derived, checked against the run and counting rules of the flows it depends on; brief the judges to walk it.
+
+### 2026-11-10: judge_ux rounds spent on doc claims nobody had measured on a fresh load (#72)
+
+judge_ux on #72 took five rounds, each FAIL a single item: stale line citations after a merge, a missing
+README member, gallery sizes copied from the wrong scale, an AC not split by release, and twice an
+accessible-name claim (the plain item's name, the Проверки tab name) measured in a state reached by hash from
+another state, so focus or markup from the previous state leaked into the measurement.
+Rule: in the author brief, require every accessible-name and computed-style claim in acceptance notes and
+flows to be measured on a fresh load in a new browser context per state, every AC to name the release whose
+tester can see its states, and file citations by selector, never by line, once a branch has merged main.

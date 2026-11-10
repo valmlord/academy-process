@@ -253,3 +253,9 @@ checked the deep-link table and the sample summaries but not which lesson state 
 opens, so the running and no-result rows landing on an expanded attempt surfaced only in round 4.
 Rule: In judge_design, for every cross-page link the design note prescribes, walk each source sample to its
 target state and check it against the arrival table row for that sample's case.
+
+### 2026-11-10: Round-2 measurement of a name carried focus from the previous state (#72, judge_ux round 2, accessibility)
+Round-2 `plain.mjs` loaded `#state-history-deep-link-plain` and then `#state-history` in the same page by hash, so
+focus on `#attempt-2` carried over and the report (and then acceptance.md:797) said Chromium names the plain item
+in `#state-history`. A fresh load of `#state-history` gives the unfocused `li` no name. Found in round 3.
+Rule: Measure each state in a new browser context and print the `focused` property with every computed name.
