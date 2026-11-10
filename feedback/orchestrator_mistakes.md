@@ -31,7 +31,7 @@ Rule: All three judges in ONE message. Never sequential.
 Judges found an architect design flaw; the orchestrator hacked a fix inline instead of
 re-spawning the architect with the updated mistakes file.
 Rule: On a role's mistake - the judge writes it to that role's file, then the orchestrator
-re-spawns THAT role (researcher → architect → coder → judges as needed). Never fix inline,
+re-spawns THAT role (researcher -> architect -> coder -> judges as needed). Never fix inline,
 never delegate an architect fix to the coder.
 
 ### Advanced past a judge FAIL
@@ -67,7 +67,7 @@ Rule: When work is outstanding (judge FAILs), ASK the user to continue or defer.
 Shipped a module with a module-level use-before-definition: it compiled and all unit tests
 passed, but it could not START (the tests never imported the whole module).
 Rule: Any change to a live-service module needs an acceptance step that IMPORTS/EXECUTES the
-whole module (e.g. `--self-check` → exit 0). Passing unit tests + a clean compile do NOT prove
+whole module (e.g. `--self-check` -> exit 0). Passing unit tests + a clean compile do NOT prove
 the program runs.
 
 ### Asserted a root cause / "lever" without checking prior notes for a refutation

@@ -203,6 +203,13 @@ the architect fixed the 33 and round 2 was spent on the rest.
 Rule: For a "class of references" finding, grep the class with several neighbouring forms (section numbers, decision
 ids, review finding ids) before sending round 1, and state that the list is an example and the effect is the target.
 
+### 2026-11-09: Accepted a focus fallback placement without checking the element that is "never removed" (#69, accessibility)
+In judge_design round 3 the accessibility judge accepted design note §3.2 "`.check-row-panel`: its row button"
+as the prototype fallback, and checked only the controls B8-B14 list as removed. The row button itself is
+swapped markup in the prototype, so a focused row button falls to `main`. This surfaced only in judge_ux.
+Rule: When a design says "X is never removed, so focus stays", check how the prototype draws X across
+states. If it is per-state markup, require a fallback that covers X itself, and a test pair that focuses X.
+
 ### 2026-11-03: Round-1 note asked the README to claim "h3 on pages" from the element rule alone (#83, judge_design round 2, consistency)
 Round-1 consistency note said the README `text-lg` row "should mention page-level h3" because `proto.css:114`
 sets `h3 { font-size: var(--text-lg) }`. No page renders that: the only page h3 outside prose is "Чему научитесь",
