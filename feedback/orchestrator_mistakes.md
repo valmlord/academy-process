@@ -407,3 +407,16 @@ judges reviewed measured premises instead of claims.
 Rule: when a design prescribes shell-level mutations or procedures and the architect has no shell, have them run
 before judge_design (the orchestrator for a read-only experiment in an own container, or the operations judge), and
 pass the output to the judges with the design.
+
+### 2026-11-10: A pre-decided rule measured a proxy, not the issue's own metric (#113)
+
+The #113 design pre-decided that the workspace deploy mount stays only if deploy without it downloads packages.
+pnpm printed `downloaded 0, added 0` both ways, so the tester dropped the mount, and the operations judge passed it
+in judge_code round 1 on the same counter. The architecture judge then measured the deploy build-cache record: 117 MB
+with the mount, 280 MB without, the very growth #113 exists to cut. It cost a revert commit, two re-tests and a
+second judge_code round. Separately, judge_design took four rounds; rounds 2-4 were test-plan text and attribution,
+and in round 3 the shell-less architect wrote "re-ran" results it could not have produced.
+Rule: when a design pre-decides a keep/drop rule, the architect brief requires the rule to measure the issue's own
+metric (here: build-cache record size per step from `buildx du --verbose`), with a negative control that shows the
+metric moves. Every architect re-brief says: you have no shell; record only results a named run produced, labelled
+with that run.
