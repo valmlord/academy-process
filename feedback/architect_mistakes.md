@@ -1444,3 +1444,42 @@ lesson fails and whose `[1, 1, 1]` count becomes `[1, 1, 0]`; the tester is told
 defect, so a correct mutation run would be reported as one.
 Rule: When a change adds an early exit before a function call, reread that function's doc comment against the new
 path; for every mutation row, evaluate each new test's assertions under the mutation, not only the ones it targets.
+
+### 2026-11-10: README prune note implies an academy-only clean-up; rehearsal kept a non-H9 pull and live prunes (#113, judge_design round 1, security)
+Design 2.3 introduces `docker builder prune --filter 'type!=exec.cachemount'` as the way to free "the build cache
+records" of the web and workspace builds. The command acts on the whole default builder: every other project's
+regular build cache goes too, and the text never says so, so Stepan cannot judge what he loses. Design 9.5 R-A..R-C
+still prescribe a `docker-container` builder (pulls `moby/buildkit`, outside 16.5 H9) and two prune runs, gated only
+on "explicit OK", although the read-only form (`docker buildx du --filter ...`) answers the same question.
+Rule: A destructive command written for the owner states its full scope (here: all build cache on this Docker, every
+project) next to the command. A rehearsal of a destructive command is read-only by default (the same filter on a
+listing verb); a pull or a write outside the hard rules is not a design option behind an "OK" gate.
+
+### 2026-11-10: Pass condition for the probe diff did not match what the probe edit produces (#113, judge_design round 2, operations)
+9.3 "After B6" says `diff <worktree>/apps/web/proxy.ts "$T113/ctx/apps/web/proxy.ts"` (and config.ts) "each show
+only the added `// t113 cache probe` line". The probe is an append of `\n// t113 cache probe\n` to files that already
+end in a newline, so the rehearsed diff shows two added lines, an empty one and the probe (`37a38,39`, `215a216,217`),
+and exits 1. Read literally, a correct run fails its own check.
+Rule: Write a diff-based pass condition from a rehearsed run of the exact edit (blank lines, exit status included),
+or make the edit produce exactly the stated output.
+
+### 2026-11-10: Design recorded runs the architect could not have made (#113, judge_design round 3, architecture)
+The architect role has no shell (design 9 says so itself), yet round 3 wrote "re-ran" observations into the design:
+D4 adds a `--ignore-scripts` re-run with rc 0, "no output line naming `packages/db`", an `@academy/db` link to the
+absent directory and a `pnpm ls` before/after diff with rc 1; the round-3 notes claim G0 was "re-run" on the local
+node image and the probe diff "rehearsed in round 3"; R-1 dates the du counts "round 3". The operations judges
+recorded only rc 0 for the round-1 frozen install, and 222/223 and `37a38,39`/`215a216,217` in round 2. The numbers
+that match a judge run are right but misattributed; the rest is evidence no run produced.
+Rule: Every observation in a design names the run that produced it (role, round) and quotes only what that run
+recorded. Anything else is marked "to be rehearsed by operations", never "re-ran".
+
+### 2026-11-10: Pre-decided keep/drop rule for a cache mount looked at a counter, not at the cache growth the issue is about (#113, judge_code, architecture)
+Design 9.3 B5 decided the workspace deploy mount by "deploy shows `downloaded 0` and the image check exits 0 ->
+drop it". Both held without the mount, so the coder dropped it (5c6880c). But pnpm's progress line printed
+`downloaded 0, added 0` with and without the store, so it could not tell the two apart, and the builder's own
+records show the cost: the deploy RUN record is 117.2 MB with the mount (tester B3 03:31:59, B4 03:33:24 UTC) and
+280 MB without it (B5 03:34:46, re-test B4 03:51:24), about +163 MB of build cache on every source-only workspace
+build, which is exactly what #113 exists to cut (B4 delta +0.20 GB -> +0.35 GB). The doubled deploy time was the
+visible hint.
+Rule: A pre-decided rule for a cache or layer change measures the issue's own metric (the step's record size in
+`docker buildx du --verbose`, or the Build Cache delta) for both variants, never only a tool's progress counter.
