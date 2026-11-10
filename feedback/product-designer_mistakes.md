@@ -92,3 +92,37 @@ switch"), AC7 ("A run does not switch the tab") and the new AC17, on the core pa
 `?tab=` writer then publishes the wrong tab ("Войти снова" carries theory).
 Rule: After adding URL or selection state, run every simulated action from each tab and assert the tab and
 the URL are unchanged unless the acceptance notes say the action switches them.
+
+### 2026-11-09: A focused row button falls to `main` on a background change (#69, judge_ux round 1)
+`data-focus-fallback` was put on the check bar and on every `.check-row-panel`, but not on anything that
+contains the row button itself. The prototype draws each state's rows as separate markup, so a background
+change hides the focused `.check-row-trigger` and the focus repair finds no ancestor fallback and focuses
+`main`. Measured headless at 1280 and 375 px in 9 transitions each (for example `#state-results-limit-known`
+-> `setState("check-running")`): focus lands on `main#main`. `checks.md` says the row buttons are never removed,
+so in B8-B14 focus stays on that row's button. The 26 background pairs focused "Подробности", "Проверить",
+"К окружению", "Переподключиться", "Открыть результаты" and "Отмена", never a row button, which is the
+element most likely to have focus in Проверки. So the run could not catch this.
+Rule: In a prototype that swaps markup per state, every element that "is never removed" in the flows needs
+a fallback to its own counterpart in the next state (here `data-focus-fallback` on each row `li`). The
+background focus pairs include focus on each kind of element that a background change can hide, not only
+the controls the flows list as removed.
+
+### 2026-11-03: Not-found Route reversed the "course id unknown" implication (#83, judge_ux round 1)
+`design/pages/not-found/acceptance.md:13-14` says that while the course cannot be read only way (1) reaches
+the page "and then the course id is unknown (`#state-no-course`)". The judged design (D2) and `ia.md` R6 say
+the converse: the id is unknown only when `course.yaml` itself is unreadable; when it parsed and a later file
+failed, the id is known and "Курс" stays. A dev following the note would hide "Курс" and "Открыть курс" on
+not-found for every course read failure, so the top bar would differ between pages in the same request,
+against R6. The check passed because it asserts only the quoted members, not the sentences around them.
+Rule: When a note restates a condition from `ia.md`, copy its direction and its trigger ("`course.yaml`
+unreadable"), and read every sentence of the note against the rule, not only the asserted phrases.
+
+### 2026-11-03: Course-error `<title>` stated three ways across the catalog prototype and two notes (#83, judge_ux round 1, accessibility)
+`design/pages/catalog/acceptance.md` Route (:6-7) and AC8 now say the catalog's `<title>` is "Не удалось
+загрузить курс" while the course cannot be read, but `catalog/prototype.html#state-course-error` renders
+`<title>` "ИИ для разработчиков" (measured at 320/375/1280, both themes) and the note gives no caveat, though it
+gives one for the top bar and the retry in the same rows. `lesson/acceptance.md:159` then lists `<title>` "Не
+удалось загрузить курс" as one of the "three things only" in which the lesson course error differs from the
+catalog, which contradicts the catalog's own Route. A dev or tester checking 2.4.2 gets two answers.
+Rule: When a note states a per-state `<title>` the static prototype cannot render, say so in that row, and
+when another page's note lists differences from it, compare against that page's note, not its prototype.

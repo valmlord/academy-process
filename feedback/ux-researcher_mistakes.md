@@ -152,3 +152,139 @@ icon button renamed, every non-busy aria-disabled gallery button stripped and ev
 cursor case and two class D members are silently gone.
 Rule: A check that enumerates class members asserts each member's expected count (per page and width) in code, and
 treats a missing optional probe (`undefined`) as a finding where the design says the member exists.
+
+### 2026-11-04: Registered copy checked against the sample data, not the real cases; spec gaps at state seams (#69, judge_design usability)
+Round 1 usability FAIL. The budget confirmation's "...на эти проверки:" (checks.md:224-226, ia.md:69) is plural, but
+the first real cases (L4 `plan-rubric`, L5 `agents-md-rubric`) put exactly one check in the list; only the two-item
+sample was read. "Агент потратит..." names the rubric grader, which the register calls "ментор" ("оценка ментора"),
+and "агент" (also Claude Code in the terminal, ia.md:63) has no vocabulary row. The check bar's "Переподключиться"
+gives no feedback and has no focus target when the server is still unreachable (checks.md:283-285). A tab that
+becomes visible removes "Открыть результаты" with no focus rule (checks.md:171-172). The row's "grader message of the
+latest result that has one" and the "newer run ended" check need data the requirements do not list. The meta
+"лимит M:SS" is keyed to the latest result, so a passed or closed row can show it under "Пройдено" or "Закрыта".
+Rule: Read every registered string with N = 1 and with the smallest real lesson case, not only with the sample; give
+every new word a vocabulary row; for every control or state change, write the outcome on failure and the focus target;
+check every row rule against every status word it can sit next to; trace each data-dependent sentence to a named field.
+
+### 2026-11-04: New background transitions remove a focused check-bar control with no focus target (#69, judge_design accessibility)
+#69 added state changes the learner does not trigger in the tab that has focus: a hidden tab that becomes visible
+re-reads the check states and either clears the end text and removes "Открыть результаты" (checks.md:171-172) or
+attaches to a running run, where "Дождитесь окончания проверки" wins over "Сначала запустите окружение" and "К
+окружению" goes too (ia.md:142, 149-155). R2's focus rule (ia.md:188-195) names a target only for "an activated
+control removes itself", so a focused "Открыть результаты" or "К окружению" falls back to `body`, against R2's own
+"Focus never falls back to body" and WCAG 2.4.3. The same design left the check bar's "Переподключиться" with an
+unreachable server as "the state stays" (checks.md:283-285): no text changes, so nothing is announced and the press
+has no perceivable result. R2's first bullet still says every live container is empty on load (ia.md:168) while
+the next bullet and A69-6 render S3's text on load.
+Rule: For every new state transition, list which controls it removes and whether one may hold focus at that
+moment, including transitions nobody activated (visibility, load, server push); name the focus target for each. A
+control whose action can fail with no state change must still change the live text (busy text, then the failure
+text again), so the outcome is announced.
+
+### 2026-11-04: Vocabulary row and token rationale contradict the sources they cite (#69, judge_design consistency)
+#69 added the vocabulary row "run | проверка" (ia.md:29) next to "attempt | попытка" (ia.md:28) without relating
+the two, while ADR-0007:63 defines an attempt as one grading run and the design note's dev requirements head the run
+section "Per run (attempt)". In check copy "попытка" is one check's result ("Неудачных попыток: N" per row), and
+"cost of an attempt / Стоимость попытки" (ia.md:33) is shown per row, so one run with two token-spending checks
+shows two different "Стоимость попытки" values for what the vocabulary calls one attempt. Separately, checks.md:43-44
+justifies `warning` for the runner error with "the cross means 'your work missed the bar'", while the counted
+"Время вышло" (checks.md:35, 50-51: "counted, like Не пройдено") stays `warning` and ADR-0007:54 files a timeout
+under "the learner's work missed the bar": the stated rule does not produce the table.
+Rule: A new vocabulary row names how it relates to every neighbouring term and to the ADR's definition of the same
+word; a token rationale is a rule, so run it over every row of the table before writing it down.
+
+### 2026-11-04: A new comparison rule with no baseline, and a trigger narrower than its own table (#69, judge_design round 2, usability)
+Revision 2 added B9 "a newer finished run (its attempt id differs from the one this page shows)" and the data line
+"the UI compares `attemptId` with the one it shows". A page loaded with an empty status line (B1) shows no run, so
+the first return to the tab finds a "different" id and announces yesterday's end text as if a run had just ended;
+and a tab in "Не удалось получить результат проверки" shows the same id as the run that has since ended, so B9 never
+fires there. Separately, F13 error states (checks.md:432) and A69-7 re-read on `visibilitychange` only in "a tab
+that never attached", while B8-B10 remove "Переподключиться", which exists only in a tab that did attach.
+Rule: A comparison rule names its baseline at every starting state (load with nothing shown, mid-run, after a
+failed stream), and the trigger of a transition table row must reach every control the row says it removes.
+
+### 2026-11-04: A vocabulary fix stated as an absolute that the register itself breaks (#69, judge_design round 2, consistency)
+The round-1 finding asked the vocabulary to state how attempt, run and check relate. Revision 2 wrote two absolutes:
+"In docs 'attempt' means only this record, never one check's result" and "no UI string says 'попытка' for the
+run" (ia.md:30-31). The next row is "attempt limit" (per check, ia.md:32), and R7, the F14 title, checks.md:39,
+:108-116, :193-195, :498-535 and the data fields `attemptLimit` / `lastAttemptCount` (design note §4, which also
+says "every 'attempt' below is the ADR record") all count one check's results. In UI copy "История попыток",
+"Попыток пока нет. Нажмите "Проверить"..." (shown in v1, checks.md:461) and "Ментор читает попытку" name the run.
+Rule: Before writing "only" or "never" into a vocabulary row, grep the word (both languages, every flow and the data
+section) and list each hit under the sense it uses; if both senses exist, the row names both and which strings own
+each, instead of a rule the docs break.
+
+### 2026-11-04: A flow fix with no system work item for the markup it contradicts (#69, judge_design round 2, consistency)
+Revision 2 made the row running time "not live, no `role="timer"` there" (checks.md:97-101, ia.md:187-190) and
+logged it as fixed, but `components.html:387` and `prototype.html:388`, `:445` render
+`<span class="timer" role="timer">` inside `.check-row-trigger`, `README.md:182` defines `.timer` as `role="timer"`,
+and no §3.2 / §3.3 item changes them, so the authors would ship markup the flow forbids.
+Rule: When a flow fix changes how a component is marked up, grep its class in `design/system/` and `design/pages/`
+and add a work item for every hit in the same revision.
+
+### 2026-11-09: A new flow's run step sent to the old state, which shows another data set (#69, judge_ux round 1, usability)
+Design note §3.3 sent "Проверить" of `limit-warning` (F14.1 -> F14.2, the last-attempt run) and `results-limit-known`
+to the #50 state `check-running`. That state draws the limit-unknown lesson: the row reads "Идёт" "0:12 из 0:30" with
+no "Осталась 1 попытка" and the counter "Неудачных попыток: 2". So in the prototype the warning disappears the moment
+the last attempt starts, against checks.md:123 ("Идёт": the warning, yes), and the counter drops from "9 из 10" to "2".
+`mixed -> mixed-running` and both budget runs were given their own running states; F14 was not. The product-designer
+followed the table faithfully, and the headless run checks each state alone, so nothing caught it.
+Rule: For every new state with a run control, name a target state whose rows continue that state's data (same
+counters, same limit form, the meta of the running word) or add one; reusing an older state is allowed only after
+diffing its rows against the source state.
+
+### 2026-11-03: Acceptance check asserts the not-found members but not the lesson and catalog keyboard members (#83, judge_design accessibility)
+plans/83-app-shell-states-check.mjs counts every not-found member in code, but for W2 and W3 it only asks that
+"Не удалось загрузить курс" occur twice anywhere in design/pages/lesson/acceptance.md, and it reads no catalog or
+dashboard acceptance file at all. Appending the string twice under "Open questions" satisfies it (run), while the
+lesson `F6` row for the course error, its Tab order, AC19 (three retry focus outcomes), AC20 and the D5 heading
+mapping, catalog AC8's not-found focus outcome (D7) and the "Course id unknown" scoping lines can all be missing.
+The not-found "focus does not move on arrival" half of AC9 is not measured either.
+Rule: Every work item that changes a keyboard or focus contract (F6 rows, Tab order, retry focus, heading levels)
+gets a code assertion of its own row or AC, located by its heading or row key, never a string count over the file.
+
+### 2026-11-03: Declined a decision the issue assigned to design, and recorded scope only in git-ignored plans/ (#83, judge_design usability)
+Issue #83's owner comment asks design to "decide whether the design accepts" the Radix Tabs ring on first
+mouse click (F3). The design answered "app behaviour, not a design rule ... dev decides", and the F3, G1 and
+`.checks-panel h2` (#69) hand-offs exist only in `plans/83-app-shell-states-design.md`, which is git-ignored:
+no lesson acceptance open question, no follow-up issue, nothing on #69. The same phase also left two rows
+describing a "Course id unknown" member unscoped or misstated: the ia.md R2 retry sentence names targets
+("the catalog h1, the lesson h1, or ... the error's own h1") for a list that includes the dashboard and the
+lesson text-load retries, whose targets are the Card heading and the tab panel; the inventory Purpose says
+not-found "links to the catalog" without the no-course exception.
+Rule: An item the issue explicitly asks design to decide is decided (even "accepted, because ...") in a
+committed design file; anything handed off goes to a durable place (issue, comment on the owning issue, Open
+questions); every enumeration in a rule is checked against each member it lists.
+
+### 2026-11-03: "Reuse the drawn composition unchanged" pointed at markup that lacks the attribute the design requires (#83, judge_design consistency)
+D3 says the lesson course error is the catalog's `#state-course-error` "unchanged", with the h1 as Alert title
+carrying `tabindex="-1"` so a second failed retry can focus it (also `catalog.md:38`, `lesson-environment.md:89,95`,
+`ia.md:171-172`; the app's `course-error.tsx:26` has `id="course-error-title" tabIndex={-1}`). The drawn reference,
+`design/pages/catalog/prototype.html:67`, is `<h1 class="alert-title text-sm">` with no id and no tabindex, and W3
+says "No change to either prototype", so the lesson acceptance would send dev to a drawing that contradicts its own
+spec. The acceptance check asserts neither this attribute nor that the new `.prose h4` rule uses the scale tokens
+(`--text-lg`, `--text-lg-line`, `--space-6`) rather than equal raw lengths: computed px cannot tell them apart.
+Rule: Before declaring "reuse X unchanged", diff X's markup against every attribute the design states for it and
+against the app component; a mismatch is a work item, and the check asserts the attribute and the token names.
+
+### 2026-11-03: README truth table accepted "h3 on pages" without checking a single page h3 (#83, judge_design round 2)
+The D5 truth table marked the README `text-lg` row "card and dialog titles; h3 on pages; h4 in prose" as holding,
+citing only `proto.css:114` for h3 and only the app's `.prose h4` for the app column. Every page h3 outside prose
+(catalog "Чему научитесь") is `text-sm` (`proto.css:520`, `apps/web/components/catalog/module-section.tsx:33`), so
+the phrase is false on both sides, and the check script locks it in. The phrase came from a judge note; the truth
+table exists to catch exactly that.
+Rule: A README truth-table row verifies every phrase in the sentence against both proto.css and the app, by
+grepping the rendered uses, including phrases a judge asked for.
+
+### 2026-11-03: New lesson course-error state left R4 and the not-found route set unscoped (#83, judge_design round 2, usability)
+Round 2 added the lesson page whose course cannot be read and scoped R3 to it ("none of the three regions
+exists"), but `ia.md` R4 still says, with no exception, that the lesson page's `main` holds "Урок", "Проверка" and
+"Окружение" and gives a Tab order through breadcrumbs ("Курс", module), a line the design's own grep terms
+(`"Курс"`, `breadcrumb`) match. The not-found entry set was also stated three ways: the inventory Route
+(the file the not-found acceptance Route copies) and `lesson-environment.md` F7 error states and retry clause
+omit a lesson URL whose course id is not the course's, which the app sends to not-found
+(`lessons/[lessonId]/page.tsx:71-72`) and `catalog.md` F5 and the R2 table header include. Round 1 U3 was
+this class (a statement not scoped to the case); fixing the listed members only left these.
+Rule: When a design adds a state to a page, grep every rule that describes that page's structure, Tab order and
+entry causes (`main holds`, `Tab order`, `Route`, the page's own region and control names), and scope each one or
+list it as unchanged with the reason; state each set (such as "the ways into not-found") once and point to it.

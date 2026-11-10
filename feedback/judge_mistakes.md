@@ -221,3 +221,116 @@ the residual on the strength of the prescription.
 Rule: Before writing that a prescribed rule closes an attack class, run it against the class's neighbours: the race
 moved before or after the delay, each lock removed from each honest form, a fast-path precheck added. Name the forms
 you ran it against. "Separates X and Y" should read "separates X and Y; neighbours Z not tested".
+
+### 2026-11-09: Accepted a focus fallback placement without checking the element that is "never removed" (#69, accessibility)
+In judge_design round 3 the accessibility judge accepted design note §3.2 "`.check-row-panel`: its row button"
+as the prototype fallback, and checked only the controls B8-B14 list as removed. The row button itself is
+swapped markup in the prototype, so a focused row button falls to `main`. This surfaced only in judge_ux.
+Rule: When a design says "X is never removed, so focus stays", check how the prototype draws X across
+states. If it is per-state markup, require a fallback that covers X itself, and a test pair that focuses X.
+
+### 2026-11-03: Round-1 note asked the README to claim "h3 on pages" from the element rule alone (#83, judge_design round 2, consistency)
+Round-1 consistency note said the README `text-lg` row "should mention page-level h3" because `proto.css:114`
+sets `h3 { font-size: var(--text-lg) }`. No page renders that: the only page h3 outside prose is "Чему научитесь",
+which `proto.css:520` (`.outcomes > h3`) and the app (`module-section.tsx:33`) draw at `text-sm`. The researcher
+wrote the note in and the check now asserts the false text. That cost round 3.
+Rule: Before a note asks a README "Used for" cell to name a use, grep the element on every page and in the app
+and confirm at least one instance computes to that step; an element default that every use overrides is no use.
+
+### 2026-11-02: Named KELVIN SIGN as the case that needs NFKC without checking `toLowerCase` (#31, security)
+Round-2 N1 direction named `Checks` and KELVIN SIGN as the unit cases of the folded check. The architect wrote a
+mutation row "lower-case without NFKC -> KELVIN SIGN red". In JS `"K".toLowerCase()` is already `"k"`, so that
+case stays green under the mutation; only fullwidth (and LONG S, U+017F) need NFKC. Caught in round 3, non-blocking.
+Rule: When a direction names example inputs for each step of a transformation, run each input through each step
+alone (a one-line `node -e`) before sending, so every named case really depends on the step it is meant to test.
+
+### 2026-11-02: Prescribed a compose guard on the source file's syntax, checked against rendered output (#31, operations)
+Round-2 A2 asked the isolated-recipe guard for "no `name:` on networks and volumes". The guard parses
+`docker compose config --format json`, which renders `name:` on every network and volume, so the faithfully applied
+wording can never pass. Found in round 3; it fails closed, but it would have stalled S39.
+Rule: When prescribing a check on rendered config, run the render once and phrase the property on what it actually
+prints (here: every name starts with the project prefix, none external), not on the source file's syntax.
+
+### 2026-11-02: Prescribed the protected set as the academy stack, not "everything this run did not create" (#31, security)
+Round-6 blocking 1 told the architect to define the owner set as the academy objects (by label, name, image) and to
+forbid effects on it. The architect applied it faithfully, so in round 7 Stepan's other projects' containers (env
+secrets) and the images his stack runs but does not build (`postgres:17.6-alpine`) were still open to a bare inspect,
+exec or retag. That cost a round.
+Rule: When prescribing a protected set for an agent on a shared host, start from the complement ("everything this run
+did not create") and name the owner's known objects as detection subsets. Before sending, ask what else on the host
+holds secrets or feeds the owner's stack.
+
+### 2026-11-04: Prescribed a string-length check before `timingSafeEqual` over UTF-8 bytes (#32, security round 1)
+Round-1 S-N1 prescribed "compare the expected MAC's base64url string (length check, timingSafeEqual over string bytes)".
+The architect applied it word for word. String length is not byte length: a percent-decoded non-ASCII character keeps
+the string length at 43 and makes the UTF-8 buffer 44 bytes, so `timingSafeEqual` throws `RangeError` on a pre-auth
+path. Round 1 also did not check that the new upgrade listener catches errors and adds a socket `error` listener.
+Both surfaced in round 2.
+Rule: Before prescribing a crypto comparison, state the input's charset and its byte-length check, and name what
+the primitive throws on. For every new pre-auth socket handler, check error containment in round 1.
+
+### 2026-11-04: Prescribed a standalone smoke inside the clone, where Node resolves the workspace's node_modules (#32, judge_design round 2, operations)
+Round-1 O-B1 prescribed copying the built server into `<clone>/apps/web/.next/standalone/apps/web/server` and importing
+it there. From that path Node walks up into `<clone>/apps/web/node_modules`, so `yaml`, `drizzle-orm`, `better-auth`
+and `@academy/db` all resolve; only `zod` (not a web dependency) failed. The architect applied it, and design 3.1 then
+claimed "a new npm import turns it red". Copied out of the clone, every untraced package fails.
+Rule: A layout smoke runs in a copy outside the repository tree. Before prescribing it, try two neighbouring imports
+(a direct dependency of the package, a workspace package) and confirm both fail there.
+
+### 2026-11-04: A planted-object proof that the old behaviour also passes (#32, judge_design round 2, operations)
+Round-1 S-N8 asked to prove "preflight before the trap" with a planted academy-t32-labelled object surviving the
+refusal. The teardown never removes a label-only volume (it removes MANAGED objects, `academy-t32_db-data` by name and
+`:t32` images; `down` has no `-v`), so in a simulation the trap-first order also prints STOP, exits 1 and keeps the
+volume. R-PREFLIGHT could not fail.
+Rule: For a "survives" proof, plant an object the old code path would actually remove (read its removal list first)
+and also assert the old path's own output (here no TEARDOWN or RESULT line) is absent. Simulate both orders first.
+
+### 2026-11-04: Three architecture rounds accepted `term.reset()` without reading xterm's own doc of it (#32, judge_design round 4, architecture)
+"The client resets the terminal and writes the snapshot" was in the design from round 1. Rounds 1-3 walked the state
+rows but never opened xterm 6.0.0's `reset()`, whose doc says it keeps queued input and the parser state
+(`CoreBrowserTerminal.ts:1260-1267`). The source was in the scratch clone's `node_modules` all along. It surfaced only
+in round 4, once the A3-B1 test made a queued write at the switch explicit.
+Rule: For every library call a state row depends on (reset, dispose, close, pause), read its doc comment and body in
+the installed version during round 1, and say what it does to queued work.
+
+### 2026-11-04: Round-1 prescription for the "never counted" floor dropped #15's safety condition (#68, judge_design round 2, security)
+Round-1 architecture finding 1 prescribed the ADR-0001 floor as a bare list ("format errors, stage-0 rejections,
+platform `error` results") and the round-1 security review did not check it against #15 §2.5.6, which exempts a
+format error only when the run is "rejected ... before any key comparison" (bug-hunt: "not scored"). The architect
+applied the list faithfully, so the contract now makes any result an implementer labels "format error" a free,
+uncounted probe of an enumeration-capped check. Found in round 2.
+Rule: When a prescription moves an exemption from a security design into a contract, copy the condition that makes
+the exemption safe (here: the uncounted result shows nothing derived from grader material), not only its name.
+
+### 2026-11-04: Round-1 rollout prescription named a form (03/04 ready flips), not the effect (#68, operations)
+Round-1 operations asked for "(a) any 03/04 lesson ready on main before #68 merges: rebase and migrate; (b) any
+content PR flipping a lesson to ready rebases". The architect applied it faithfully, so round 2 found the
+neighbours: main moving outside course/ (fixtures, schema), and content PRs that add a quiz to an already ready
+lesson. It cost a round.
+Rule: When the finding is "CI does not re-run when main moves", prescribe the effect for both sides (no PR that
+touches the lesson contract or lesson YAML merges unless its head contains current main and CI ran on that head),
+with the `merge-base --is-ancestor` test as the check; ready flips are one example.
+
+### 2026-11-04: Round-2 note "run U1 on parse failure too" did not mention the raw input lacks zod defaults (#68, architecture)
+Round-2 architecture note 1 offered "have U1 look the member up by the raw `kind` so it runs on parse failure too",
+and security asked U1 to fail closed. Neither note said that raw YAML has not had `checks: ...default([])` applied.
+The architect combined both and made a valid ready lesson without `checks:` a U1 issue. Found in round 3.
+Rule: When suggesting that a check run on pre-parse data, name the parser defaults and optionals it will no longer
+get and say how the check treats each.
+
+### 2026-11-10: Counted a header line as a record in a read-only rehearsal (#113, judge_design round 1, operations)
+Round 1 reported `docker buildx du --filter 'type!=exec.cachemount'` as "223 records selected"; the file had 223
+lines including the `ID RECLAIMABLE SIZE LAST ACCESSED` header. The real count is 222 (194 regular + 27
+source.local + 1 frontend, which the same report listed), 223 without the filter. The architect copied 223 into 2.4,
+R-1 and R-U1, so the design's evidence does not add up.
+Rule: Count records by a per-record key (`grep -c '^ID:'` on `--verbose`), never `wc -l` on a table, and check that
+the parts sum to the total before reporting it.
+
+### 2026-11-10: Judged the deploy store mount by the pnpm counter, not by the metric of the issue (#113, judge_code round 1, operations)
+Round 1 passed 5c6880c and wrote that the workspace deploy step "is the same with and without the store mount",
+because deploy printed `downloaded 0` and the image check exited 0. That counter reads the same in both variants,
+so it could not show a difference. The issue is about build-cache growth, and the deploy record in
+`docker buildx du --verbose` is about 117 MB with the mount and about 280 MB without it (architecture judge, then the
+tester's M1/M2). The mount had to be restored in 1ac739d.
+Rule: When a change is judged "no effect", measure it with the metric the issue is about (here the new build-cache
+record of the step, matched by before/after ID diff), not with a proxy that prints the same value in both variants.
