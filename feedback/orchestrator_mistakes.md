@@ -396,3 +396,14 @@ count. The phases match, so nothing was skipped, but the size reached Stepan onl
 that was right came from the operations judge, who implemented the design in a scratch clone during judge_design.
 Rule: when an operations judge implements the design in a scratch clone, take its `git diff --stat` as the size,
 re-tier from it before planner and tell Stepan then if it crosses a tier. Count test lines: the tier table does.
+
+### 2026-11-10: Mutation rows prescribed by an architect with no shell cost a design round (#110)
+
+The #110 architect brief carried the #112 rule (trace every mutation, dry-run every procedure), but the architect role
+has no shell, so M12 and M17 were written from reasoning only. judge_design round 1 failed on both: busybox `kill`
+rejects `--`, busybox `pkill -x sh` matches nothing, and a by-name kill hits the kill script's own `sh`. The operations
+judge found each by running it. What did work: running the design's E0 experiment myself before judge_design, so the
+judges reviewed measured premises instead of claims.
+Rule: when a design prescribes shell-level mutations or procedures and the architect has no shell, have them run
+before judge_design (the orchestrator for a read-only experiment in an own container, or the operations judge), and
+pass the output to the judges with the design.

@@ -1444,3 +1444,28 @@ lesson fails and whose `[1, 1, 1]` count becomes `[1, 1, 0]`; the tester is told
 defect, so a correct mutation run would be reported as one.
 Rule: When a change adds an early exit before a function call, reread that function's doc comment against the new
 path; for every mutation row, evaluate each new test's assertions under the mutation, not only the ones it targets.
+
+### 2026-11-10: A mutation named "style" whose literal form kills its own script, and a socket-release test with no timeout stated (#110, judge_design round 1, architecture)
+Design 8.4 M17 ("KILL_SCRIPT `pkill -HUP -u 1000 -x sh` style (kills by name)") claims I-term-exit goes red. The
+kill script runs as `/bin/sh -c`, comm `sh`, uid 1000, so a by-name HUP on line 4 kills the script itself: `sleep 2`
+and the KILL line never run, and the HUP races the second shell's open (two Docker round trips ahead of four), so the
+new shell is usually not there yet and the test stays green. The 3 s sleep added to I-term-exit is then a guard nobody
+watched go red. Separately, the U-exec detached-start row asserts "the socket closes within 2 s" for M9 without saying
+which engine options the test uses; the neighbouring tests build `DockerEngine({ timeoutMs: 200 })`, whose docker-modem
+`req.setTimeout` destroys the socket at 200 ms with or without `destroyStream`, so M9 would stay green.
+Rule: Every mutation row gives the exact replacement text, and the architect walks it through the mutated program
+(including what the mutation does to the script or process that carries it). Every test that asserts a release or
+close within a bound names every other mechanism that could close it within that bound and rules each out in the setup.
+
+### 2026-11-10: Mutation scripts written for a shell the test image does not run, and a decision left without its deliverable (#110, judge_design round 1, operations)
+Design 8.4 M12 replaces the kill lines with `kill -HUP -- "-$sid"`. busybox ash's `kill` rejects `--` ("invalid
+number '--'"), so on node:22.23.4-alpine neither line signals anything and I-term-end-kills goes red because nothing
+is killed, not because a group kill misses the jobs: the row does not prove K2. M17's `pkill ... -x sh` matches
+nothing on busybox (rc 1 with seven `/bin/sh -l` running), so it survives regardless of the race. Both were found by
+running them in a judge's own container. Separately, Stepan's decision 5 asked for a follow-up issue (pkill in the
+image smoke), and the design still lists it as open question 3 with no issue text, and its manual check M1 covers
+only `exit`, although the SIGTERM path is the one no automated test runs.
+Rule: Run every mutation's replacement text once in the test image's shell before writing the row (`docker exec
+<own container> /bin/sh -c '<mutated script>'`), and check that it does the wrong thing it names, not nothing. After
+Stepan answers open questions, update the design: every answer that asks for an artifact (issue text, ADR line) has
+that artifact in the design, and a property no automated test covers gets a manual step.
