@@ -298,3 +298,20 @@ and security asked U1 to fail closed. Neither note said that raw YAML has not ha
 The architect combined both and made a valid ready lesson without `checks:` a U1 issue. Found in round 3.
 Rule: When suggesting that a check run on pre-parse data, name the parser defaults and optionals it will no longer
 get and say how the check treats each.
+
+### 2026-11-10: Counted a header line as a record in a read-only rehearsal (#113, judge_design round 1, operations)
+Round 1 reported `docker buildx du --filter 'type!=exec.cachemount'` as "223 records selected"; the file had 223
+lines including the `ID RECLAIMABLE SIZE LAST ACCESSED` header. The real count is 222 (194 regular + 27
+source.local + 1 frontend, which the same report listed), 223 without the filter. The architect copied 223 into 2.4,
+R-1 and R-U1, so the design's evidence does not add up.
+Rule: Count records by a per-record key (`grep -c '^ID:'` on `--verbose`), never `wc -l` on a table, and check that
+the parts sum to the total before reporting it.
+
+### 2026-11-10: Judged the deploy store mount by the pnpm counter, not by the metric of the issue (#113, judge_code round 1, operations)
+Round 1 passed 5c6880c and wrote that the workspace deploy step "is the same with and without the store mount",
+because deploy printed `downloaded 0` and the image check exited 0. That counter reads the same in both variants,
+so it could not show a difference. The issue is about build-cache growth, and the deploy record in
+`docker buildx du --verbose` is about 117 MB with the mount and about 280 MB without it (architecture judge, then the
+tester's M1/M2). The mount had to be restored in 1ac739d.
+Rule: When a change is judged "no effect", measure it with the metric the issue is about (here the new build-cache
+record of the step, matched by before/after ID diff), not with a proxy that prints the same value in both variants.
