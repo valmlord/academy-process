@@ -202,3 +202,22 @@ in "design 4.Q5", "(Arch A4)", "O N2", "decision A8" outside `design/flows/`, "r
 the architect fixed the 33 and round 2 was spent on the rest.
 Rule: For a "class of references" finding, grep the class with several neighbouring forms (section numbers, decision
 ids, review finding ids) before sending round 1, and state that the list is an example and the effect is the target.
+
+### 2026-11-04: Round-1 accuracy prescribed "earlier stage name (case-insensitive)" for FROM without reading BuildKit (#44)
+Round-1 A3 listed "earlier stage name (case-insensitive)" among the FROM forms. The architect copied it as F2 [J-acc].
+BuildKit lowercases the declared name (`parseBuildStageName`: `stageName = strings.ToLower(args[2])`) but looks up the
+FROM base with the raw string (`addState`: `dss.statesByName[ds.stage.BaseName]`); only `COPY --from` lowercases the
+query (`findStateByName`). So `FROM Build` after `AS build` is not a stage reference, and as an image name it is
+invalid (path components are `[a-z0-9]+`). The case-insensitive lookup belongs to COPY --from, not FROM.
+Rule: Every value in a prescribed closed set is a claim. Before sending it, quote the vendor source or doc line for
+each member, and check which code path (FROM vs COPY --from) the behaviour belongs to.
+
+### 2026-11-04: A round-1 prescription said two rules "separate" a race, and they were tested only against the named forms (#44, judge_design round 2, assessment)
+
+Round-1 S3 prescribed rule a and rule b and said they "separate" sleep-first and check-write-sleep from the honest
+forms. That was tested against exactly those two attack forms. In round 2, an unlocked check, then the delay, then an
+unlocked recheck and write passed every rev-2 rule 30/30, and so did a racy pending set. The architect had deleted
+the residual on the strength of the prescription.
+Rule: Before writing that a prescribed rule closes an attack class, run it against the class's neighbours: the race
+moved before or after the delay, each lock removed from each honest form, a fast-path precheck added. Name the forms
+you ran it against. "Separates X and Y" should read "separates X and Y; neighbours Z not tested".

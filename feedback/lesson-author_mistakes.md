@@ -69,3 +69,27 @@ admin-required and ignores the repository's `excludedCommands`.
 Rule: When a fix adds a sentence, find the page that states it, add that page to `sources` if it is missing, and read
 the whole section of the cited page for exceptions before you write "всегда", "любой" or "куда бы ни". This matters most
 for scopes you named in the sentence before.
+
+### 2026-11-10: Student timings, a reversed course rule and REQ numbering left as they were (#44, judge_content round 1, pedagogy)
+
+The student timed the three parts the design judges had flagged twice: L1 examples 35-45 min against 25, L4 handlers
+with validation 60-90 against 35, L3 local time 20-25 against 15. No `estimatedMinutes`, no task.md breakdown and no
+load-reducing line changed, and nothing records why the numbers stand. The same entry of #42 above already asked for
+this. L5 task.md:54-59 was changed to accept the reserve form (student R2-B1), but theory.md:158-160 still says "курс
+её не принимает", and the lesson outcome still says the delay sits "внутри одной атомарной секции". The REQ numbers of
+the reference spec in every theory.md (L2-L8) and in L3 task.md:34, and the starter cases' `"req": [..., "REQ-05"]`
+under "можно перенести свою работу", were flagged by the student and neither fixed nor accepted.
+Rule: Before hand-back, walk the student reports item by item and mark each one fixed (file:line) or accepted (where
+recorded). When task.md changes a rule, grep theory.md, lesson.yaml outcomes and module.yaml for the old rule and
+change them in the same edit.
+
+### 2026-11-10: L5 theory states a course rule the check no longer enforces (#44, judge_content round 1, accuracy)
+
+05-api-bookings/theory.md:158-160 says the form "reserve under the lock, wait outside it, then write" "курс её не
+принимает ... иначе пробы не отличат её от гонки". task.md:54-59 (changed after student R2-B1) says the reserve form
+with a waiting conflict is correct, and student report 2 measured it passing booking-integrity 20/20. So the theory
+sentence is false about the check, contradicts the task of the same lesson, and its reason ("the probes cannot tell
+it from a race") is also false: the probes tell it from a race and accept it. theory.md:27-28 and the lesson.yaml
+outcome still define the seam as "внутри той же атомарной секции".
+Rule: A sentence about what a check accepts is a factual claim about the check. When a task.md rule changes, grep
+theory.md, lesson.yaml outcomes and the quoted check messages for the old rule and fix them in the same edit.
