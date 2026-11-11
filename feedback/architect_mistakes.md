@@ -1818,3 +1818,13 @@ per anchor (dist/nodes/Alias.js:61-67), so 120 aliases split over two scalar anc
 (20 to an anchor that holds 10 aliases) fail. An author reading the ADR is misinformed in both directions.
 Rule: When an ADR or reason text restates a measured limit, keep every condition the measurement had (here "to one
 anchor"), or describe the mechanism, never the bare number.
+
+### 2026-11-11: The merge follow-up told the tester to run ci.yml's commands verbatim, with no local rule for them (#106 merge of #149, judge_design round 1, operations)
+Check 8 of the merge design says to run the `checks` job "as ci.yml runs them ... do not retype from older plans". At this
+load (8 to 22 on 10 cores) a fresh plain `pnpm test` was red in 2 of 3 runs on the merged tree and in 2 of 2 web runs at
+92cb2c0, always `lesson-markdown.test.tsx` with `Test timed out in 5000ms`. That is the pre-existing timeout #106 already
+settled with rule R6-1 (`-- --testTimeout=60000`, any red is real), and the design dropped that rule. Check 10 has the same
+problem: `check-append-only.sh` copied from ci.yml exits 1 at commit B, because it needs a PR merge commit and
+`PR_HEAD_SHA`. Run at commit A it exits 0 against the wrong base.
+Rule: When a design tells the tester to run CI's commands locally, run each one on the host at base first. Carry over any
+local rule the task already has (timeouts, a simulated merge commit), or say why it no longer applies.

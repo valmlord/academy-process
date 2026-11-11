@@ -556,3 +556,13 @@ mutations passed every round; all three failures were prose stating a measured f
 Rule: when a design turns a measurement into doc or ADR text, the architect brief asks for each number to keep the
 condition it was measured under (which input shape, per what), and for every claim about a caller or error path to be
 checked against the cited line, not taken from the research. My own probe output labels its inputs fully.
+
+### 2026-11-11: main moved twice while the merge follow-up was in review (#106 merge of #149)
+
+The follow-up to make PR #151 mergeable after #149 was designed against 7aa5a6c. Before the tester finished, main gained
+#140 (design/ and ADR-0007 only), the tester stopped at the append-only simulation, and the plan needed a delta and a
+second merge commit that had no design round of its own (the code judges reviewed it instead). Each round of the follow-up
+took about as long as the time between merges to main.
+Rule: for a merge-of-main follow-up, `git fetch` right before the tester and right before the push, and write the merge
+design so it already covers "main moved by docs-only commits": a further merge commit with the same checks, judged at
+judge_code.
