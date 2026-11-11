@@ -318,6 +318,16 @@ Rule: in a DESIGN brief that edits design/system/README.md, require each changed
 proto.css and the app classes (file:line). When a brief asks for an executable check over a class of members, say
 that every member's expected count is asserted in code and that absence is a finding.
 
+### 2026-11-10: Extra judge round planned for one judge only, and a check fix not re-run by the student (#44)
+
+After the two-round limit Stepan approved a third round, and I planned to re-run only the judge that failed.
+The parent session caught it: a round counts only with all three judges in one message. Separately, two student
+cheater rounds each found new passing cheats in checks that the designer had already "closed", and assessment
+then found three more bypass families in docker-static over rounds 2-3.
+Rule: an extra judge round always spawns all three judges, scoped to the changes. When a check is rewritten to
+close a cheat, brief the designer to run a differential or adversarial corpus against the real tool's parser or
+semantics (not only the reported forms), and plan one focused student cheater rerun before the judges.
+
 ### 2026-11-03: Scoped out an item the issue owner had assigned to design, without reading the comments (#83)
 
 The #83 architect brief put F3 (Radix Tabs ring on mousedown) out of scope as app behaviour. An owner comment on
@@ -327,6 +337,19 @@ follow-ups recorded only in git-ignored `plans/`.
 Rule: read `gh issue view <n> --comments` before writing the architect brief, list every owner comment as an
 in-scope item or a decision for Stepan, and require each out-of-scope item to be recorded in a committed file or a
 follow-up issue, never only in `plans/`.
+
+### 2026-11-10: Eleven design rounds on one class, closed by one rule only in round 9 (#70)
+
+judge_design for the quiz flows took 11 rounds. From round 2 on almost every blocker was one more case of "where does
+focus go when an answer arrives and the learner is not on the panel": tab switch, Safari mouse focus on `body`, open
+menus and dialogs, the idle warning, a control the answer removes. Each fix named the cases the judges listed, and the
+next round found the next one. Round 9 replaced the cases with one R2 rule ("focus after a background change", a
+fallback order per region) and the tail ended in two rounds. Rounds 3-4 were also spent on prototype mechanics traced
+against a sibling task's unmerged proto.js; they went to the author phase only after Stepan decided it.
+Rule: at the second FAIL of the same shape, brief the architect for one general rule over the whole class (list the
+members, then one rule with a fallback), not the listed cases. Do not judge behaviour that depends on another
+branch's uncommitted code in judge_design: state the required behaviour in the flows and test the mechanics in the
+author phase, after that branch merges.
 
 ### 2026-11-09: My own suggested comment wording cost a judge round (#33)
 
@@ -430,3 +453,15 @@ The tree came back byte-identical (cmp against plans/121-clamp-log-error-fields.
 crash mid-row would have left a mutated file in the diff to be committed, and parallel judges may review a mutant.
 Rule: a judge brief that allows mutations names the place: a scratch `git worktree add` under the scratchpad (or a
 copied tree), never the task worktree. Before commit, cmp the tree against the saved diff and check no backup files.
+
+### 2026-11-10: A measured number lost its condition on the way into the ADR text (#117)
+
+judge_design took three rounds (Stepan allowed the third). Round 1 failed on a researcher claim the architect copied
+(a loader error reaching StarterRefusedError at starter.ts:112, where no YAML is parsed) and a missed caller
+(export-course.ts in the image build). Round 2 failed on one parenthetical: the research measured "100 aliases to one
+anchor", the design's ADR text said "100 aliases", and yaml's limit is per anchor with nesting multiplying. My own E0
+probe printed "aliases 100" without the condition too, so my briefs carried the shortened form. The code, tests and
+mutations passed every round; all three failures were prose stating a measured fact more broadly than it was measured.
+Rule: when a design turns a measurement into doc or ADR text, the architect brief asks for each number to keep the
+condition it was measured under (which input shape, per what), and for every claim about a caller or error path to be
+checked against the cited line, not taken from the research. My own probe output labels its inputs fully.
