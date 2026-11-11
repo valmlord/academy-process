@@ -444,6 +444,20 @@ metric (here: build-cache record size per step from `buildx du --verbose`), with
 metric moves. Every architect re-brief says: you have no shell; record only results a named run produced, labelled
 with that run.
 
+### 2026-11-11: Four design rounds spent on a mutation procedure, not the fix (#129)
+
+The #129 fix (listener error handler, graceful probe, readiness poll, peer on the other network) passed all three
+judges in round 1. Every later FAIL was in section 5.1, the procedure for running mutation patches: patching the
+real test file and restoring it (round 1: a partial patch left it mutated; round 2: the junk cleanup deleted four
+tracked course/*.orig files and the restore trap fired on the exit meant to protect a fix), then a clone-based
+rewrite whose leftover check missed the runtime's own objects and took the run id unchecked (round 3). Stepan
+allowed rounds 3 and 4. The size also crossed the TASK line (diff 155+/37-, one file); I kept TASK because the
+phases match PROJECT and said so in the report, not before planner.
+Rule: when a test plan mutates a file that is in the pending diff, the architect brief prescribes from the start
+that mutations run only in a throwaway clone (git clone --local into the scratchpad, git apply all-or-nothing,
+leftovers listed with the harness's own selectors, run id validated), and the operations judge dry-runs that
+procedure with negative controls in round 1. Name the tier change to Stepan when the architect's estimate crosses it.
+
 ### 2026-11-10: A judge_code brief let the operations judge mutate product files in the task worktree (#121)
 
 The #121 judge_code round 1 brief asked the operations judge to spot-check mutation rows "on a copy". It mutated the

@@ -1509,6 +1509,71 @@ visible hint.
 Rule: A pre-decided rule for a cache or layer change measures the issue's own metric (the step's record size in
 `docker buildx du --verbose`, or the Build Cache delta) for both variants, never only a tool's progress counter.
 
+### 2026-11-10: Mutation guard exited on a failed patch without restoring the file it had half patched (#129, judge_design, operations)
+Design 5.1 applied each mutation with `patch -p1 --forward < M<n>.patch || { echo "GUARD FAILED"; exit 1; }`
+and restored the backup only after the test run. Dry-run in a scratch copy (Apple patch 2.0): a two-hunk patch whose
+second hunk does not match applies the first hunk, exits 1, and leaves `.orig`, `.rej` beside the file, so the guard
+exits with the pending-diff file mutated. The next mutation then backs up the mutated file, and its final `cmp -s`
+proves only that it restored the corrupted copy. The procedure also never said which directory `-p1` runs from;
+from `services/workspace` it prompts for a file name and writes `Oops.rej` there.
+Rule: A patch-apply guard checks with `patch --dry-run -d <root>` before the real apply, keeps one pristine copy
+with its sha256 taken before the first mutation, and every exit path (guard failure, red run, interrupted call)
+restores from it and checks the sha. Dry-run the failure path, not only the success path.
+
+### 2026-11-10: Restore trap armed before the check that must exit without restoring (#129, judge_design round 2, architecture)
+Rewritten 5.1.3 sets `trap restore EXIT INT TERM` in step 1, and step 2 then says: when `F` differs from the
+pristine sha and there is no `in-flight`, print `STALE PRISTINE` and "exit without restoring", because `F` was
+changed by someone else (a coder fix) and restoring would destroy it. The exit fires the trap, `restore` copies
+`pristine.ts` over `F`, the sha matches, and the call prints `RESTORED OK` over the coder's lost fix. The 5.1.5
+"already-applied" row ("nothing written") contradicts the same steps. The 5.1.5 cut-off row also says "kill it",
+but INT/TERM run the trap, so only SIGKILL leaves the `in-flight` state the row wants to recover from.
+Rule: Walk every exit of a guarded script with the trap that is armed at that point. Arm a restore trap only once
+the script itself has changed the file (here right after writing `in-flight`), or make `restore` a no-op unless
+the marker exists; name the signal a cut-off test sends.
+
+### 2026-11-10: Mutation guard's junk check and STALE PRISTINE exit fail on the real tree (#129, judge_design round 2, operations)
+Round-2 5.1 defines junk as every `*.orig`/`*.rej` under ROOT (node_modules and .git pruned) and arms
+`trap restore EXIT INT TERM` in step 1. Dry-run in a scratch copy (Apple patch 2.0-12u11, bash): in the real worktree
+the junk check prints four tracked files (`course/.../checks/data/{CLAUDE.md,Makefile,procedures,release.py}.orig`),
+so setup step 1 stops on every round and the procedure can never start; with those files present, one M5 call's
+`restore` deleted all four and printed `RESTORED OK`. And step 2's `STALE PRISTINE; exit` runs the armed trap, which
+copied pristine over a hand-applied F (measured: F rewritten), the exact case 5.1.5 says must write nothing.
+Rule: Before defining a cleanup by glob, run the glob on the real tree and subtract tracked files (or delete only
+the exact names the tool creates); arm a restoring trap only after the last exit that must not restore.
+
+### 2026-11-10: Leftover check filtered by the test-run label only, which the runtime's own objects never carry (#129, judge_design round 3, security)
+Round-3 5.1.3 step 5 and 5.1.4 step 1 declare "leftovers none" from `docker ... ls --filter
+label=academy.workspace.test-run=<id>`. The workspace container, its volume and `wks-t<id>-h-net` are created by
+the src runtime with `workspaceLabels` (`academy.workspace.managed=true`, `academy.workspace.instance=t<id>-h`,
+`src/identity.ts:94-108`) and no test-run label; the harness itself finds them by the managed+instance pair
+(`harness.ts:141-156`). So a killed or broken mutation run that leaves the workspace container (the one M4 connects
+to `otherNetwork`) prints "leftovers none" and `MUTATIONS CLOSED`. The run id is also taken from a log line that
+global-setup prints only after setup succeeds (`global-setup.ts:46`, after `createSentinel` at :39), with no format
+check, so a run that died in setup gives no id or an arbitrary string, and the check runs vacuously or interpolates
+unvalidated text into a shell command.
+Rule: A leftover check uses the same selectors as the code that removes the objects (run label OR managed+instance,
+plus the network name), and a run id read from a log is matched against its generator's format (`^[0-9a-f]{8}$`,
+exactly one per log) or the check stops instead of passing.
+
+### 2026-11-10: The leftover check was carried into the clone rewrite without re-deriving its selector (#129, judge_design round 3, architecture)
+Architecture confirms the security finding above independently. The round-3 rewrite of 5.1 replaced the whole restore
+scheme but kept the step 5 leftover check from earlier rounds as it was. Nobody re-read who creates the objects the
+I-network run leaves: helpers, peer and `otherNetwork` carry the run label, while the workspace container, volume and
+instance network come from `src/identity.ts` `workspaceLabels`/`networkLabels`, which have none. The 5.1.3
+killed-call branch ("re-run the baseline if a killed run still has objects") and 5.1.4 step 1 both take their
+decision from that check, so they skip the very case they exist for.
+Rule: When a procedure is rewritten, re-derive every check you keep from the code that creates and removes the objects
+it watches (here `harness.ts` `listRunObjects`), and do not copy it over unchanged.
+
+### 2026-11-10: 5.1.3 step 1 path guard is a string test, and the missing run id passes silently (#129, judge_design round 3, operations)
+Dry run of the clone rewrite. 5.1.3 step 1 says `C` must "contain `services/workspace`"; the clone path string never
+does (measured: `[[ $C == *services/workspace* ]]` false on `.../scratchpad/m129-clone-ZRrW04`, while
+`$C/services/workspace` exists), so a literal run stops every mutation call; 5.1.4 step 2 already had the right form.
+The run-id gap in the security entry above is measured, not only read: with a labelled container present,
+`docker ps -a --filter label=<key>= -q` (empty value) prints nothing, so a log with no run line gives "leftovers none".
+Rule: An existence guard is a path test (`-d <C>/services/workspace`), never "the string contains"; every value a
+check is keyed on is shape-checked first (exactly one `[0-9a-f]{8}`) or the step stops.
+
 ### 2026-11-10: Prescribed a module header claiming "the only way" without grepping the other log lines (#121, judge_code, architecture)
 Design 1.1 prescribed the log-fields.ts header "these four functions are the only way a field taken from [a thrown
 value] reaches a log line". The coder wrote it faithfully (log-fields.ts:2-4). It is false in the same service: our
