@@ -1393,3 +1393,94 @@ exist in three checkouts, all of which happen to carry a `checks:` key. A valid 
 fail-closed branch, so the first such content PR would get a red `content` job on a valid lesson.
 Rule: A scan shows only that today's files pass. Before claiming a new rule restricts no valid input, walk the schema
 for valid shapes the corpus lacks (defaults, optional keys, every lesson `type`) and add a test for each.
+
+### 2026-11-09: A persisted fact derived from filtered inputs was stored without the filter key (#101, judge_design round 1, architecture)
+The design makes a check-kind change ignore old results (D8 Q8, deviation 4: "a quiz with limit 3 must not inherit
+nine command failures and close at once"), but `check_closures` has no `check_kind` and `isClosed` reads any closure
+row for the check id. A command check closed after 10 failures and later changed to a quiz is closed at once with
+`failedCount` 0, the exact case the deviation names. The startup recompute also skips `completed` rows, so a closure a
+lowered limit causes in a completed lesson (a check added after completion) is never persisted, and a later raised
+limit reopens it, against D4.
+Rule: When a persisted row records a conclusion drawn from filtered facts, store every key the filter uses and apply
+the same filter on read; and run "persist when it happens" over every row where it can happen, not only the rows
+whose stored status can still change.
+
+### 2026-11-09: A port type for live data reused the committed-fact type with a field live data cannot have (#101, judge_design round 1, architecture)
+`LiveCheckProgress` `done` carries a `ResultFact`, which requires `attemptFinishedAt: Date`; a result streamed from a
+running attempt has no attempt finish time, so #34 must invent one, and `ResultView.finishedAt` then shows it.
+Rule: For every port another issue implements, fill each field of its types from the state the implementer has at
+that moment; a field it cannot know gets its own live type, not a placeholder.
+
+### 2026-11-09: Amended an ADR's rules and left contradicting sentences of the same item standing (#101, judge_design round 1, architecture)
+Rule 7 makes `applyLessonOutcome` "the only writer of `completed`" and rule 4 derives `in-progress` for a lesson with
+no counted check, while ADR-0007 item 5 "Theory lessons" (a "mark as done" action completes them) and the #34
+follow-up "write step (4) as `UPDATE ... WHERE status = 'in-progress'`" stay in force; the second blocks the
+`not-passed` -> `completed` move rule 4 allows.
+Rule: Before finishing an ADR amendment, grep the whole ADR for every sentence the new rules touch (writers, status
+values, guards in follow-ups) and replace or retire each one explicitly.
+
+### 2026-11-09: Streamed live results that a rolled-back finish later turns into uncounted errors (#101, judge_design round 1, security)
+Design 7.1 shows a running attempt's live `done` results (with `details`) through `LiveAttemptSource` before the finish
+commits, R34-8 streams them, and 6.2/R34-14 say a failed finish rolls back and the sweep makes every included check an
+uncounted `error`. A learner who can make the finish fail (a NUL byte or invalid UTF-8 echoed into the grader message,
+which Postgres `text` rejects) sees counted-failure messages derived from the key for free, against the owner's F1
+counting floor.
+Rule: For every result path, show nothing to the learner that is not yet durable with its counted status, and check
+that no later failure (rollback, sweep, deadline) can turn a result already shown into an uncounted one.
+
+### 2026-11-09: Mapped learner-triggerable grader deaths to the uncounted platform `error` (#101, judge_design round 1, security)
+Rule 3 maps "no exit code because the runner failed (container gone, ...)" to `error`, never counted, and leaves a grader
+killed by a signal unmapped. Graders run learner code as children in the learner's own container (verify_hook.py:253
+feeds hidden probe input to the learner's hook), so that code can save the input to `/workspace` and SIGKILL its
+parent or stop the container: an uncounted, unlimited probe of grader material.
+Rule: When a contract exempts "platform" failures from a counter, define them by who can cause them; anything code
+under test can cause after grading started is counted.
+
+### 2026-11-09: Prescribed a pnpm command that fails verbatim, and missed existing tests the new index breaks (#101, judge_design round 1, operations)
+Design 5.1 prescribes `pnpm --filter @academy/db run db:generate -- --name check_limits`; pnpm 10.28 passes the `--`
+through and drizzle-kit exits 1 ("Unrecognized options for command 'generate': --, check_limits"). Design 5.4 lists only
+new db tests, but the planned migration turns six existing ones red in a scratch run: migrate.int.test.ts I1 compares an
+exact table list (no `check_closures`), and schema.int.test.ts I11 seeds a `running` attempt in `beforeAll` and then
+inserts more `running` attempts of the same lesson, which `attempts_one_running_idx` now rejects with 23505.
+Rule: For a new constraint or table, grep every existing test that inserts into or enumerates the touched tables and
+name its change in the design; never prescribe a script invocation without its exact argument-forwarding form.
+
+### 2026-11-09: Rollback covered only "start the previous image", not a code revert (#101, judge_design round 1, operations)
+Design 2.7 and 5.3 say the migration is additive and the previous image ignores it, which holds. A `git revert -m 1` of
+the merge deletes `0002_check_limits.sql` and its snapshot, and CI's append-only step fails on that (rehearsed), so the
+standard revert path is closed and the design does not say what to revert instead.
+Rule: For a PR that adds a migration, state the code-revert plan (which commits are reverted, that the migration commit
+stays, and that removing the schema is a later forward migration), checked against check-append-only.sh.
+
+### 2026-11-09: The run deadline relabels a started check's runner fault as an uncounted platform stop (#101, judge_design round 2, security)
+R34-15 says itself that a started check reaches the deadline without a row "only when web's runner itself failed", and
+R34-3 sends a twice-failed result insert to the deadline. The deadline then writes `platform-stop: run-deadline`
+(uncounted) for every rowless included check, started or not. D11 says a platform fault after the grader started
+spends the attempt, and the deadline never stops a started grader (R34-4's timer already did), so this reopens an
+uncounted end after start for every runner fault a learner can provoke through grader output.
+Rule: A cleanup path that writes results for "rows still missing" must split them by the same cause test the main
+rule uses (here: did the grader start?), never apply one label to all of them.
+
+### 2026-11-09: Replaced an ADR sentence by quoting it with "..." and dropped the safety clause in the elided part (#101, judge_design round 2, architecture)
+S11 quotes ADR-0007 "Dashboard" sentence 3 as "Course percentage = completed counted lessons / counted lessons;" and
+replaces it with rule 8, which does not restate the rest of that sentence: "a course with 0 counted lessons shows no
+percentage (never `0/0`, `NaN` or `0%`)". In the same revision 7.4 adds a fallback that makes `next` non-null with
+`totalLessons` 0, the exact state the dropped clause forbids: `CourseProgress` renders `<Progress max={0}>`, whose
+indicator is `width: ${(0 / 0) * 100}%` = `NaN%` (components/ui/progress.tsx:35).
+Rule: When an amendment replaces a sentence, quote it whole (no "..."), list every clause it carries and say where each
+clause now lives; walk any new view state through the components that render it.
+
+### 2026-11-09: The sweep sets an attempt `error` unconditionally while the same amendment defines `error` as "at least one result is error" (#101, judge_design round 2, architecture)
+S2 redefines the attempt status `error` as "at least one result is `error`", and R34-14 / R34-15 / S13 set the attempt
+`error` whatever rows it holds. Under D10 an attempt whose every included check committed its row before a crash gets
+no new row from the sweep, so it ends `error` with `errorCheckCount` 0, and the R34-11 end text reads "Проверок со
+сбоем: 0".
+Rule: A cleanup path that sets a summary status derives it with the same aggregation as the normal path, over the rows
+present after its own inserts.
+
+### 2026-11-09: Code-rollback plan reverts individual commits of a repository that squash-merges (#101, judge_design round 2, architecture)
+Design 5.6 says "`git revert -m 1` of the merge" and "one PR that reverts commits 9, 7, 6, 5, 4"; the repository
+squash-merges (CLAUDE.md section 2 item 7; main is `... (#120)`, `... (#116)`), so main holds one #101 commit, with no
+merge commit and none of commits 1-9.
+Rule: Write a rollback plan against the history the merge method produces, and rehearse it on a scratch clone merged
+the same way.
