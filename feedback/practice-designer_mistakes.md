@@ -199,3 +199,88 @@ of each template: 10/5/5 of the 11/8/8 single-finding forms.
 Rule: Every sentence that says what a check does, or does not react to, is checked against the constant or function
 that implements it before hand-back: grep the file named, the list or constant that bounds the set, and the stage that
 reads it. Words like "все", "ничего", "всегда" need a pointer to the code line that makes them true.
+
+### 2026-11-10: Surviving-mutant messages name the correct behaviour after "прошёл на API с ошибкой" (#44, judge_content round 1, pedagogy)
+
+`ci_gate.ENGINE_VARIANTS` gives the engine mutants a decision name, not a bug: "make ci прошёл на API с ошибкой:
+отменённое бронирование не занимает время", "...: переход к следующему дню по календарной дате, а не прибавлением 24
+часов", "...: шаг слотов отсчитывается от начала окна, а не от начала часа". Read literally, the bug is the correct
+behaviour. The API variants and the L7 task.md table name the bug, so one list has two polarities, and task.md does not
+describe the message the code prints. The student flagged it in report 1 (L3 issue 3, L7 issue 1). L8 reuses the list.
+Rule: A message template that frames its argument ("ошибкой: X") is read together with every value it can take. Read
+each value in the template, and keep the values and the task.md table in the same polarity.
+
+### 2026-11-10: docker-static reads compose.yaml only, and compose keys that defeat its own pass line are accepted (#44, judge_content round 1, assessment)
+
+The FROM and USER rules of `verify_docker.py` are closed sets, but the compose side is an open key set over one file.
+On a copy of the R8 reference, each of these passes with "наружу открыт только web ... последняя стадия не от root":
+a `compose.override.yaml` next to it with `api: user: root, ports: ["8080:8080"]` (`docker compose up` merges it by
+default, and neither docker-static nor deploy-rubric reads it); top-level `include: [other.yaml]` with a service
+`alpine:latest`, `user: root`, published ports; `user: root` or `user: "0"` on api or web; `build.target: build` on
+api (the root golang stage is what runs); `network_mode: host` and `pid: host` on api; a docker.sock bind in `volumes`.
+The rule-c early message of `verify_integrity.py` (copied to 08) still says "Проверка, задержка и запись должны идти в
+одной атомарной секции" after task.md:54-59 accepted the reserve form with a wait (R2-B1).
+Rule: A static check over a config format checks what the tool will actually run, not one file of it. List the tool's
+documented inputs (default override files, include/extends) and the per-service keys that change the property under
+test (user, build target, network and pid mode, host binds), and close the set: only the keys the course needs are
+accepted, any other key or file is refused with its name. When a rule is relaxed in task.md, grep the check messages
+for the old rule in the same edit.
+
+### 2026-11-10: booking-integrity messages still teach the rejected-reserve rule (#44, judge_content round 1, accuracy)
+
+After task.md:54-59 accepted the reserve form with a waiting conflict (student R2-B1), the rule-c early message still
+names "резерв под блокировкой, задержка вне её, потом запись" as the cause, and the rule b, c and contention messages
+end with "Проверка, задержка и запись должны идти в одной атомарной секции". For a reserve-form learner whose conflict
+answers too early, the message names the accepted form as the fault instead of the real one (the conflict answered
+before the reservation resolved).
+Rule: When a course rule changes, re-read every message that states the rule and say what the probe actually
+observed; an error message must not name an accepted form as the fault.
+
+### 2026-11-10: docker-static closes the key set but not the values that leave the repository (#44, judge_content round 2, assessment)
+
+After the round-1 allowlist, three inputs still pass on a copy of R8 with the full pass line. `build.context:
+github.com/evil/repo`, `~/evil` or `"service:x"` (with a local look-alike directory holding the clean Dockerfile):
+`inside()` refuses only `/`, `..`, `://` and `git@`, while compose-go `paths/context.go` `isRemoteContext` also treats
+`github.com/` as a Git URL, `absPath` runs `ExpandUser` on `~`, and `service:` names another service's image; task.md:59
+says such a path is refused. `USER 00` in the api final stage passes, because the root test is the literal `root`/`0`,
+while runc parses a numeric user with `strconv.Atoi` and runs it as uid 0; task.md:100 says the user is "не root и не
+0". `# syntax=evil/frontend:1.0` passes: the directive picks the frontend image that interprets the whole Dockerfile,
+so the FROM and USER this check read may not be what is built, and the image is not judged by the pinning rules.
+Rule: A value that names a path, a user or an image is judged the way the tool resolves it, not by its spelling. For
+each such value, read the tool's resolver (remote-context prefixes, home expansion, numeric parse) and refuse or
+normalise every form it accepts that the course does not; then add each form to the attack corpus.
+
+### 2026-11-10: ONBUILD message says BuildKit runs a grandparent's trigger in the last stage (#44, judge_content round 3, accuracy)
+
+The B9 ONBUILD message ("ONBUILD в стадии X, от которой строится последняя стадия: BuildKit выполняет его в последней
+стадии", verify_docker.py:285, quoted in task.md:347-349) and the rule at task.md:110-111 say the trigger runs in the
+final stage. BuildKit `dockerfile2llb/convert.go` `resolveStages` collects ONBUILD only from `d.base.commands`, the
+direct base, and `dispatchState.init` clears `Config.OnBuild` when a stage inherits from an in-file stage. So for
+`FROM ... AS a` / `ONBUILD RUN ...` / `FROM a AS b` / `FROM b AS final`, the trigger runs in `b`, not in `final`; the
+check still flags it (correctly: its effect reaches the final image through `b`), but with a false reason. The check
+notes and the code docstring say "the child", which is right; the learner-facing text generalised it.
+Rule: When a vendor behaviour is verified for one shape (direct parent), the learner-facing wording must hold for
+every shape the rule covers (any stage of the chain). Re-read the message against the farthest case the check fires on.
+
+### 2026-11-10: docker-static's Dockerfile line reader splits lines differently from BuildKit (#44, judge_content round 3, assessment)
+
+The round-2 fixes hold (paths, `USER 00`, syntax, `BUILDKIT_` args), but `docker_static.logical_lines` still decides
+where an instruction starts and ends by its own rules, so a Dockerfile can show the check a `USER` that BuildKit never
+runs, or hide one BuildKit does run. Each form below passes on a copy of R8 with the full pass line while the BuildKit
+final stage runs as root (buildkit master `frontend/dockerfile/parser/parser.go` and `directives.go`, read by gh api):
+- `# escape=` with a backtick and a leading space: `processLine` trims leading whitespace before
+  `possibleParserDirective`, so BuildKit's escape is the backtick; `DIRECTIVE_LINE` needs `#` in column 0, so the check
+  keeps `\`, and `ENV A=b\` then hides the next `USER root` from the check only.
+- `RUN echo "<<EOF"` (or `x<<EOF`): `heredocsFromLine` splits words with RawQuotes and matches
+  `^(\d*)<<(-?)\s*([^<]*)$` per word, so neither is a heredoc; `HEREDOC_MARKER.finditer` finds `<<EOF` anywhere and
+  skips the following lines, `USER root` among them.
+- `RUN cat <<"EXPOSE 1"`: BuildKit's delimiter is `EXPOSE 1` and the body hides `USER nonroot`; the check's marker
+  needs an identifier inside the quotes, sees no heredoc and reads that `USER`.
+- a blank line inside a continuation (`RUN echo \`, empty line, `USER 65532`): BuildKit skips empty continuation lines
+  (a warning) and joins `RUN echo USER 65532`; the check ends the instruction at the blank line.
+- `ENV A=x\\` and `ENV A=x\` followed by a form feed: BuildKit's `lineContinuationRegex` is
+  `([^\\])\\[ \t]*$|^\\[ \t]*$`, so neither continues; the check uses `rstrip().endswith(escape)` and swallows the
+  next `USER root`.
+Rule: A static reader that stands in for a vendor parser either reproduces the parser's tokenisation from its source
+(directive trimming, continuation regex, per-word heredoc match, empty continuation lines) or refuses every input
+where the two could disagree. Put each disagreement into the attack corpus with a form that flips the effective USER.

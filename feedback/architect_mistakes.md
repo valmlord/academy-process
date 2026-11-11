@@ -1394,6 +1394,97 @@ fail-closed branch, so the first such content PR would get a red `content` job o
 Rule: A scan shows only that today's files pass. Before claiming a new rule restricts no valid input, walk the schema
 for valid shapes the corpus lacks (defaults, optional keys, every lesson `type`) and add a test for each.
 
+### 2026-11-09: A persisted fact derived from filtered inputs was stored without the filter key (#101, judge_design round 1, architecture)
+The design makes a check-kind change ignore old results (D8 Q8, deviation 4: "a quiz with limit 3 must not inherit
+nine command failures and close at once"), but `check_closures` has no `check_kind` and `isClosed` reads any closure
+row for the check id. A command check closed after 10 failures and later changed to a quiz is closed at once with
+`failedCount` 0, the exact case the deviation names. The startup recompute also skips `completed` rows, so a closure a
+lowered limit causes in a completed lesson (a check added after completion) is never persisted, and a later raised
+limit reopens it, against D4.
+Rule: When a persisted row records a conclusion drawn from filtered facts, store every key the filter uses and apply
+the same filter on read; and run "persist when it happens" over every row where it can happen, not only the rows
+whose stored status can still change.
+
+### 2026-11-09: A port type for live data reused the committed-fact type with a field live data cannot have (#101, judge_design round 1, architecture)
+`LiveCheckProgress` `done` carries a `ResultFact`, which requires `attemptFinishedAt: Date`; a result streamed from a
+running attempt has no attempt finish time, so #34 must invent one, and `ResultView.finishedAt` then shows it.
+Rule: For every port another issue implements, fill each field of its types from the state the implementer has at
+that moment; a field it cannot know gets its own live type, not a placeholder.
+
+### 2026-11-09: Amended an ADR's rules and left contradicting sentences of the same item standing (#101, judge_design round 1, architecture)
+Rule 7 makes `applyLessonOutcome` "the only writer of `completed`" and rule 4 derives `in-progress` for a lesson with
+no counted check, while ADR-0007 item 5 "Theory lessons" (a "mark as done" action completes them) and the #34
+follow-up "write step (4) as `UPDATE ... WHERE status = 'in-progress'`" stay in force; the second blocks the
+`not-passed` -> `completed` move rule 4 allows.
+Rule: Before finishing an ADR amendment, grep the whole ADR for every sentence the new rules touch (writers, status
+values, guards in follow-ups) and replace or retire each one explicitly.
+
+### 2026-11-09: Streamed live results that a rolled-back finish later turns into uncounted errors (#101, judge_design round 1, security)
+Design 7.1 shows a running attempt's live `done` results (with `details`) through `LiveAttemptSource` before the finish
+commits, R34-8 streams them, and 6.2/R34-14 say a failed finish rolls back and the sweep makes every included check an
+uncounted `error`. A learner who can make the finish fail (a NUL byte or invalid UTF-8 echoed into the grader message,
+which Postgres `text` rejects) sees counted-failure messages derived from the key for free, against the owner's F1
+counting floor.
+Rule: For every result path, show nothing to the learner that is not yet durable with its counted status, and check
+that no later failure (rollback, sweep, deadline) can turn a result already shown into an uncounted one.
+
+### 2026-11-09: Mapped learner-triggerable grader deaths to the uncounted platform `error` (#101, judge_design round 1, security)
+Rule 3 maps "no exit code because the runner failed (container gone, ...)" to `error`, never counted, and leaves a grader
+killed by a signal unmapped. Graders run learner code as children in the learner's own container (verify_hook.py:253
+feeds hidden probe input to the learner's hook), so that code can save the input to `/workspace` and SIGKILL its
+parent or stop the container: an uncounted, unlimited probe of grader material.
+Rule: When a contract exempts "platform" failures from a counter, define them by who can cause them; anything code
+under test can cause after grading started is counted.
+
+### 2026-11-09: Prescribed a pnpm command that fails verbatim, and missed existing tests the new index breaks (#101, judge_design round 1, operations)
+Design 5.1 prescribes `pnpm --filter @academy/db run db:generate -- --name check_limits`; pnpm 10.28 passes the `--`
+through and drizzle-kit exits 1 ("Unrecognized options for command 'generate': --, check_limits"). Design 5.4 lists only
+new db tests, but the planned migration turns six existing ones red in a scratch run: migrate.int.test.ts I1 compares an
+exact table list (no `check_closures`), and schema.int.test.ts I11 seeds a `running` attempt in `beforeAll` and then
+inserts more `running` attempts of the same lesson, which `attempts_one_running_idx` now rejects with 23505.
+Rule: For a new constraint or table, grep every existing test that inserts into or enumerates the touched tables and
+name its change in the design; never prescribe a script invocation without its exact argument-forwarding form.
+
+### 2026-11-09: Rollback covered only "start the previous image", not a code revert (#101, judge_design round 1, operations)
+Design 2.7 and 5.3 say the migration is additive and the previous image ignores it, which holds. A `git revert -m 1` of
+the merge deletes `0002_check_limits.sql` and its snapshot, and CI's append-only step fails on that (rehearsed), so the
+standard revert path is closed and the design does not say what to revert instead.
+Rule: For a PR that adds a migration, state the code-revert plan (which commits are reverted, that the migration commit
+stays, and that removing the schema is a later forward migration), checked against check-append-only.sh.
+
+### 2026-11-09: The run deadline relabels a started check's runner fault as an uncounted platform stop (#101, judge_design round 2, security)
+R34-15 says itself that a started check reaches the deadline without a row "only when web's runner itself failed", and
+R34-3 sends a twice-failed result insert to the deadline. The deadline then writes `platform-stop: run-deadline`
+(uncounted) for every rowless included check, started or not. D11 says a platform fault after the grader started
+spends the attempt, and the deadline never stops a started grader (R34-4's timer already did), so this reopens an
+uncounted end after start for every runner fault a learner can provoke through grader output.
+Rule: A cleanup path that writes results for "rows still missing" must split them by the same cause test the main
+rule uses (here: did the grader start?), never apply one label to all of them.
+
+### 2026-11-09: Replaced an ADR sentence by quoting it with "..." and dropped the safety clause in the elided part (#101, judge_design round 2, architecture)
+S11 quotes ADR-0007 "Dashboard" sentence 3 as "Course percentage = completed counted lessons / counted lessons;" and
+replaces it with rule 8, which does not restate the rest of that sentence: "a course with 0 counted lessons shows no
+percentage (never `0/0`, `NaN` or `0%`)". In the same revision 7.4 adds a fallback that makes `next` non-null with
+`totalLessons` 0, the exact state the dropped clause forbids: `CourseProgress` renders `<Progress max={0}>`, whose
+indicator is `width: ${(0 / 0) * 100}%` = `NaN%` (components/ui/progress.tsx:35).
+Rule: When an amendment replaces a sentence, quote it whole (no "..."), list every clause it carries and say where each
+clause now lives; walk any new view state through the components that render it.
+
+### 2026-11-09: The sweep sets an attempt `error` unconditionally while the same amendment defines `error` as "at least one result is error" (#101, judge_design round 2, architecture)
+S2 redefines the attempt status `error` as "at least one result is `error`", and R34-14 / R34-15 / S13 set the attempt
+`error` whatever rows it holds. Under D10 an attempt whose every included check committed its row before a crash gets
+no new row from the sweep, so it ends `error` with `errorCheckCount` 0, and the R34-11 end text reads "Проверок со
+сбоем: 0".
+Rule: A cleanup path that sets a summary status derives it with the same aggregation as the normal path, over the rows
+present after its own inserts.
+
+### 2026-11-09: Code-rollback plan reverts individual commits of a repository that squash-merges (#101, judge_design round 2, architecture)
+Design 5.6 says "`git revert -m 1` of the merge" and "one PR that reverts commits 9, 7, 6, 5, 4"; the repository
+squash-merges (CLAUDE.md section 2 item 7; main is `... (#120)`, `... (#116)`), so main holds one #101 commit, with no
+merge commit and none of commits 1-9.
+Rule: Write a rollback plan against the history the merge method produces, and rehearse it on a scratch clone merged
+the same way.
+
 ### 2026-11-09: Rerouted an input class without grepping the tests that send it (#112, judge_design round 1, architecture)
 The design sends every non-terminal upgrade, `//[` included, to the request listener through `shouldUpgradeCallback`
 and changes the shared harness to use it, then states "All existing relay tests ... must stay green unchanged".
@@ -1569,3 +1660,161 @@ records the button itself, the activation "returns" focus to it, and the Alert's
 AC30 forbids. Every N test started the press with focus outside the wrapper or on `body`, so none could see it.
 Rule: When two listeners feed one record, state its invariant (here: the target is never inside the wrapper) and
 enforce it in every writer. Walk the clear-then-record order for a press that clears the record but moves no focus.
+
+### 2026-11-10: A mutation named "style" whose literal form kills its own script, and a socket-release test with no timeout stated (#110, judge_design round 1, architecture)
+Design 8.4 M17 ("KILL_SCRIPT `pkill -HUP -u 1000 -x sh` style (kills by name)") claims I-term-exit goes red. The
+kill script runs as `/bin/sh -c`, comm `sh`, uid 1000, so a by-name HUP on line 4 kills the script itself: `sleep 2`
+and the KILL line never run, and the HUP races the second shell's open (two Docker round trips ahead of four), so the
+new shell is usually not there yet and the test stays green. The 3 s sleep added to I-term-exit is then a guard nobody
+watched go red. Separately, the U-exec detached-start row asserts "the socket closes within 2 s" for M9 without saying
+which engine options the test uses; the neighbouring tests build `DockerEngine({ timeoutMs: 200 })`, whose docker-modem
+`req.setTimeout` destroys the socket at 200 ms with or without `destroyStream`, so M9 would stay green.
+Rule: Every mutation row gives the exact replacement text, and the architect walks it through the mutated program
+(including what the mutation does to the script or process that carries it). Every test that asserts a release or
+close within a bound names every other mechanism that could close it within that bound and rules each out in the setup.
+
+### 2026-11-10: Mutation scripts written for a shell the test image does not run, and a decision left without its deliverable (#110, judge_design round 1, operations)
+Design 8.4 M12 replaces the kill lines with `kill -HUP -- "-$sid"`. busybox ash's `kill` rejects `--` ("invalid
+number '--'"), so on node:22.23.4-alpine neither line signals anything and I-term-end-kills goes red because nothing
+is killed, not because a group kill misses the jobs: the row does not prove K2. M17's `pkill ... -x sh` matches
+nothing on busybox (rc 1 with seven `/bin/sh -l` running), so it survives regardless of the race. Both were found by
+running them in a judge's own container. Separately, Stepan's decision 5 asked for a follow-up issue (pkill in the
+image smoke), and the design still lists it as open question 3 with no issue text, and its manual check M1 covers
+only `exit`, although the SIGTERM path is the one no automated test runs.
+Rule: Run every mutation's replacement text once in the test image's shell before writing the row (`docker exec
+<own container> /bin/sh -c '<mutated script>'`), and check that it does the wrong thing it names, not nothing. After
+Stepan answers open questions, update the design: every answer that asks for an artifact (issue text, ADR line) has
+that artifact in the design, and a property no automated test covers gets a manual step.
+
+### 2026-11-10: README prune note implies an academy-only clean-up; rehearsal kept a non-H9 pull and live prunes (#113, judge_design round 1, security)
+Design 2.3 introduces `docker builder prune --filter 'type!=exec.cachemount'` as the way to free "the build cache
+records" of the web and workspace builds. The command acts on the whole default builder: every other project's
+regular build cache goes too, and the text never says so, so Stepan cannot judge what he loses. Design 9.5 R-A..R-C
+still prescribe a `docker-container` builder (pulls `moby/buildkit`, outside 16.5 H9) and two prune runs, gated only
+on "explicit OK", although the read-only form (`docker buildx du --filter ...`) answers the same question.
+Rule: A destructive command written for the owner states its full scope (here: all build cache on this Docker, every
+project) next to the command. A rehearsal of a destructive command is read-only by default (the same filter on a
+listing verb); a pull or a write outside the hard rules is not a design option behind an "OK" gate.
+
+### 2026-11-10: Pass condition for the probe diff did not match what the probe edit produces (#113, judge_design round 2, operations)
+9.3 "After B6" says `diff <worktree>/apps/web/proxy.ts "$T113/ctx/apps/web/proxy.ts"` (and config.ts) "each show
+only the added `// t113 cache probe` line". The probe is an append of `\n// t113 cache probe\n` to files that already
+end in a newline, so the rehearsed diff shows two added lines, an empty one and the probe (`37a38,39`, `215a216,217`),
+and exits 1. Read literally, a correct run fails its own check.
+Rule: Write a diff-based pass condition from a rehearsed run of the exact edit (blank lines, exit status included),
+or make the edit produce exactly the stated output.
+
+### 2026-11-10: Design recorded runs the architect could not have made (#113, judge_design round 3, architecture)
+The architect role has no shell (design 9 says so itself), yet round 3 wrote "re-ran" observations into the design:
+D4 adds a `--ignore-scripts` re-run with rc 0, "no output line naming `packages/db`", an `@academy/db` link to the
+absent directory and a `pnpm ls` before/after diff with rc 1; the round-3 notes claim G0 was "re-run" on the local
+node image and the probe diff "rehearsed in round 3"; R-1 dates the du counts "round 3". The operations judges
+recorded only rc 0 for the round-1 frozen install, and 222/223 and `37a38,39`/`215a216,217` in round 2. The numbers
+that match a judge run are right but misattributed; the rest is evidence no run produced.
+Rule: Every observation in a design names the run that produced it (role, round) and quotes only what that run
+recorded. Anything else is marked "to be rehearsed by operations", never "re-ran".
+
+### 2026-11-10: Pre-decided keep/drop rule for a cache mount looked at a counter, not at the cache growth the issue is about (#113, judge_code, architecture)
+Design 9.3 B5 decided the workspace deploy mount by "deploy shows `downloaded 0` and the image check exits 0 ->
+drop it". Both held without the mount, so the coder dropped it (5c6880c). But pnpm's progress line printed
+`downloaded 0, added 0` with and without the store, so it could not tell the two apart, and the builder's own
+records show the cost: the deploy RUN record is 117.2 MB with the mount (tester B3 03:31:59, B4 03:33:24 UTC) and
+280 MB without it (B5 03:34:46, re-test B4 03:51:24), about +163 MB of build cache on every source-only workspace
+build, which is exactly what #113 exists to cut (B4 delta +0.20 GB -> +0.35 GB). The doubled deploy time was the
+visible hint.
+Rule: A pre-decided rule for a cache or layer change measures the issue's own metric (the step's record size in
+`docker buildx du --verbose`, or the Build Cache delta) for both variants, never only a tool's progress counter.
+
+### 2026-11-10: Mutation guard exited on a failed patch without restoring the file it had half patched (#129, judge_design, operations)
+Design 5.1 applied each mutation with `patch -p1 --forward < M<n>.patch || { echo "GUARD FAILED"; exit 1; }`
+and restored the backup only after the test run. Dry-run in a scratch copy (Apple patch 2.0): a two-hunk patch whose
+second hunk does not match applies the first hunk, exits 1, and leaves `.orig`, `.rej` beside the file, so the guard
+exits with the pending-diff file mutated. The next mutation then backs up the mutated file, and its final `cmp -s`
+proves only that it restored the corrupted copy. The procedure also never said which directory `-p1` runs from;
+from `services/workspace` it prompts for a file name and writes `Oops.rej` there.
+Rule: A patch-apply guard checks with `patch --dry-run -d <root>` before the real apply, keeps one pristine copy
+with its sha256 taken before the first mutation, and every exit path (guard failure, red run, interrupted call)
+restores from it and checks the sha. Dry-run the failure path, not only the success path.
+
+### 2026-11-10: Restore trap armed before the check that must exit without restoring (#129, judge_design round 2, architecture)
+Rewritten 5.1.3 sets `trap restore EXIT INT TERM` in step 1, and step 2 then says: when `F` differs from the
+pristine sha and there is no `in-flight`, print `STALE PRISTINE` and "exit without restoring", because `F` was
+changed by someone else (a coder fix) and restoring would destroy it. The exit fires the trap, `restore` copies
+`pristine.ts` over `F`, the sha matches, and the call prints `RESTORED OK` over the coder's lost fix. The 5.1.5
+"already-applied" row ("nothing written") contradicts the same steps. The 5.1.5 cut-off row also says "kill it",
+but INT/TERM run the trap, so only SIGKILL leaves the `in-flight` state the row wants to recover from.
+Rule: Walk every exit of a guarded script with the trap that is armed at that point. Arm a restore trap only once
+the script itself has changed the file (here right after writing `in-flight`), or make `restore` a no-op unless
+the marker exists; name the signal a cut-off test sends.
+
+### 2026-11-10: Mutation guard's junk check and STALE PRISTINE exit fail on the real tree (#129, judge_design round 2, operations)
+Round-2 5.1 defines junk as every `*.orig`/`*.rej` under ROOT (node_modules and .git pruned) and arms
+`trap restore EXIT INT TERM` in step 1. Dry-run in a scratch copy (Apple patch 2.0-12u11, bash): in the real worktree
+the junk check prints four tracked files (`course/.../checks/data/{CLAUDE.md,Makefile,procedures,release.py}.orig`),
+so setup step 1 stops on every round and the procedure can never start; with those files present, one M5 call's
+`restore` deleted all four and printed `RESTORED OK`. And step 2's `STALE PRISTINE; exit` runs the armed trap, which
+copied pristine over a hand-applied F (measured: F rewritten), the exact case 5.1.5 says must write nothing.
+Rule: Before defining a cleanup by glob, run the glob on the real tree and subtract tracked files (or delete only
+the exact names the tool creates); arm a restoring trap only after the last exit that must not restore.
+
+### 2026-11-10: Leftover check filtered by the test-run label only, which the runtime's own objects never carry (#129, judge_design round 3, security)
+Round-3 5.1.3 step 5 and 5.1.4 step 1 declare "leftovers none" from `docker ... ls --filter
+label=academy.workspace.test-run=<id>`. The workspace container, its volume and `wks-t<id>-h-net` are created by
+the src runtime with `workspaceLabels` (`academy.workspace.managed=true`, `academy.workspace.instance=t<id>-h`,
+`src/identity.ts:94-108`) and no test-run label; the harness itself finds them by the managed+instance pair
+(`harness.ts:141-156`). So a killed or broken mutation run that leaves the workspace container (the one M4 connects
+to `otherNetwork`) prints "leftovers none" and `MUTATIONS CLOSED`. The run id is also taken from a log line that
+global-setup prints only after setup succeeds (`global-setup.ts:46`, after `createSentinel` at :39), with no format
+check, so a run that died in setup gives no id or an arbitrary string, and the check runs vacuously or interpolates
+unvalidated text into a shell command.
+Rule: A leftover check uses the same selectors as the code that removes the objects (run label OR managed+instance,
+plus the network name), and a run id read from a log is matched against its generator's format (`^[0-9a-f]{8}$`,
+exactly one per log) or the check stops instead of passing.
+
+### 2026-11-10: The leftover check was carried into the clone rewrite without re-deriving its selector (#129, judge_design round 3, architecture)
+Architecture confirms the security finding above independently. The round-3 rewrite of 5.1 replaced the whole restore
+scheme but kept the step 5 leftover check from earlier rounds as it was. Nobody re-read who creates the objects the
+I-network run leaves: helpers, peer and `otherNetwork` carry the run label, while the workspace container, volume and
+instance network come from `src/identity.ts` `workspaceLabels`/`networkLabels`, which have none. The 5.1.3
+killed-call branch ("re-run the baseline if a killed run still has objects") and 5.1.4 step 1 both take their
+decision from that check, so they skip the very case they exist for.
+Rule: When a procedure is rewritten, re-derive every check you keep from the code that creates and removes the objects
+it watches (here `harness.ts` `listRunObjects`), and do not copy it over unchanged.
+
+### 2026-11-10: 5.1.3 step 1 path guard is a string test, and the missing run id passes silently (#129, judge_design round 3, operations)
+Dry run of the clone rewrite. 5.1.3 step 1 says `C` must "contain `services/workspace`"; the clone path string never
+does (measured: `[[ $C == *services/workspace* ]]` false on `.../scratchpad/m129-clone-ZRrW04`, while
+`$C/services/workspace` exists), so a literal run stops every mutation call; 5.1.4 step 2 already had the right form.
+The run-id gap in the security entry above is measured, not only read: with a labelled container present,
+`docker ps -a --filter label=<key>= -q` (empty value) prints nothing, so a log with no run line gives "leftovers none".
+Rule: An existence guard is a path test (`-d <C>/services/workspace`), never "the string contains"; every value a
+check is keyed on is shape-checked first (exactly one `[0-9a-f]{8}`) or the step stops.
+
+### 2026-11-10: Prescribed a module header claiming "the only way" without grepping the other log lines (#121, judge_code, architecture)
+Design 1.1 prescribed the log-fields.ts header "these four functions are the only way a field taken from [a thrown
+value] reaches a log line". The coder wrote it faithfully (log-fields.ts:2-4). It is false in the same service: our
+own classes' fields reach log lines directly at http/errors.ts:96 (`error.message`), reconcile.ts:109 (`error.file`,
+`error.reason` of CourseReadError) and main.ts:30 (`error.message` of the config error). A reader auditing log
+injection would trust the header and skip those three lines. The design's own section 2 even lists the
+`${kind}: ${error.message}` branch as kept, so the claim contradicted the design it lives in.
+Rule: Before prescribing an exclusivity comment ("the only way", "never", "every"), grep the codebase for the
+counter-examples (here every `log.*(`/`console.*(` line that interpolates a property of a caught value) and scope the
+sentence to what the grep proves.
+
+### 2026-11-10: Operator view listed a starter refusal that cannot happen and missed the image build (#117)
+Design 3 F8 said that after the fix a bad alias also gives "StarterRefusedError in starter.ts:112". That line wraps
+only `lstatBelowRoot` of the lesson directory; no YAML is parsed on the starter path, so a YAML failure never
+becomes `starter-invalid` (it is 500 `course-unreadable` through manager.ts:79 and mapError). The claim was copied
+from the research without reading the call. The same table missed the one build-time consumer of `readCourse`,
+`apps/web/scripts/export-course.ts` (Dockerfile:35): today an unresolved alias aborts the web image build with an
+uncaught ReferenceError whose message prints the alias name, file text, into the build log.
+Rule: The "what the operator sees" row is built from `git grep` of every caller of the changed function and of the
+function above it (here `parseYamlFile` and `readCourse`), each call read, never from a caller list in the research.
+
+### 2026-11-10: ADR text stated the alias limit as "100 aliases", dropping the research's "to one anchor" (#117, judge_design round 2, operations)
+Design 6 dictated the ADR-0009 Consequences text "unknown anchor, or 100 aliases at the parser's default limit".
+The research measured only one anchor with 100 aliases to it. yaml 2.9.1 checks `count * aliasCount > maxAliasCount`
+per anchor (dist/nodes/Alias.js:61-67), so 120 aliases split over two scalar anchors (60 + 60) pass, and 30 aliases
+(20 to an anchor that holds 10 aliases) fail. An author reading the ADR is misinformed in both directions.
+Rule: When an ADR or reason text restates a measured limit, keep every condition the measurement had (here "to one
+anchor"), or describe the mechanism, never the bare number.

@@ -73,3 +73,26 @@ markup and grep the gallery for the old one.
 biome before reporting, so PR #67 went red on `pnpm lint` and the pipeline had to be re-opened for a format pass.
 Rule: run `node_modules/.bin/biome check design/` before reporting any change to a `.js` or `.json` file under
 `design/`; it must report no error.
+
+### 2026-11-10: RadioGroup and Checkbox listed two shadcn departures out of five (#70, judge_ux round 1)
+README "Quiz panel" says the controls are "shadcn's size-4 controls drawn on native inputs" and names only
+`dark:bg-input/30` and `disabled:opacity-50` (plus the focus ring) as not used. The cited `new-york-v4` sources
+also differ from `proto.css` in three places: the checkbox is `rounded-[4px]` upstream and `--radius-sm` (6px)
+here, which the Radius section's sm row ("controls inside menus, kbd") does not cover; the checked radio keeps
+`border-input` upstream (only the `fill-primary` dot changes) and gets a `primary` border here; the check mark is
+lucide `CheckIcon size-3.5` upstream and a `text-xs` glyph here, with no word on what the app draws. #36 will
+vendor those files, so the undocumented ones ship as upstream and the app drifts from the prototype.
+Rule: When a component is "shadcn's X", diff the whole upstream class string (radius, border per state, icon,
+size, shadow) against the `proto.css` rule and list every departure in the README, and each scale step used
+for it in that scale's row.
+
+### 2026-11-10: "Changes exactly these classes, nothing else" left out upstream's `outline-none` (#70, judge_ux round 2)
+The round-2 README RadioGroup/Checkbox bullet (`design/system/README.md:326`) calls its list of departures
+complete, but upstream `radio-group.tsx` and `checkbox.tsx` both carry `outline-none`, and the list does not
+mention it. The app's global ring is `:focus-visible { outline: ... }` in `@layer base`
+(`apps/web/app/globals.css:222`), and a utility beats the base layer. So a dev who vendors the files and
+"changes nothing else" ships both controls with no focus ring (WCAG 2.4.7). `ui/tabs.tsx:11` already records
+the same removal for Tabs. The same parenthetical also gives both controls `text-primary`, which upstream sets
+on the radio only.
+Rule: Before calling a list of upstream class changes complete, go through the upstream class string token by
+token, `outline-none` / `outline-hidden` included, and mark each one kept, changed or removed.
