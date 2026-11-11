@@ -31,7 +31,7 @@ Rule: All three judges in ONE message. Never sequential.
 Judges found an architect design flaw; the orchestrator hacked a fix inline instead of
 re-spawning the architect with the updated mistakes file.
 Rule: On a role's mistake - the judge writes it to that role's file, then the orchestrator
-re-spawns THAT role (researcher → architect → coder → judges as needed). Never fix inline,
+re-spawns THAT role (researcher -> architect -> coder -> judges as needed). Never fix inline,
 never delegate an architect fix to the coder.
 
 ### Advanced past a judge FAIL
@@ -67,7 +67,7 @@ Rule: When work is outstanding (judge FAILs), ASK the user to continue or defer.
 Shipped a module with a module-level use-before-definition: it compiled and all unit tests
 passed, but it could not START (the tests never imported the whole module).
 Rule: Any change to a live-service module needs an acceptance step that IMPORTS/EXECUTES the
-whole module (e.g. `--self-check` → exit 0). Passing unit tests + a clean compile do NOT prove
+whole module (e.g. `--self-check` -> exit 0). Passing unit tests + a clean compile do NOT prove
 the program runs.
 
 ### Asserted a root cause / "lever" without checking prior notes for a refutation
@@ -318,6 +318,16 @@ Rule: in a DESIGN brief that edits design/system/README.md, require each changed
 proto.css and the app classes (file:line). When a brief asks for an executable check over a class of members, say
 that every member's expected count is asserted in code and that absence is a finding.
 
+### 2026-11-10: Extra judge round planned for one judge only, and a check fix not re-run by the student (#44)
+
+After the two-round limit Stepan approved a third round, and I planned to re-run only the judge that failed.
+The parent session caught it: a round counts only with all three judges in one message. Separately, two student
+cheater rounds each found new passing cheats in checks that the designer had already "closed", and assessment
+then found three more bypass families in docker-static over rounds 2-3.
+Rule: an extra judge round always spawns all three judges, scoped to the changes. When a check is rewritten to
+close a cheat, brief the designer to run a differential or adversarial corpus against the real tool's parser or
+semantics (not only the reported forms), and plan one focused student cheater rerun before the judges.
+
 ### 2026-11-03: Scoped out an item the issue owner had assigned to design, without reading the comments (#83)
 
 The #83 architect brief put F3 (Radix Tabs ring on mousedown) out of scope as app behaviour. An owner comment on
@@ -327,6 +337,19 @@ follow-ups recorded only in git-ignored `plans/`.
 Rule: read `gh issue view <n> --comments` before writing the architect brief, list every owner comment as an
 in-scope item or a decision for Stepan, and require each out-of-scope item to be recorded in a committed file or a
 follow-up issue, never only in `plans/`.
+
+### 2026-11-10: Eleven design rounds on one class, closed by one rule only in round 9 (#70)
+
+judge_design for the quiz flows took 11 rounds. From round 2 on almost every blocker was one more case of "where does
+focus go when an answer arrives and the learner is not on the panel": tab switch, Safari mouse focus on `body`, open
+menus and dialogs, the idle warning, a control the answer removes. Each fix named the cases the judges listed, and the
+next round found the next one. Round 9 replaced the cases with one R2 rule ("focus after a background change", a
+fallback order per region) and the tail ended in two rounds. Rounds 3-4 were also spent on prototype mechanics traced
+against a sibling task's unmerged proto.js; they went to the author phase only after Stepan decided it.
+Rule: at the second FAIL of the same shape, brief the architect for one general rule over the whole class (list the
+members, then one rule with a fallback), not the listed cases. Do not judge behaviour that depends on another
+branch's uncommitted code in judge_design: state the required behaviour in the flows and test the mechanics in the
+author phase, after that branch merges.
 
 ### 2026-11-09: My own suggested comment wording cost a judge round (#33)
 
@@ -394,3 +417,82 @@ compound and only then asked Stepan whether to fix them in the PR; the coder win
 had to move to a separate HOTFIX.
 Rule: after the last judge_code PASS, decide every non-blocking note that touches product files (fix now with a
 narrow re-judge, or a follow-up) with Stepan before advancing to compound.
+
+### 2026-11-09: Design rounds spent on the test plan, not the fix (#112)
+
+judge_design took three rounds (Stepan approved the third). The fix itself (shouldUpgradeCallback, no timer) passed
+all three judges in round 1; every blocker after that was in the test plan: existing tests the new harness reroutes,
+a mutation whose input never reaches the mutated line, a live-check layout that skipped Dockerfile COPY lines, and a
+mutation recipe whose guards failed silently. Each would have shown up in one scripted run.
+Rule: when a design prescribes mutations, a rebuilt image layout or a shell procedure, the architect brief asks for
+(1) a trace of every mutation's input through the code to the mutated line, (2) a grep of every existing test that
+sends a rerouted input, and (3) a dry run of each procedure, including every guard failure, before judge_design.
+
+### 2026-11-09: Tiered from the issue's "<= 5 LOC" feel, then from the architect's estimate; both were low (#103)
+
+#103 was labelled tier:hotfix. I picked TASK from a read of the code (readYaml plus three call sites), the
+architect estimated about 95 lines, and the real diff was 170+/16- in three files (tests 106), so PROJECT by line
+count. The phases match, so nothing was skipped, but the size reached Stepan only in the final report. The number
+that was right came from the operations judge, who implemented the design in a scratch clone during judge_design.
+Rule: when an operations judge implements the design in a scratch clone, take its `git diff --stat` as the size,
+re-tier from it before planner and tell Stepan then if it crosses a tier. Count test lines: the tier table does.
+
+### 2026-11-10: Mutation rows prescribed by an architect with no shell cost a design round (#110)
+
+The #110 architect brief carried the #112 rule (trace every mutation, dry-run every procedure), but the architect role
+has no shell, so M12 and M17 were written from reasoning only. judge_design round 1 failed on both: busybox `kill`
+rejects `--`, busybox `pkill -x sh` matches nothing, and a by-name kill hits the kill script's own `sh`. The operations
+judge found each by running it. What did work: running the design's E0 experiment myself before judge_design, so the
+judges reviewed measured premises instead of claims.
+Rule: when a design prescribes shell-level mutations or procedures and the architect has no shell, have them run
+before judge_design (the orchestrator for a read-only experiment in an own container, or the operations judge), and
+pass the output to the judges with the design.
+
+### 2026-11-10: A pre-decided rule measured a proxy, not the issue's own metric (#113)
+
+The #113 design pre-decided that the workspace deploy mount stays only if deploy without it downloads packages.
+pnpm printed `downloaded 0, added 0` both ways, so the tester dropped the mount, and the operations judge passed it
+in judge_code round 1 on the same counter. The architecture judge then measured the deploy build-cache record: 117 MB
+with the mount, 280 MB without, the very growth #113 exists to cut. It cost a revert commit, two re-tests and a
+second judge_code round. Separately, judge_design took four rounds; rounds 2-4 were test-plan text and attribution,
+and in round 3 the shell-less architect wrote "re-ran" results it could not have produced.
+Rule: when a design pre-decides a keep/drop rule, the architect brief requires the rule to measure the issue's own
+metric (here: build-cache record size per step from `buildx du --verbose`), with a negative control that shows the
+metric moves. Every architect re-brief says: you have no shell; record only results a named run produced, labelled
+with that run.
+
+### 2026-11-11: Four design rounds spent on a mutation procedure, not the fix (#129)
+
+The #129 fix (listener error handler, graceful probe, readiness poll, peer on the other network) passed all three
+judges in round 1. Every later FAIL was in section 5.1, the procedure for running mutation patches: patching the
+real test file and restoring it (round 1: a partial patch left it mutated; round 2: the junk cleanup deleted four
+tracked course/*.orig files and the restore trap fired on the exit meant to protect a fix), then a clone-based
+rewrite whose leftover check missed the runtime's own objects and took the run id unchecked (round 3). Stepan
+allowed rounds 3 and 4. The size also crossed the TASK line (diff 155+/37-, one file); I kept TASK because the
+phases match PROJECT and said so in the report, not before planner.
+Rule: when a test plan mutates a file that is in the pending diff, the architect brief prescribes from the start
+that mutations run only in a throwaway clone (git clone --local into the scratchpad, git apply all-or-nothing,
+leftovers listed with the harness's own selectors, run id validated), and the operations judge dry-runs that
+procedure with negative controls in round 1. Name the tier change to Stepan when the architect's estimate crosses it.
+
+### 2026-11-10: A judge_code brief let the operations judge mutate product files in the task worktree (#121)
+
+The #121 judge_code round 1 brief asked the operations judge to spot-check mutation rows "on a copy". It mutated the
+live files in the task worktree with `*.judgebak` backups, while the architecture judge was reading the same files; the
+architecture judge saw `http/errors.ts.judgebak` appear and vanish and had to check its reads against the saved diff.
+The tree came back byte-identical (cmp against plans/121-clamp-log-error-fields.diff), so nothing was lost, but a
+crash mid-row would have left a mutated file in the diff to be committed, and parallel judges may review a mutant.
+Rule: a judge brief that allows mutations names the place: a scratch `git worktree add` under the scratchpad (or a
+copied tree), never the task worktree. Before commit, cmp the tree against the saved diff and check no backup files.
+
+### 2026-11-10: A measured number lost its condition on the way into the ADR text (#117)
+
+judge_design took three rounds (Stepan allowed the third). Round 1 failed on a researcher claim the architect copied
+(a loader error reaching StarterRefusedError at starter.ts:112, where no YAML is parsed) and a missed caller
+(export-course.ts in the image build). Round 2 failed on one parenthetical: the research measured "100 aliases to one
+anchor", the design's ADR text said "100 aliases", and yaml's limit is per anchor with nesting multiplying. My own E0
+probe printed "aliases 100" without the condition too, so my briefs carried the shortened form. The code, tests and
+mutations passed every round; all three failures were prose stating a measured fact more broadly than it was measured.
+Rule: when a design turns a measurement into doc or ADR text, the architect brief asks for each number to keep the
+condition it was measured under (which input shape, per what), and for every claim about a caller or error path to be
+checked against the cited line, not taken from the research. My own probe output labels its inputs fully.

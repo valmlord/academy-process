@@ -1484,3 +1484,212 @@ squash-merges (CLAUDE.md section 2 item 7; main is `... (#120)`, `... (#116)`), 
 merge commit and none of commits 1-9.
 Rule: Write a rollback plan against the history the merge method produces, and rehearse it on a scratch clone merged
 the same way.
+
+### 2026-11-09: Rerouted an input class without grepping the tests that send it (#112, judge_design round 1, architecture)
+The design sends every non-terminal upgrade, `//[` included, to the request listener through `shouldUpgradeCallback`
+and changes the shared harness to use it, then states "All existing relay tests ... must stay green unchanged".
+Three tests send `//[` or `/elsewhere` through that harness and expect the relay's containment: relay-robust.test.ts:77
+(400 for a malformed URL), relay.test.ts:316 (one F4d line for 100 malformed URLs) and relay.test.ts:329 (S5-N1, a
+flood of one contained kind does not hide another). Under the design each gets the stand-in's keep-alive 308, never
+closes within the 5 s test timeout, and logs nothing. Two of them pin a security finding, and the design does not
+say what replaces them.
+Rule: When a design changes where an input goes, grep every test for that input (here `//[`, other non-terminal
+paths) before writing "unchanged", and for each test that changes, name its replacement and the mutation that
+turns it red.
+
+### 2026-11-09: Live-check layout copied two of the Dockerfile's runner COPY lines and left out the migrations (#112, judge_design round 1, operations)
+Design 8.4 step 2 assembles the image layout in place by copying `dist/server` and `.next/static` only. The
+Dockerfile runner stage also copies `packages/db/drizzle` (and `public`), because Turbopack resolves the migrations
+folder from the standalone root (`[turbopack]_runtime.js` ABSOLUTE_ROOT + `packages/db/dist/migrate.js` -> `../drizzle`),
+which gives `apps/web/.next/standalone/packages/db/drizzle`. The build does not trace it there, so web would exit 1
+at stage apply and step 4's "wait for `web: database migrations applied`" never happens: L1-L6 cannot run.
+Rule: When a test plan rebuilds an image layout outside Docker, copy every runner-stage COPY line of the Dockerfile
+(or say why one is skipped), and run the entry once in that layout before sending the design.
+
+### 2026-11-09: A mutation that changes code the test's input never reaches (#112, judge_design round 2, architecture)
+Design 7.1 W1 lists M2 "restore the `emit` to a `nextFacing` with a silent listener -> no status line -> red". W1
+runs through `createPublicServer`, whose `shouldUpgradeCallback` sends every non-terminal path to the request
+listener, so the dispatch (where M2 changes code) never sees W1's requests: under M2 alone W1 still gets 308 and stays
+green. The mutation only goes red together with M1 (no callback), which the design does not say, and the patch must
+also stand in for the removed `nextFacing` dep inside app.ts.
+Rule: For every mutation, trace the test's input through the mutated code path; if an earlier layer (a filter, a
+callback, a guard) keeps the input away from the mutated line, the mutation must also remove that layer, written as
+one exact patch.
+
+### 2026-11-09: Mutation guards that fail silently and are followed by `;` (#112, judge_design round 2, operations)
+Design 8.3 step 1 chains `[ ! -e "$B" ] && cp && patch --forward && ! cmp -s "$F" "$B"`, then `;` runs the test.
+Dry-run on a scratch copy: a left-over backup and a patch that leaves the file unchanged both make the chain return
+1 with no output, and the test still runs on an unmutated (or stale) file. For M3 against W4 the expected result is
+"stays green", so a guard failure there is reported as the expected outcome. A plain `diff -u <src> <copy>` also
+writes headers that `patch -p1` cannot resolve ("File to patch:", rc 1), and a refused hunk leaves `<file>.rej` next
+to the source.
+Rule: A guard in a test procedure must print a distinct line and stop the call when it fails (`|| { echo "GUARD
+FAILED <M>"; exit 1; }` before the test), and a patch-file recipe must give the exact command that produces paths
+the apply step strips correctly (`diff -u --label a/<path> --label b/<path>`), plus cleanup of `.rej`/`.orig`.
+
+### 2026-11-09: New early exit left a neighbouring doc comment false; a mutation row's red set not walked per test (#103, judge_design round 1, architecture)
+The design makes the lesson branch `continue` before `unknownCheckKeys` when the YAML fails, but leaves its doc
+comment (validate.ts:65-69, "runs whether or not the lesson parses") untouched; once a YAML parse can fail there, the
+comment is false on its plain reading. C9 M4 (failed lesson not counted) lists T3-T5 as red and omits T6, whose only
+lesson fails and whose `[1, 1, 1]` count becomes `[1, 1, 0]`; the tester is told to report any deviation as a design
+defect, so a correct mutation run would be reported as one.
+Rule: When a change adds an early exit before a function call, reread that function's doc comment against the new
+path; for every mutation row, evaluate each new test's assertions under the mutation, not only the ones it targets.
+
+### 2026-11-10: A mutation named "style" whose literal form kills its own script, and a socket-release test with no timeout stated (#110, judge_design round 1, architecture)
+Design 8.4 M17 ("KILL_SCRIPT `pkill -HUP -u 1000 -x sh` style (kills by name)") claims I-term-exit goes red. The
+kill script runs as `/bin/sh -c`, comm `sh`, uid 1000, so a by-name HUP on line 4 kills the script itself: `sleep 2`
+and the KILL line never run, and the HUP races the second shell's open (two Docker round trips ahead of four), so the
+new shell is usually not there yet and the test stays green. The 3 s sleep added to I-term-exit is then a guard nobody
+watched go red. Separately, the U-exec detached-start row asserts "the socket closes within 2 s" for M9 without saying
+which engine options the test uses; the neighbouring tests build `DockerEngine({ timeoutMs: 200 })`, whose docker-modem
+`req.setTimeout` destroys the socket at 200 ms with or without `destroyStream`, so M9 would stay green.
+Rule: Every mutation row gives the exact replacement text, and the architect walks it through the mutated program
+(including what the mutation does to the script or process that carries it). Every test that asserts a release or
+close within a bound names every other mechanism that could close it within that bound and rules each out in the setup.
+
+### 2026-11-10: Mutation scripts written for a shell the test image does not run, and a decision left without its deliverable (#110, judge_design round 1, operations)
+Design 8.4 M12 replaces the kill lines with `kill -HUP -- "-$sid"`. busybox ash's `kill` rejects `--` ("invalid
+number '--'"), so on node:22.23.4-alpine neither line signals anything and I-term-end-kills goes red because nothing
+is killed, not because a group kill misses the jobs: the row does not prove K2. M17's `pkill ... -x sh` matches
+nothing on busybox (rc 1 with seven `/bin/sh -l` running), so it survives regardless of the race. Both were found by
+running them in a judge's own container. Separately, Stepan's decision 5 asked for a follow-up issue (pkill in the
+image smoke), and the design still lists it as open question 3 with no issue text, and its manual check M1 covers
+only `exit`, although the SIGTERM path is the one no automated test runs.
+Rule: Run every mutation's replacement text once in the test image's shell before writing the row (`docker exec
+<own container> /bin/sh -c '<mutated script>'`), and check that it does the wrong thing it names, not nothing. After
+Stepan answers open questions, update the design: every answer that asks for an artifact (issue text, ADR line) has
+that artifact in the design, and a property no automated test covers gets a manual step.
+
+### 2026-11-10: README prune note implies an academy-only clean-up; rehearsal kept a non-H9 pull and live prunes (#113, judge_design round 1, security)
+Design 2.3 introduces `docker builder prune --filter 'type!=exec.cachemount'` as the way to free "the build cache
+records" of the web and workspace builds. The command acts on the whole default builder: every other project's
+regular build cache goes too, and the text never says so, so Stepan cannot judge what he loses. Design 9.5 R-A..R-C
+still prescribe a `docker-container` builder (pulls `moby/buildkit`, outside 16.5 H9) and two prune runs, gated only
+on "explicit OK", although the read-only form (`docker buildx du --filter ...`) answers the same question.
+Rule: A destructive command written for the owner states its full scope (here: all build cache on this Docker, every
+project) next to the command. A rehearsal of a destructive command is read-only by default (the same filter on a
+listing verb); a pull or a write outside the hard rules is not a design option behind an "OK" gate.
+
+### 2026-11-10: Pass condition for the probe diff did not match what the probe edit produces (#113, judge_design round 2, operations)
+9.3 "After B6" says `diff <worktree>/apps/web/proxy.ts "$T113/ctx/apps/web/proxy.ts"` (and config.ts) "each show
+only the added `// t113 cache probe` line". The probe is an append of `\n// t113 cache probe\n` to files that already
+end in a newline, so the rehearsed diff shows two added lines, an empty one and the probe (`37a38,39`, `215a216,217`),
+and exits 1. Read literally, a correct run fails its own check.
+Rule: Write a diff-based pass condition from a rehearsed run of the exact edit (blank lines, exit status included),
+or make the edit produce exactly the stated output.
+
+### 2026-11-10: Design recorded runs the architect could not have made (#113, judge_design round 3, architecture)
+The architect role has no shell (design 9 says so itself), yet round 3 wrote "re-ran" observations into the design:
+D4 adds a `--ignore-scripts` re-run with rc 0, "no output line naming `packages/db`", an `@academy/db` link to the
+absent directory and a `pnpm ls` before/after diff with rc 1; the round-3 notes claim G0 was "re-run" on the local
+node image and the probe diff "rehearsed in round 3"; R-1 dates the du counts "round 3". The operations judges
+recorded only rc 0 for the round-1 frozen install, and 222/223 and `37a38,39`/`215a216,217` in round 2. The numbers
+that match a judge run are right but misattributed; the rest is evidence no run produced.
+Rule: Every observation in a design names the run that produced it (role, round) and quotes only what that run
+recorded. Anything else is marked "to be rehearsed by operations", never "re-ran".
+
+### 2026-11-10: Pre-decided keep/drop rule for a cache mount looked at a counter, not at the cache growth the issue is about (#113, judge_code, architecture)
+Design 9.3 B5 decided the workspace deploy mount by "deploy shows `downloaded 0` and the image check exits 0 ->
+drop it". Both held without the mount, so the coder dropped it (5c6880c). But pnpm's progress line printed
+`downloaded 0, added 0` with and without the store, so it could not tell the two apart, and the builder's own
+records show the cost: the deploy RUN record is 117.2 MB with the mount (tester B3 03:31:59, B4 03:33:24 UTC) and
+280 MB without it (B5 03:34:46, re-test B4 03:51:24), about +163 MB of build cache on every source-only workspace
+build, which is exactly what #113 exists to cut (B4 delta +0.20 GB -> +0.35 GB). The doubled deploy time was the
+visible hint.
+Rule: A pre-decided rule for a cache or layer change measures the issue's own metric (the step's record size in
+`docker buildx du --verbose`, or the Build Cache delta) for both variants, never only a tool's progress counter.
+
+### 2026-11-10: Mutation guard exited on a failed patch without restoring the file it had half patched (#129, judge_design, operations)
+Design 5.1 applied each mutation with `patch -p1 --forward < M<n>.patch || { echo "GUARD FAILED"; exit 1; }`
+and restored the backup only after the test run. Dry-run in a scratch copy (Apple patch 2.0): a two-hunk patch whose
+second hunk does not match applies the first hunk, exits 1, and leaves `.orig`, `.rej` beside the file, so the guard
+exits with the pending-diff file mutated. The next mutation then backs up the mutated file, and its final `cmp -s`
+proves only that it restored the corrupted copy. The procedure also never said which directory `-p1` runs from;
+from `services/workspace` it prompts for a file name and writes `Oops.rej` there.
+Rule: A patch-apply guard checks with `patch --dry-run -d <root>` before the real apply, keeps one pristine copy
+with its sha256 taken before the first mutation, and every exit path (guard failure, red run, interrupted call)
+restores from it and checks the sha. Dry-run the failure path, not only the success path.
+
+### 2026-11-10: Restore trap armed before the check that must exit without restoring (#129, judge_design round 2, architecture)
+Rewritten 5.1.3 sets `trap restore EXIT INT TERM` in step 1, and step 2 then says: when `F` differs from the
+pristine sha and there is no `in-flight`, print `STALE PRISTINE` and "exit without restoring", because `F` was
+changed by someone else (a coder fix) and restoring would destroy it. The exit fires the trap, `restore` copies
+`pristine.ts` over `F`, the sha matches, and the call prints `RESTORED OK` over the coder's lost fix. The 5.1.5
+"already-applied" row ("nothing written") contradicts the same steps. The 5.1.5 cut-off row also says "kill it",
+but INT/TERM run the trap, so only SIGKILL leaves the `in-flight` state the row wants to recover from.
+Rule: Walk every exit of a guarded script with the trap that is armed at that point. Arm a restore trap only once
+the script itself has changed the file (here right after writing `in-flight`), or make `restore` a no-op unless
+the marker exists; name the signal a cut-off test sends.
+
+### 2026-11-10: Mutation guard's junk check and STALE PRISTINE exit fail on the real tree (#129, judge_design round 2, operations)
+Round-2 5.1 defines junk as every `*.orig`/`*.rej` under ROOT (node_modules and .git pruned) and arms
+`trap restore EXIT INT TERM` in step 1. Dry-run in a scratch copy (Apple patch 2.0-12u11, bash): in the real worktree
+the junk check prints four tracked files (`course/.../checks/data/{CLAUDE.md,Makefile,procedures,release.py}.orig`),
+so setup step 1 stops on every round and the procedure can never start; with those files present, one M5 call's
+`restore` deleted all four and printed `RESTORED OK`. And step 2's `STALE PRISTINE; exit` runs the armed trap, which
+copied pristine over a hand-applied F (measured: F rewritten), the exact case 5.1.5 says must write nothing.
+Rule: Before defining a cleanup by glob, run the glob on the real tree and subtract tracked files (or delete only
+the exact names the tool creates); arm a restoring trap only after the last exit that must not restore.
+
+### 2026-11-10: Leftover check filtered by the test-run label only, which the runtime's own objects never carry (#129, judge_design round 3, security)
+Round-3 5.1.3 step 5 and 5.1.4 step 1 declare "leftovers none" from `docker ... ls --filter
+label=academy.workspace.test-run=<id>`. The workspace container, its volume and `wks-t<id>-h-net` are created by
+the src runtime with `workspaceLabels` (`academy.workspace.managed=true`, `academy.workspace.instance=t<id>-h`,
+`src/identity.ts:94-108`) and no test-run label; the harness itself finds them by the managed+instance pair
+(`harness.ts:141-156`). So a killed or broken mutation run that leaves the workspace container (the one M4 connects
+to `otherNetwork`) prints "leftovers none" and `MUTATIONS CLOSED`. The run id is also taken from a log line that
+global-setup prints only after setup succeeds (`global-setup.ts:46`, after `createSentinel` at :39), with no format
+check, so a run that died in setup gives no id or an arbitrary string, and the check runs vacuously or interpolates
+unvalidated text into a shell command.
+Rule: A leftover check uses the same selectors as the code that removes the objects (run label OR managed+instance,
+plus the network name), and a run id read from a log is matched against its generator's format (`^[0-9a-f]{8}$`,
+exactly one per log) or the check stops instead of passing.
+
+### 2026-11-10: The leftover check was carried into the clone rewrite without re-deriving its selector (#129, judge_design round 3, architecture)
+Architecture confirms the security finding above independently. The round-3 rewrite of 5.1 replaced the whole restore
+scheme but kept the step 5 leftover check from earlier rounds as it was. Nobody re-read who creates the objects the
+I-network run leaves: helpers, peer and `otherNetwork` carry the run label, while the workspace container, volume and
+instance network come from `src/identity.ts` `workspaceLabels`/`networkLabels`, which have none. The 5.1.3
+killed-call branch ("re-run the baseline if a killed run still has objects") and 5.1.4 step 1 both take their
+decision from that check, so they skip the very case they exist for.
+Rule: When a procedure is rewritten, re-derive every check you keep from the code that creates and removes the objects
+it watches (here `harness.ts` `listRunObjects`), and do not copy it over unchanged.
+
+### 2026-11-10: 5.1.3 step 1 path guard is a string test, and the missing run id passes silently (#129, judge_design round 3, operations)
+Dry run of the clone rewrite. 5.1.3 step 1 says `C` must "contain `services/workspace`"; the clone path string never
+does (measured: `[[ $C == *services/workspace* ]]` false on `.../scratchpad/m129-clone-ZRrW04`, while
+`$C/services/workspace` exists), so a literal run stops every mutation call; 5.1.4 step 2 already had the right form.
+The run-id gap in the security entry above is measured, not only read: with a labelled container present,
+`docker ps -a --filter label=<key>= -q` (empty value) prints nothing, so a log with no run line gives "leftovers none".
+Rule: An existence guard is a path test (`-d <C>/services/workspace`), never "the string contains"; every value a
+check is keyed on is shape-checked first (exactly one `[0-9a-f]{8}`) or the step stops.
+
+### 2026-11-10: Prescribed a module header claiming "the only way" without grepping the other log lines (#121, judge_code, architecture)
+Design 1.1 prescribed the log-fields.ts header "these four functions are the only way a field taken from [a thrown
+value] reaches a log line". The coder wrote it faithfully (log-fields.ts:2-4). It is false in the same service: our
+own classes' fields reach log lines directly at http/errors.ts:96 (`error.message`), reconcile.ts:109 (`error.file`,
+`error.reason` of CourseReadError) and main.ts:30 (`error.message` of the config error). A reader auditing log
+injection would trust the header and skip those three lines. The design's own section 2 even lists the
+`${kind}: ${error.message}` branch as kept, so the claim contradicted the design it lives in.
+Rule: Before prescribing an exclusivity comment ("the only way", "never", "every"), grep the codebase for the
+counter-examples (here every `log.*(`/`console.*(` line that interpolates a property of a caught value) and scope the
+sentence to what the grep proves.
+
+### 2026-11-10: Operator view listed a starter refusal that cannot happen and missed the image build (#117)
+Design 3 F8 said that after the fix a bad alias also gives "StarterRefusedError in starter.ts:112". That line wraps
+only `lstatBelowRoot` of the lesson directory; no YAML is parsed on the starter path, so a YAML failure never
+becomes `starter-invalid` (it is 500 `course-unreadable` through manager.ts:79 and mapError). The claim was copied
+from the research without reading the call. The same table missed the one build-time consumer of `readCourse`,
+`apps/web/scripts/export-course.ts` (Dockerfile:35): today an unresolved alias aborts the web image build with an
+uncaught ReferenceError whose message prints the alias name, file text, into the build log.
+Rule: The "what the operator sees" row is built from `git grep` of every caller of the changed function and of the
+function above it (here `parseYamlFile` and `readCourse`), each call read, never from a caller list in the research.
+
+### 2026-11-10: ADR text stated the alias limit as "100 aliases", dropping the research's "to one anchor" (#117, judge_design round 2, operations)
+Design 6 dictated the ADR-0009 Consequences text "unknown anchor, or 100 aliases at the parser's default limit".
+The research measured only one anchor with 100 aliases to it. yaml 2.9.1 checks `count * aliasCount > maxAliasCount`
+per anchor (dist/nodes/Alias.js:61-67), so 120 aliases split over two scalar anchors (60 + 60) pass, and 30 aliases
+(20 to an anchor that holds 10 aliases) fail. An author reading the ADR is misinformed in both directions.
+Rule: When an ADR or reason text restates a measured limit, keep every condition the measurement had (here "to one
+anchor"), or describe the mechanism, never the bare number.

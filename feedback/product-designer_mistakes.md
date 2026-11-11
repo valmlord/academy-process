@@ -93,6 +93,20 @@ switch"), AC7 ("A run does not switch the tab") and the new AC17, on the core pa
 Rule: After adding URL or selection state, run every simulated action from each tab and assert the tab and
 the URL are unchanged unless the acceptance notes say the action switches them.
 
+### 2026-11-09: A focused row button falls to `main` on a background change (#69, judge_ux round 1)
+`data-focus-fallback` was put on the check bar and on every `.check-row-panel`, but not on anything that
+contains the row button itself. The prototype draws each state's rows as separate markup, so a background
+change hides the focused `.check-row-trigger` and the focus repair finds no ancestor fallback and focuses
+`main`. Measured headless at 1280 and 375 px in 9 transitions each (for example `#state-results-limit-known`
+-> `setState("check-running")`): focus lands on `main#main`. `checks.md` says the row buttons are never removed,
+so in B8-B14 focus stays on that row's button. The 26 background pairs focused "Подробности", "Проверить",
+"К окружению", "Переподключиться", "Открыть результаты" and "Отмена", never a row button, which is the
+element most likely to have focus in Проверки. So the run could not catch this.
+Rule: In a prototype that swaps markup per state, every element that "is never removed" in the flows needs
+a fallback to its own counterpart in the next state (here `data-focus-fallback` on each row `li`). The
+background focus pairs include focus on each kind of element that a background change can hide, not only
+the controls the flows list as removed.
+
 ### 2026-11-03: Not-found Route reversed the "course id unknown" implication (#83, judge_ux round 1)
 `design/pages/not-found/acceptance.md:13-14` says that while the course cannot be read only way (1) reaches
 the page "and then the course id is unknown (`#state-no-course`)". The judged design (D2) and `ia.md` R6 say
@@ -112,3 +126,21 @@ gives one for the top bar and the retry in the same rows. `lesson/acceptance.md:
 catalog, which contradicts the catalog's own Route. A dev or tester checking 2.4.2 gets two answers.
 Rule: When a note states a per-state `<title>` the static prototype cannot render, say so in that row, and
 when another page's note lists differences from it, compare against that page's note, not its prototype.
+
+### 2026-11-10: Quiz states carried the v1 empty text and a first-attempt send state into later attempts (#70, judge_ux round 1, usability)
+Three gaps of one kind: a v1 or first-attempt element reused in quiz states where its facts are false.
+(1) `lesson/prototype.html:1192` shows "Попыток пока нет. Нажмите "Проверить", когда будете готовы." in
+quiz-failed, -last-attempt, -closed, -row-closed, -limit-unknown, -answered-away, -notice-two-pane and -refused,
+right under the quiz row's "Неудачных попыток: N из 3". `checks.md:522-524` ties that text to "every check as
+"Не запускалась"", which no longer holds once the quiz row shows a sent attempt. In F15.6 (`#state-quiz-row-closed`)
+the learner reads "Закрыта: не пройдено, Неудачных попыток: 3 из 3" and then "Попыток пока нет".
+(2) `#quiz-send` (`:1464`) always goes to the one `quiz-sending` state, whose header is "Попытка 1 из 3"
+(`:1208`) and whose quiz row is "Ответы не отправлялись, 0 из 3" (`:1007`). So a send from quiz-failed,
+-last-attempt or -refused drops the attempt line and the "Осталась 1 попытка" warning. This is not in
+"Prototype limitations", and quiz-run.js asserts H1 for every send, so the regression counts as expected.
+(3) The refusal that finds the quiz passed or closed (`quiz.md:640-644`, AC43) is neither drawn nor listed as
+not drawn. Its composition (refusal title, then "Квиз пройден" or the close line, icon) is left to dev.
+AC56 also names only limitation 1 as an exception, though limitations 2-3 are Back and Forward cases its own sweep runs.
+Rule: For every element shared across quiz states, check its facts against each state's attempt number and quiz
+row, and do the same for every state a control leads to. Each quiz.md state is drawn or listed in "Prototype
+limitations", and every limitation the headless AC runs into is named as an exception in that AC.
