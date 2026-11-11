@@ -1573,3 +1573,32 @@ The run-id gap in the security entry above is measured, not only read: with a la
 `docker ps -a --filter label=<key>= -q` (empty value) prints nothing, so a log with no run line gives "leftovers none".
 Rule: An existence guard is a path test (`-d <C>/services/workspace`), never "the string contains"; every value a
 check is keyed on is shape-checked first (exactly one `[0-9a-f]{8}`) or the step stops.
+
+### 2026-11-10: Prescribed a module header claiming "the only way" without grepping the other log lines (#121, judge_code, architecture)
+Design 1.1 prescribed the log-fields.ts header "these four functions are the only way a field taken from [a thrown
+value] reaches a log line". The coder wrote it faithfully (log-fields.ts:2-4). It is false in the same service: our
+own classes' fields reach log lines directly at http/errors.ts:96 (`error.message`), reconcile.ts:109 (`error.file`,
+`error.reason` of CourseReadError) and main.ts:30 (`error.message` of the config error). A reader auditing log
+injection would trust the header and skip those three lines. The design's own section 2 even lists the
+`${kind}: ${error.message}` branch as kept, so the claim contradicted the design it lives in.
+Rule: Before prescribing an exclusivity comment ("the only way", "never", "every"), grep the codebase for the
+counter-examples (here every `log.*(`/`console.*(` line that interpolates a property of a caught value) and scope the
+sentence to what the grep proves.
+
+### 2026-11-10: Operator view listed a starter refusal that cannot happen and missed the image build (#117)
+Design 3 F8 said that after the fix a bad alias also gives "StarterRefusedError in starter.ts:112". That line wraps
+only `lstatBelowRoot` of the lesson directory; no YAML is parsed on the starter path, so a YAML failure never
+becomes `starter-invalid` (it is 500 `course-unreadable` through manager.ts:79 and mapError). The claim was copied
+from the research without reading the call. The same table missed the one build-time consumer of `readCourse`,
+`apps/web/scripts/export-course.ts` (Dockerfile:35): today an unresolved alias aborts the web image build with an
+uncaught ReferenceError whose message prints the alias name, file text, into the build log.
+Rule: The "what the operator sees" row is built from `git grep` of every caller of the changed function and of the
+function above it (here `parseYamlFile` and `readCourse`), each call read, never from a caller list in the research.
+
+### 2026-11-10: ADR text stated the alias limit as "100 aliases", dropping the research's "to one anchor" (#117, judge_design round 2, operations)
+Design 6 dictated the ADR-0009 Consequences text "unknown anchor, or 100 aliases at the parser's default limit".
+The research measured only one anchor with 100 aliases to it. yaml 2.9.1 checks `count * aliasCount > maxAliasCount`
+per anchor (dist/nodes/Alias.js:61-67), so 120 aliases split over two scalar anchors (60 + 60) pass, and 30 aliases
+(20 to an anchor that holds 10 aliases) fail. An author reading the ADR is misinformed in both directions.
+Rule: When an ADR or reason text restates a measured limit, keep every condition the measurement had (here "to one
+anchor"), or describe the mechanism, never the bare number.
