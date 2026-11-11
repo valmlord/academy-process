@@ -401,6 +401,23 @@ Rule: a fix round after a FAIL carries the blocker and its class only. Non-block
 follow-up or are dropped unless Stepan asks for them, and any procedure text added gets the same run-it rehearsal as the
 original steps.
 
+### 2026-11-10: First architect brief carried my summary of the issue, not the issue (#101)
+
+The first #101 architect brief retold the issue's fields in my words and dropped the definition of
+`lastAttemptCount` and the Acceptance list. The architect, who has no shell, invented a definition and could not
+map acceptance, so a whole revision went to restoring the issue's text before any judge saw the design.
+Rule: before the first architect spawn, save the verbatim issue (body and comments) to `plans/<n>-issue.md` with
+`gh issue view <n> --json title,body,comments` and point every brief at it; a summary in the brief is a pointer,
+never the source.
+
+### 2026-11-11: Advanced to compound before deciding the last code fixes (#101)
+
+All three code judges passed with non-blocking notes, two of them false doc comments. I advanced judge_code ->
+compound and only then asked Stepan whether to fix them in the PR; the coder window ends at judge_code, so the fix
+had to move to a separate HOTFIX.
+Rule: after the last judge_code PASS, decide every non-blocking note that touches product files (fix now with a
+narrow re-judge, or a follow-up) with Stepan before advancing to compound.
+
 ### 2026-11-09: Design rounds spent on the test plan, not the fix (#112)
 
 judge_design took three rounds (Stepan approved the third). The fix itself (shouldUpgradeCallback, no timer) passed

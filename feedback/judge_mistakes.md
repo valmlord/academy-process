@@ -380,6 +380,23 @@ The architect combined both and made a valid ready lesson without `checks:` a U1
 Rule: When suggesting that a check run on pre-parse data, name the parser defaults and optionals it will no longer
 get and say how the check treats each.
 
+### 2026-11-09: Round-1 construction for blocker 1 contradicted blocker 2 of the same report (#101, judge_design round 2, security)
+Round-1 security blocker 1 offered "the sweep and the deadline mark as `error` only the included checks that have no
+committed result", while blocker 2 of the same report said a missing result after the grader started is counted. The
+architect applied both; the deadline then labels a started check whose runner failed as an uncounted platform stop.
+Found in round 2.
+Rule: When one report carries two prescriptions over the same rows, run each prescribed construction against the other
+finding's fix target before sending.
+
+### 2026-11-09: Prescribed a per-commit code rollback without checking how PRs land on main (#101, operations)
+Round-1 operations finding 3 prescribed "revert commits 4-9, keep commit 3". The architect copied it into 5.6. Main
+is squash-merged (`git log --first-parent` has one commit per PR and no merge commits), so after the merge those
+commits are not in main's history; the only revert available on main is the whole squash commit, which deletes 0002
+and fails `check-append-only.sh`. Found in round 2, non-blocking because the append-only guard fails closed.
+Rule: Before prescribing a rollback or any step that names commits of a PR, run `git log --first-parent` on main
+and phrase the step for the merge method the repo actually uses (here: revert the squash commit, then restore
+`packages/db` from it, as one PR).
+
 ### 2026-11-10: Counted a header line as a record in a read-only rehearsal (#113, judge_design round 1, operations)
 Round 1 reported `docker buildx du --filter 'type!=exec.cachemount'` as "223 records selected"; the file had 223
 lines including the `ID RECLAIMABLE SIZE LAST ACCESSED` header. The real count is 222 (194 regular + 27
