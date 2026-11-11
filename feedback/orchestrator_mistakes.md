@@ -276,6 +276,19 @@ Rule: For any new gate, the tester brief names the gate and asks for bypass atte
 did not list (config, symlinks, odd names, nested paths), on scratch copies. A coder's own
 mutation set shows the guard can fail, not that it covers the class.
 
+## 2026-11-04 #43: a task-level constraint left out of a spawned brief
+The parent task said "do not run Docker or docker compose". The L3 student re-run brief did not repeat it, and the
+student graded in a Docker `python:3.12-slim` container. Spawned agents see only their brief.
+Rule: every brief repeats the task's hard constraints (no Docker, paths not to touch, files never read), not only the
+role's own rules. Write them once in the plan and paste that block into every spawn.
+
+## 2026-11-11 #43: "stopped" background tasks after an app restart are not lost work
+After two restarts the app marked three background shells and two agents as stopped. The shells were only
+`tail -f` watchers and the corpus they watched had already finished; the scratchpad was wiped twice, though.
+Rule: after a restart, check what the runs left on disk (logs, report sections, TOTAL lines) before rerunning
+anything, and keep long-run logs and reports under `plans/` or report files rather than only in the scratchpad.
+Resume a stopped agent with SendMessage when its context still holds the work.
+
 ### 2026-11-03: Tester fixes moved the code past the design, and nobody updated the design (#89)
 
 Three tester rounds on #89 added behaviour the judged design never described (casefolded names, shadow-ref

@@ -382,6 +382,192 @@ Rule:
   under test (for unittest: `assertLogs`, `mock_open`, `subTest`, class and module fixtures, async tests, warnings,
   unclosed resources).
 
+### 2026-11-03: A "find" verb served by a starter that a fresh rewrite bypasses; an attribution verb with no decoy that needs it (#43, design round 1, pedagogy)
+
+O1 said "Находит, какой файл определения загружается". The design mapped it to the config check ("the starter hides the
+active file") and to a quiz. The check's must-pass corpus accepted deleting every reviewer file and writing one fresh
+file, which passes without any load-rule knowledge. None of the quiz topics covered load or skip rules. O6 said "определяет по
+`parent_tool_use_id`", but the only role-breach look-alike was an allowed tool, so "flag every write tool" matched
+without building the tree.
+Rule:
+- A "find" verb is observed only if the honest shortest route still requires finding it. Walk the must-pass corpus for a
+  "replace everything" route. If one passes, observe the finding on a fresh case: a quiz scenario on an unseen layout.
+- An attribution verb needs a decoy that is identical except for the attribute: the same tool, called by an agent allowed
+  to call it.
+
+### 2026-11-03: Flag-semantics corpora that rejected documented forms or gave false reasons (#43, design round 1, accuracy)
+
+Five places in the round-1 design did not hold against the vendor pages:
+- L1 rejected `model: claude-sonnet-5-5[1m]` "as undocumented". The frontmatter takes "the same values as the `--model`
+  flag", and model-config documents `[1m]` on IDs.
+- L2 C7 failed `--permission-mode auto` without giving a reason, yet auto "auto-approves file edits in your working
+  directory". It also required `Write` beside `Edit`, though "`Edit` rules apply to all built-in tools that edit files".
+- C6 gave "project `permissions.allow` is not used" as the reason a settings-based restriction fails. Deny rules are not
+  trust-gated.
+- The role-call scenarios had 3 of the 4 documented error subtypes. `error_max_structured_output_retries`, the one tied to
+  the schema requirement, was missing.
+- L5 called MAST Insight 3 the peer-reviewed anchor for per-joint gates. It had dropped "low-level" from "sole reliance on
+  final-stage, low-level checks is inadequate".
+
+Rule:
+- For every must-fail form, cite the vendor sentence that shows it lacks the effect, or label it "course rule" in the
+  design and the message.
+- For every enumeration the check samples (subtypes, modes, values), copy the full list from the type definition and
+  count it.
+- Paraphrase a paper's finding only with all its qualifiers.
+
+### 2026-11-03: Grading infrastructure specified by intent, not by the mechanics an honest run hits (#43, design round 1, assessment)
+
+The design specified the fake `claude` as "a grader thread" over a socket. A single serving thread serialises three
+honest parallel calls, so the fan-out overlap rule fails the reference: the prototype gave a 6.0 s span instead of
+2.0 s. The pipeline was to run as `python3 -I`, which breaks the sibling import the starter itself sets up.
+`total_cost_usd` was "equal to the sum", which is float equality, and 344 of 1000 reorderings differ. G3 said
+"spaces" while the snapshots carry tabs. Roles were identified by schema equality while honest L4 schemas can be
+identical. A must-pass `--agent` line could not satisfy C3 under random model draws. The quiz shape "1-2 select-all"
+included a value that misses the design's own 2% bar (3.63%).
+Rule:
+- For every grading mechanism (server, launcher, comparison), write the one sentence that decides concurrency,
+  `sys.path` and equality: per-connection serving, the exact launch line, and tolerance or exact arithmetic.
+- Run the honest corpus through that sentence on paper, line by line, before sending the design.
+- Every honest-corpus line must be checked against every other requirement in the same check, not only the one it
+  was written for.
+- When a parameter is a range, compute the bar for each end of the range.
+
+### 2026-11-03: New decoys broke a planted item; flags rejected by course rules that the task never states (#43, design round 2, pedagogy)
+
+Round 2 added two decoys to force attribution: the tests reviewer running `python3 -m unittest discover` twice, and a
+failing run that the tests reviewer reports. The planted UP1 still said "the tests reviewer reports all tests pass; the
+only test run is in the coder's subtree", which those decoys make false, so the rule-5 walk keys UP1 as "no". The 4.3
+flag table also rejects about fifteen flags as "course rule" (`--debug*`, `--include-*`, `--session-id`, `--name`,
+`--betas`, `--input-format stream-json`, `--permission-prompts host`, `--append-subagent-system-prompt*`, `--worktree`,
+the coder's `--restricted`/`--safe-mode`). None is in the printed course-rule list, and C6/C7 name effects ("add tools,
+approvals, settings, agents, plugins or directories") that these flags do not have.
+Rule:
+- After adding a decoy, re-walk every planted item that shares its agent, tool or category, and rewrite any "the only X"
+  sentence the decoy touches.
+- Every flag a check rejects must follow from a printed requirement or a printed course rule. A failure message whose
+  requirement text does not cover the flag misinforms; give the course rule its own id or line.
+
+### 2026-11-03: Course-rule reasons written as "the docs don't" without searching the docs (#43, design round 2, accuracy)
+
+Round-2 fixes added course rules whose stated reasons were false on the vendor pages:
+- "Repeated and `--flag=value` forms are not documented for `claude`". The CLI reference shows `--debug='mcp,startup'`
+  and `--tmux=classic`, and "Repeat the flag" for `--plugin-dir`/`--plugin-url`.
+- "These three have a quoted MCP effect", used to exclude other closures. The `--safe-mode` row says "MCP servers ... do
+  not load".
+- "The subset is the keywords that both draft-07 and the API accept ... inside both lists". The API requires
+  `additionalProperties: false` on objects, lists only 10 `format` values, and never mentions `title` or `$schema`.
+
+Two new items were also keyed on behaviour that is unsettled or contradicted:
+- A new L1 quiz option, "edit a notebook" under `disallowedTools: Write, Edit`, which the docs leave unsettled.
+- The L6 README run line has no approval for the `python3 -m unittest` calls that the trace shows running.
+
+Rule:
+- A course-rule reason that says "only X" or "not documented" is a claim about every row of the source. Grep the whole
+  page (`=`, "Repeat", the effect word such as "MCP") before writing it.
+- A reason that says "both lists" must be checked against each list's required items, not only its forbidden items.
+- Every new quiz option and every new trace context line gets a quoted vendor sentence that decides it. If none
+  decides it, replace the option.
+
+### 2026-11-03: Round-2 fixes covered the listed forms, and their neighbours failed (#43, design round 2, assessment)
+
+Four round-2 fixes held for the forms the round-1 report named. A neighbouring form of each failed when run:
+- The flag allowlist names `--allowedTools`/`--disallowedTools` only. The documented `--allowed-tools`/`--disallowed-tools`
+  spellings and a prompt after `--` fail honest call lines.
+- References count only inside `<copy>` and the run dir, and H7 diffs only `<copy>`. So a coder narrative stashed in
+  `$TMPDIR`, `$HOME` or `/tmp` and referenced by path reaches the reviewer unseen.
+- A reference to the project root expands the whole copy, `.git` included, past the 4000-file cap: a platform error
+  on an honest line.
+- "Exactly `splitlines()`" is false for an empty file (1 line vs 0), and an honest `splitlines()` gate then returns
+  G2 where only G3 is broken.
+Rule:
+- For every flag a rule names, copy every spelling its CLI row lists, and decide `--`.
+- A "where to look" scope (directories, files) is checked against every place the learner's process can write. Close
+  the scope by effect: read wherever a reference points, and diff every writable tree.
+- A claim that two models agree ("exactly X") gets a run over the degenerate inputs: empty, single separator, no
+  final separator.
+
+### 2026-11-03: A new rule's reason overclaimed its effect; a new fake sentence generalised vendor behaviour (#43, design round 3, accuracy)
+
+Revision 3 fixed the five round-2 accuracy blockers. It also added two sentences that are false on the vendor pages:
+- The C10 reason "так строка вызова целиком описывает права и вывод роли", repeated in RS20 as "a call line that fully
+  describes the role". The module's own L2 theory teaches the opposite: under `-p` the project's hooks, `env` and deny
+  rules apply to every call (permissions trust table), and user settings apply too. So the line does not describe the
+  role's rights "целиком".
+- 4.3 "A documented flag outside the list gets the normal response, because the real CLI accepts it". Headless says
+  "Claude Code rejects `--bg`, and rejects `--cloud` with a task description, with an error naming the conflict", and
+  `--bg`/`--background` are on the must-fail list.
+Rule:
+- A course rule's reason states what the rule guarantees by construction ("every flag on the line is one the lesson
+  explains"), not a wider effect ("fully describes"). Before writing "fully", "entirely" or "every", check the reason
+  against the module's own theory of what else acts on the same object.
+- A sentence about "the real CLI" covering a whole class of flags is a claim about every row in that class. Check it
+  against the headless "Not every CLI option combines with `-p`" list before writing it, or describe only the fake.
+
+### 2026-11-03: Reference and H7 scope closed by a list of places, not by the effect (#43, design round 3, assessment)
+
+Revision 3 closed the round-2 reference blockers for the forms named, and three neighbours broke:
+- Honest prose naming `/tmp` (or `../` with a flat copy layout) expands an ancestor of the run dir, because `<scratch>`
+  sits under `/tmp` as in 02 `grader_runtime.py`. A run dir that keeps raw outputs then leaks the coder's narrative into
+  the reviewer's material, and leftover `make try-fake` dirs push the read past the 4000-file cap.
+- "A directory inside `<copy>` is never expanded, because H7 sees every project change", while H7 excludes every
+  `.git`. A stash dir under `<copy>/.git`, referenced as a directory, passes both.
+- H7 fails on any new uid-owned path under `/tmp` or the home. The learner's own Claude Code session in the same
+  container creates such paths, so honest runs fail at random.
+- The new full quiz key keyed cascade Q1 (c) on an output format the scenario never states.
+Rule:
+- When a rule leaves something unobserved ("not expanded", "excluded"), state the invariant that makes it safe, and
+  check every exclusion of the other rule against it.
+- Run every place-list in a scope ("expanded inside /tmp, /var/tmp, ...") against honest prose that names each place,
+  against the place the grader itself uses, and against concurrent processes of the same uid.
+- Prefer a property only this run can produce (files changed since run start, values drawn for this run) to a list of
+  directories or names.
+- A select-all option whose truth depends on a run parameter (output format, mode, foreground) names that parameter in
+  the scenario.
+
+### 2026-11-03: Stated a "the grader reads all three" invariant without attacking the reader that implements it (#43, design round 4, assessment)
+
+Revision 4 wrote "every in-scope path from the pipeline's output to a role goes through the prompt text, a named file,
+or the run dir, and the grader reads all three". Two neighbours falsified it:
+- The reference tokeniser splits on whitespace and on `, ; : = ( ) [ ] { }` and quotes. So `"<run>/coder out.json"`,
+  `<run>/coder(1).json` and `"/tmp/my stash.json"`, each named whole, are never read.
+- The directory rule tests only the realpath. So the run-dir entry `<run>/linkdir -> /tmp/stash`, named directly, is
+  not expanded, although the same entry is followed when the reviewer is given `<run>/`.
+Rule:
+- When a design states an invariant ("the grader reads X"), attack its implementation with inputs built from the
+  implementation's own edge: names that hold the tokeniser's delimiters, and paths that are inside by name but outside
+  by realpath (or the reverse).
+- When one form of a must-fail line is caught through a parent ("given `<run>/`"), also run the same object named
+  directly.
+
+### 2026-11-03: Bounded a path span by the old tokeniser's own delimiter set and by tokens, then claimed `@` was outside it (#43, judge_design round 5, assessment)
+Revision 5 started a span only at a word whose first character is `/`, `.` or `~`, with words cut on the 4.6
+delimiter set, and ended it only at a whitespace token end, minus a trailing run of that same set. So any character
+outside the set next to a path hides it: `@<run>/a b.json` (unquoted; `@` is not a delimiter, so the word starts
+with `@`), `«<run>/coder.json»`, `“/tmp/my stash.json”`, `**<run>/coder out.json**`, `Read <run>/coder.json!`, and
+the compact JSON `{"ctx":"<run>/coder out.json","diff":"..."}`. The design text said "any `@` ... before it is already
+outside it" without running it. The `.`-strip variants also turn `<run>/..` into `<run>/`, which contradicts the RS21
+sentence beside them. A run-dir entry reached through an in-scope alias (`/tmp/r/linkdir/`) passes both L and R.
+Rule:
+- A span rule for "a path written whole" is checked against what can sit right before and right after a path in real
+  prompts: unquoted `@`, Russian and curly quotes, markdown emphasis, `!`/`?`, and a compact JSON continuation.
+- Each new trimming variant is run on the out-of-scope and `..` lines too, not only on the must-fail lines.
+- When two in-scope aliases are added (an outside link to the run dir, a run-dir link to outside), run their
+  composition.
+
+### 2026-11-11: The L2 call requirements never said the call delivers the role's contract (#43, judge_content round 1, assessment)
+Design 4.3 lists C3-C10 for every role call (model and cap from roles.json, schema in `--json-schema`, tools,
+MCP closure, approvals, call format, flags) but no requirement that the call carries the role's contract
+`pipeline/contracts/<role>.md`. task.md step 3 follows the design and also omits it. So a `call_role` without
+`--append-system-prompt-file` (or any other way of giving the role its contract) passes `role-call` and
+`role-contracts`, while the theory ("the role knows only what came in the prompt and the system prompt"), the
+rubric K4 ("it sees the prompt and this contract only") and L3 task.md ("the starter `claude_call` already passes
+the contract as a file") all assume the contract reaches the role. A learner who follows step 3 literally hits it
+without trying to cheat.
+Rule: For each artifact a lesson asks the learner to write, name the requirement and the check that show the
+artifact is used by the code under test, not only that it exists and is well formed. Walk the outcome's nouns
+(contract, schema, config) and for each ask "which check fails if the code never reads it?".
+
 ### 2026-11-03: Capstone sequence contradicted its own slicing rubric; an honest suite lacked the inputs it needed (#44, design round 1, pedagogy)
 
 Revision 1 of #44 said each lesson's "Готово, когда" is one slice of the L1 reference plan, and the L1 rubric

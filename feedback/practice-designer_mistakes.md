@@ -200,6 +200,15 @@ Rule: Every sentence that says what a check does, or does not react to, is check
 that implements it before hand-back: grep the file named, the list or constant that bounds the set, and the stage that
 reads it. Words like "все", "ничего", "всегда" need a pointer to the code line that makes them true.
 
+### 2026-11-11: Model ID set and alias map frozen while the task text defers to the live models page (#43, judge_content, accuracy)
+L1 task.md rule 2 accepts any ID "в точности как в строках Claude API ID и Claude API alias обзора моделей". The models
+overview now lists `claude-fable-5-2` (Fable 5.1 moved to Legacy) and model-config resolves `fable` to Fable 5.2. Every
+`checks/agent_defs.py` FULL_MODEL_IDS lacks `claude-fable-5-2`, and ALIAS_MODELS, the starter fakes, result_templates.json
+and verify_*.py still map `fable` to `claude-fable-5-1`. So the grader rejects an ID the task text says is accepted.
+Rule: a check that implements a rule phrased as "whatever page X lists" pins the snapshot in the task text ("обзор
+моделей на 2026-11-03: ...") or is re-synced with the page before every judge round. Keep the alias map and ID list in one
+shared constant and grep every copy when it changes.
+
 ### 2026-11-10: Surviving-mutant messages name the correct behaviour after "прошёл на API с ошибкой" (#44, judge_content round 1, pedagogy)
 
 `ci_gate.ENGINE_VARIANTS` gives the engine mutants a decision name, not a bug: "make ci прошёл на API с ошибкой:
