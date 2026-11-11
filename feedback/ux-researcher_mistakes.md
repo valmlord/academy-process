@@ -330,3 +330,77 @@ measured)" without a condition. Measured: only while the `li` has focus; unfocus
 puts the same sentence in the focus-on-load column, where it holds.
 Rule: A flow sentence that reports a browser measurement carries the measurement's condition (focused,
 expanded, theme) with it.
+
+### 2026-11-10: Widened a concept by decision but left its vocabulary definition narrow (#72 merge with #70, judge_design round 1, consistency)
+A72-17 (progress.md:502-513) decides that every answered quiz send is an attempt record that is not a run,
+and cites the `ia.md` rows "run" and "attempt (record of a run)" as keeping the two apart. Those rows
+(ia.md:31-32), checks.md:24-30 and progress.md:19-20 still define the record as "ADR-0007's record of one
+run", the run row says every record is a saved run, and A72-10 (progress.md:474-475) numbers records
+"because the learner pressed "Проверить" each time". The register now says a quiz record cannot exist.
+Rule: When a merge decision adds a new member to a concept, grep the concept's definition in every flow
+file ("record of one run", the row title, the reasons that name its old source) and widen each one in the
+same change; a decision that cites a definition must be true against that definition's text.
+
+### 2026-11-10: Made quiz sends attempt records without checking who reads "latest attempt" (#72, merge with #70, judge_design round 1, accessibility)
+A72-17 decided that every answered quiz send is an attempt record, but the check bar's re-read baseline is
+`latestFinishedAttempt.attemptId`, "the latest finished attempt record" (checks.md "Baseline of a re-read"),
+and P7 keeps the baseline after a send. Read literally, the next visibility re-read is B9 and announces a run
+end for a run that never happened, the quiz outcome a second time.
+Rule: When a decision widens what a data term covers (here "attempt record"), grep every field and rule that
+uses the term (`latestFinishedAttempt`, baselines, counts) and state for each whether the new members count.
+
+### 2026-11-10: Made quiz sends attempt records without following the field that counts records (#72 merge with #70, judge_design round 1, usability)
+The merge decided that every answered quiz send is an attempt record (A72-17, T1) but left `checks.md`
+"Baseline of a re-read" (`latestFinishedAttempt.attemptId`, B8-B11) and the vocabulary row "attempt (record
+of a run)" as they were. Read as written, a visibility re-read after a quiz send sets a run end text in the
+check bar, against Stepan's P6; read the other way, the history misses a quiz record sent in another tab.
+T1 and T3 were also not added to `quiz.md` "Requirements for #36", the list #36 is built against.
+Rule: When a decision widens what a stored entity holds, grep every field, rule and vocabulary row that reads
+that entity and say for each whether the new kind is in or out; put each new demand on another issue into
+that issue's requirements list.
+
+### 2026-11-10: Widened the record's definition but left "run" in the definitions next to it (#72 merge with #70, judge_design round 2, consistency)
+The round-1 fix renamed the vocabulary rows and widened the attempt record to quiz sends, but two definitions
+in the same ranges still tie the concept to a run: `ia.md:32` quotes ADR-0007 item 5 ("one grading run started
+by one learner action") as the definition of every attempt record, then says a quiz attempt record "is never a
+run", so the row uses "run" in two senses; `checks.md:38` still heads the per-check sense "one check's result in
+a run", while the same bullet counts quiz results and ends "one answered quiz send is one record and one result".
+Rule: After widening a term, grep the word of the old scope ("run") inside every definition of that term and of
+its sibling senses, and either replace it or say in place how a quoted source's wider word maps to the
+vocabulary's narrower one.
+
+### 2026-11-10: Fixed a two-senses finding by adding an absolute claim that is false (#72 merge with #70, judge_design round 3, consistency)
+The round-2 fix of `ia.md:32` maps ADR-0007's "grading run" to both record kinds, which is right, but adds that
+the vocabulary's run is "the only sense of "run" in these docs". `design/flows/` uses "run" in other senses:
+"First run" for an empty product (`progress.md:92`, `dashboard.md:47`, "first-run failure" `auth.md:44`) and
+GitHub Actions runs ("`gh run list` shows 10 runs", `progress.md:358`).
+Rule: Before writing "the only" / "never" / "every" about a word in the docs, grep the word across all of
+`design/flows/` and list the exceptions, or scope the claim to what the grep proves.
+
+### 2026-11-10: Widened a "last read" baseline without following what it suppresses (#72 merge with #138, judge_design round 4, accessibility)
+Round 4 added "this page's own send that timed out and the server recorded" to the B27 reads that set the
+"changed since the page last read it" baseline (`quiz.md:179`). That baseline suppresses the result block's
+lesson line on the next answer. After a B27 re-read, the retry of the timed-out send returns the recorded
+result with no "Урок пройден", and P8 has emptied the status line, so the lesson outcome of that send is
+announced and shown nowhere, against `quiz.md:202` "announced once". The exclusion is right only for a send
+announced in another browser tab.
+Rule: When adding a case to a list that suppresses an announcement ("already said", "already read"), name
+where that case was said; if nowhere, it does not belong in the list.
+
+### 2026-11-11: Excluded one silent read from the baseline, not the class (#72 merge with #138, judge_design round 5, accessibility)
+The round-4 fix took B27 out of the "changed since the page last read it" reads while this page's own
+timed-out send waits for its retry (`quiz.md:179-183`), but left the other reads that do not say the lesson
+status: a run end with summary 4 (which wins over 5 and 6) and a B8 re-read followed by summary 3 or 4. After
+either, the retry of a recorded send that finished the lesson carries no lesson line, so the outcome is
+announced zero times, against `quiz.md:641` "nothing else in this page view says it".
+Rule: A read suppresses an announcement only if that read itself showed or announced the same fact; when
+fixing one silent read, list every read in the baseline and keep only those that said it.
+
+### 2026-11-11: Started the "only reads that said it count" window at the failure, not at the send (#72 merge with #138, judge_design round 6, accessibility)
+The round-5 fix made only a read with summary 5 or 6 count while the own failed send waits for its retry
+(`quiz.md:179-185`), but the same silent reads (a run end with summary 4, B8, B27 for this page's own send)
+can come while the send is still in flight, which may last until a network timeout with the panel left
+(`quiz.md:313-316`). The ordinary rule counts them, so the answer or the retry finds the lesson status
+unchanged and "Урок пройден" is announced zero times, against row "1, 2 or 3" (`quiz.md:204`).
+Rule: A window that suppresses a baseline read starts when the uncertainty starts (the send leaves), not when
+the page first notices it (the error); walk every read between the send and its answer.

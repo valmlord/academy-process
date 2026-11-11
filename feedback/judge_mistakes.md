@@ -259,3 +259,9 @@ Round-2 `plain.mjs` loaded `#state-history-deep-link-plain` and then `#state-his
 focus on `#attempt-2` carried over and the report (and then acceptance.md:797) said Chromium names the plain item
 in `#state-history`. A fresh load of `#state-history` gives the unfocused `li` no name. Found in round 3.
 Rule: Measure each state in a new browser context and print the `focused` property with every computed name.
+
+### 2026-11-10: Suggested fix wording carried an unchecked absolute (#72 merge, judge_design round 2, consistency)
+The round-2 consistency report proposed ""run" in these docs is only the row above" as example wording for
+`ia.md:32`; the fix adopted it, and round 3 found other senses of "run" in `design/flows/` (`progress.md:92`,
+`:358`, `dashboard.md:47`, `auth.md:44`). The judge had grepped only the attempt vocabulary, not the word itself.
+Rule: Grep every word a suggested fix makes a claim about before proposing the wording.

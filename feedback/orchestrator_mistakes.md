@@ -349,3 +349,14 @@ another state, so focus or markup from the previous state leaked into the measur
 Rule: in the author brief, require every accessible-name and computed-style claim in acceptance notes and
 flows to be measured on a fresh load in a new browser context per state, every AC to name the release whose
 tester can see its states, and file citations by selector, never by line, once a branch has merged main.
+
+### 2026-11-11: A merge pass reopened a judged design and ran seven flow rounds (#72)
+
+After #138 (quiz) merged, #72's PR conflicted in 41 hunks. The merge pass was meant to be narrow, but the
+researcher made the quiz send an attempt record and every reader of attempt records had to be re-derived; seven
+judge_design rounds followed, each FAIL one edge of the same class (run baseline, vocabulary, the lesson outcome
+on a timed-out send, the send window). Two of those edges came from non-blocking notes the orchestrator folded
+in, which widened a rule without following what it suppressed.
+Rule: when two DESIGN tasks touch the same page, merge the second onto the first before its judge_ux, not after
+its PR; in a merge pass, brief the architect to list every decision that goes beyond keeping both sides and put
+each to Stepan before judge_design; fold a non-blocking note in only after asking what the changed rule suppresses.
