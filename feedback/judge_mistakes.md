@@ -286,6 +286,68 @@ focus on `#attempt-2` carried over and the report (and then acceptance.md:797) s
 in `#state-history`. A fresh load of `#state-history` gives the unfocused `li` no name. Found in round 3.
 Rule: Measure each state in a new browser context and print the `focused` property with every computed name.
 
+### 2026-11-04: Prescribed `data-select-tab` on a goto control without tracing Back (#70, judge_design round 2, consistency)
+Round 2 asked "Пройти квиз" to carry `data-select-tab="tab-quiz"` after tracing only the forward path through
+`gotoState`. Once the tab changes after the push, the page script writes the new `?tab=` into the new history entry.
+Back then changes the query too, Chromium fires `popstate` with no `hashchange`, and proto.js leaves the state
+unchanged. Round 3 found this by running it, and the round-2 prescription was part of the defect.
+Rule: Before prescribing a prototype attribute, run the control in a browser: forward, Back, reload. Check that
+the URL query and the hash both round-trip, and that the listener the code relies on actually fires.
+
+### 2026-11-04: Usability round 3 fixed the refusal notice but not the refusal in the panel (#70, judge_design round 4, usability)
+Round 3 item 3 flagged that the refused-send notice claimed the answers were checked, and stopped at the notice.
+The panel-shown end of the same refusal (`quiz.md` Error states) still renders F15.4's result block, "Верно C из
+Q. Нужно K. Ответы остались выбранными.", for another tab's attempt. The usability judge also walked "focus in/out"
+in rounds 2-3 without the pointer-only Safari case, where focus is `body`. Both surfaced in round 4.
+Rule: A finding about what one surface says of an event names every surface that reports that event in the same
+round; and every "focus in/out" walk includes a Safari mouse learner whose focus is `body`.
+
+### 2026-11-04: Usability round 4 named the refusal's panel and notice but not the check bar (#70, judge_design round 5, usability)
+Round 4 item 2 asked the refusal to say the same fact in the panel and the notice, right after the lesson "name every
+surface". The check bar is a third surface of the quiz state ("Check bar after a quiz send", P7/P8), and a refusal that
+finds the quiz passed or closed is in none of its rows. It surfaced in round 5.
+Rule: Before sending a "surfaces of an event" finding, grep every table and rule keyed on that event's outcomes (here
+`quiz.md` P6-P8 table, notice table, focus table) and list each one in the finding.
+
+### 2026-11-04: Accessibility judge passed round 5 with the open user menu implicitly "in the panel" (#70, judge_design round 6)
+Round 5's away rule ("panel hidden or focus in terminal/editor") already made the open top-bar user menu "not
+away", and the accessibility judge passed it. The menu is a Radix modal menu (focus trap, `aria-hidden` on the
+rest), so the focus move to the result block cannot happen and the outcome goes unannounced. Found in round 6.
+Rule: For any rule that moves focus on a background event, walk every open overlay on the page (menus,
+dialogs, popovers) and check in the app's component source whether it traps focus before passing.
+
+### 2026-11-04: Accessibility judge passed the notice behind modal menus without reading `hideOthers` (#70, judge_design round 7)
+Round 6 classified the "Действия" menu and the reset AlertDialog as away with the outcome announced by the quiz
+notice, and the accessibility judge accepted it. Both modals call `aria-hidden` `hideOthers`, which spares only
+`[aria-live]` nodes, and the notice container is `role="status"` only, so the announcement is lost while the
+modal is open. Found in round 7, a round later than it could have been.
+Rule: For every live region that must announce while a modal is open, read the modal library's hide routine and
+confirm the container matches what it spares (attribute, not role) before passing.
+
+### 2026-11-04: Usability judge walked "focus stays" without the controls the same answer removes (#70, judge_design round 8)
+P8's removal of "К окружению" / "Переподключиться" and the row's "Пройти квиз" after a pass or close were in the design
+from rounds 4-6. "Focus stays where the learner put it" when away (check bar and Проверки away with the panel hidden)
+came in round 6. Rounds 6-7 walked the away places but never asked whether the answer removes the focused control,
+so focus could fall to `body` and nobody saw it until round 8.
+Rule: For every "focus stays" rule, cross every place it keeps focus with every control the same event removes
+(grep the "goes", "removed" and "no action" sentences and #69's B-table), before passing.
+
+### 2026-11-04: Accessibility judges passed the quiz notice markup without checking the app Alert's default role (#70, judge_design round 8)
+The notice composition ("an Alert ... inside a `role="status"` container", `quiz.md:442`) stood through several
+accessibility rounds. In rounds 7 and 8 the container's own attributes were checked, but not the role of the component
+put inside it. The app's `Alert` defaults to `role="alert"` (`alert.tsx:36`), so a faithful build nests an assertive
+region inside the polite one. Found in round 8.
+Rule: When reviewing a live container, also read the default ARIA role of every app component the spec puts inside it,
+and confirm the spec removes it or justifies keeping it.
+
+### 2026-11-10: Consistency round 1 listed three shadcn departures and missed `outline-none` (#70, judge_ux round 2)
+Round 1 FAILed the RadioGroup/Checkbox bullet for three departures but did not walk the full upstream class
+string. The designer then wrote "changes exactly these classes, nothing else", and upstream's `outline-none`,
+which would hide the app's base-layer focus ring, was still missing. Round 2 found it. That is the #29 lesson
+again.
+Rule: When a FAIL concerns departures from a vendored component, list every upstream class token as kept,
+changed or removed in the FAIL itself, so the fix cannot claim to be complete without covering all of them.
+
 ### 2026-11-04: Prescribed a string-length check before `timingSafeEqual` over UTF-8 bytes (#32, security round 1)
 Round-1 S-N1 prescribed "compare the expected MAC's base64url string (length check, timingSafeEqual over string bytes)".
 The architect applied it word for word. String length is not byte length: a percent-decoded non-ASCII character keeps
@@ -344,6 +406,56 @@ The architect combined both and made a valid ready lesson without `checks:` a U1
 Rule: When suggesting that a check run on pre-parse data, name the parser defaults and optionals it will no longer
 get and say how the check treats each.
 
+### 2026-11-10: Round 1 compared layout rules with proto.css but never checked their cascade layer (#106, judge_design round 2, architecture)
+Round 1 walked the `.lesson-layout` block against proto.css rule by rule and passed `.lesson-layout > .resizable-handle
+{ display:none }`. That rule sits in `@layer components`, while the handle's class string (2.7) has the `flex`
+utility, and Tailwind 4's `utilities` layer beats `components`. Round 1 also passed E-hint ("accessible description
+still matches") without running the Kbd markup through Playwright's accname. Both surfaced in round 2 and cost a round.
+Rule: For hand-written CSS in a Tailwind 4 app, read the layer of every rule and the full class list of each element
+it targets in round 1. For every e2e assertion the design keeps, read the matcher's algorithm in the installed tool.
+
+### 2026-11-10: Round-1 gate prescriptions were not run on a loaded host before sending (#106, judge_design round 2, operations)
+Round-1 operations prescribed the per-commit loop as one `&&` chain ending in `|| echo "commit $c red"`, and the
+flaky rule as "re-run alone, must be green alone". Round 1 had already seen that test go red in the full suite.
+Neither prescription was run at base. In round 2 at base the chain stopped at the test step, so the build never
+ran. The file alone was red twice and passed only with `--testTimeout=60000`.
+Rule: Before prescribing a gate command, run it at base under the host's current load and check that each step it
+lists actually ran (look for the step's output artefact). A known-flaky test's rerun rule must give green at base.
+
+### 2026-11-10: Round-2 frame finding described `flex` as sizing the height, without checking the container's axis (#106, judge_design round 3, architecture)
+Round-2 architecture blocker 1 said the frame's `flex-1` beats `flex:none` and that "with `flex-basis: 0%` the main size
+comes from flex, not from `height`". The frame's container (TabsContent `flex flex-1`) is a row, so `flex` sets the
+frame's width and `height` sets its cross size. The architect built revision 4's `flex:none` below 30rem on that
+framing, which makes the frame as wide as xterm's own screen and lets FitAddon shrink the terminal on every refit. Found
+in round 3.
+Rule: Before stating what a flex declaration does to an element, read the parent's full class list for `flex-col` and
+name the main axis in the finding.
+
+### 2026-11-10: Round-3 operations prescribed a one-test flaky check from four logs, without repeated base runs (#106, judge_design round 4, operations)
+Round-3 operations issue 2 gave command F, which accepts a red root test only when the lesson-markdown timeout is the
+single failure. It was checked on four logs, two of them at base. In round 4, two of three fresh base runs had other
+5 s timeouts (`starter-walk`, `sign-in-form`) as well, so command F said `not-met` and 8b stops the tester at base.
+The architect applied the prescription word for word; it cost a round.
+Rule: Before prescribing a flaky-test rule, run the full suite at base at least three times under current load and
+list every test that timed out; prescribe for the class of failure seen, not for the one test seen first.
+
+### 2026-11-09: Round-1 construction for blocker 1 contradicted blocker 2 of the same report (#101, judge_design round 2, security)
+Round-1 security blocker 1 offered "the sweep and the deadline mark as `error` only the included checks that have no
+committed result", while blocker 2 of the same report said a missing result after the grader started is counted. The
+architect applied both; the deadline then labels a started check whose runner failed as an uncounted platform stop.
+Found in round 2.
+Rule: When one report carries two prescriptions over the same rows, run each prescribed construction against the other
+finding's fix target before sending.
+
+### 2026-11-09: Prescribed a per-commit code rollback without checking how PRs land on main (#101, operations)
+Round-1 operations finding 3 prescribed "revert commits 4-9, keep commit 3". The architect copied it into 5.6. Main
+is squash-merged (`git log --first-parent` has one commit per PR and no merge commits), so after the merge those
+commits are not in main's history; the only revert available on main is the whole squash commit, which deletes 0002
+and fails `check-append-only.sh`. Found in round 2, non-blocking because the append-only guard fails closed.
+Rule: Before prescribing a rollback or any step that names commits of a PR, run `git log --first-parent` on main
+and phrase the step for the merge method the repo actually uses (here: revert the squash commit, then restore
+`packages/db` from it, as one PR).
+
 ### 2026-11-10: Counted a header line as a record in a read-only rehearsal (#113, judge_design round 1, operations)
 Round 1 reported `docker buildx du --filter 'type!=exec.cachemount'` as "223 records selected"; the file had 223
 lines including the `ID RECLAIMABLE SIZE LAST ACCESSED` header. The real count is 222 (194 regular + 27
@@ -366,3 +478,10 @@ The round-2 consistency report proposed ""run" in these docs is only the row abo
 `ia.md:32`; the fix adopted it, and round 3 found other senses of "run" in `design/flows/` (`progress.md:92`,
 `:358`, `dashboard.md:47`, `auth.md:44`). The judge had grepped only the attempt vocabulary, not the word itself.
 Rule: Grep every word a suggested fix makes a claim about before proposing the wording.
+
+### 2026-11-10: Design round passed a prescribed "the only way" header comment without a counter-example grep (#121, judge_design, architecture)
+Design 1.1 dictated the log-fields.ts header "these four functions are the only way a field taken from a thrown value
+reaches a log line"; all three design judges passed it. http/errors.ts:96, reconcile.ts:109 and main.ts:30 log fields
+of our own error classes directly, so the coder shipped a false comment and judge_code had to FAIL it.
+Rule: In judge_design, treat every comment text a design dictates as code: for an exclusivity claim, grep the
+counter-examples before PASS.
