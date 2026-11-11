@@ -338,6 +338,28 @@ Rule: read `gh issue view <n> --comments` before writing the architect brief, li
 in-scope item or a decision for Stepan, and require each out-of-scope item to be recorded in a committed file or a
 follow-up issue, never only in `plans/`.
 
+### 2026-11-04: judge_design rounds spent on sample states nobody had walked as one timeline (#72)
+
+judge_design on #72 took six rounds. Rounds 1-3 closed real flow gaps (deep-link focus, the attempt summary
+against #69's per-check words), but every blocker from round 3 on was a prototype sample in the design note:
+a row whose panel had another item count, every dashboard row linked to one state, a "Где трудно" list that
+needed attempts the 5-row list could not hide, cost rows opening states without cost, and finally samples that
+#69's run composition made impossible. Each fix redrew samples in isolation, and the next round found the next
+impossible pair. Round 6 passed once the architect rebuilt every sample from one dated timeline.
+Rule: when a DESIGN brief asks for page work items with sample states, require in round 1 one sample timeline
+(learner, lessons, checks, attempts with dates and costs) from which every state and every link target is
+derived, checked against the run and counting rules of the flows it depends on; brief the judges to walk it.
+
+### 2026-11-10: judge_ux rounds spent on doc claims nobody had measured on a fresh load (#72)
+
+judge_ux on #72 took five rounds, each FAIL a single item: stale line citations after a merge, a missing
+README member, gallery sizes copied from the wrong scale, an AC not split by release, and twice an
+accessible-name claim (the plain item's name, the Проверки tab name) measured in a state reached by hash from
+another state, so focus or markup from the previous state leaked into the measurement.
+Rule: in the author brief, require every accessible-name and computed-style claim in acceptance notes and
+flows to be measured on a fresh load in a new browser context per state, every AC to name the release whose
+tester can see its states, and file citations by selector, never by line, once a branch has merged main.
+
 ### 2026-11-10: Eleven design rounds on one class, closed by one rule only in round 9 (#70)
 
 judge_design for the quiz flows took 11 rounds. From round 2 on almost every blocker was one more case of "where does
@@ -487,6 +509,17 @@ Rule: when a design pre-decides a keep/drop rule, the architect brief requires t
 metric (here: build-cache record size per step from `buildx du --verbose`), with a negative control that shows the
 metric moves. Every architect re-brief says: you have no shell; record only results a named run produced, labelled
 with that run.
+
+### 2026-11-11: A merge pass reopened a judged design and ran seven flow rounds (#72)
+
+After #138 (quiz) merged, #72's PR conflicted in 41 hunks. The merge pass was meant to be narrow, but the
+researcher made the quiz send an attempt record and every reader of attempt records had to be re-derived; seven
+judge_design rounds followed, each FAIL one edge of the same class (run baseline, vocabulary, the lesson outcome
+on a timed-out send, the send window). Two of those edges came from non-blocking notes the orchestrator folded
+in, which widened a rule without following what it suppressed.
+Rule: when two DESIGN tasks touch the same page, merge the second onto the first before its judge_ux, not after
+its PR; in a merge pass, brief the architect to list every decision that goes beyond keeping both sides and put
+each to Stepan before judge_design; fold a non-blocking note in only after asking what the changed rule suppresses.
 
 ### 2026-11-11: Four design rounds spent on a mutation procedure, not the fix (#129)
 

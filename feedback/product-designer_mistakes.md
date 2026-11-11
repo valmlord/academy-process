@@ -127,6 +127,32 @@ catalog, which contradicts the catalog's own Route. A dev or tester checking 2.4
 Rule: When a note states a per-state `<title>` the static prototype cannot render, say so in that row, and
 when another page's note lists differences from it, compare against that page's note, not its prototype.
 
+### 2026-11-10: An app-test AC rewritten without its release scope (#72 judge_ux round 2)
+AC44 in `lesson/acceptance.md:1014-1022` was rewritten from "run the design script" into app-test behaviour,
+but it tells "the dev tester of #35" to assert it "in every #72 state of the States table". Nine of those states
+(seven rows, `:319-325`) are tagged "(from #37)" or "(from #39)", the cost and budget states, so a #35 tester cannot pass the
+AC, and the AC's own tag "(#72)" names the design issue, not a release, unlike AC30-AC43 next to it.
+Rule: When an AC is rewritten to bind the app, give it a release tag like its neighbours and scope every
+state list it names by release ("each state from the release its row is tagged with").
+
+### 2026-11-10: Wrote a measured name for the plain item in a state where it has none (#72, judge_ux round 3, accessibility)
+Lesson acceptance.md:795-797 says Chromium computes the plain item's name from contents "in
+`#state-history-deep-link-plain` and `#state-history`", and AC31 (:953-954) asks `#state-history` for "seven
+names, each the accessible name of its disclosure button". On a fresh load of `#state-history` the `li` is not
+focused and Chromium gives it no name (name "", no source); it computes "№ 2. 4 ноября, 13:50. ..." only while
+the item has focus. "№ 2" has no button either. A #35 tester asserting AC31 by accessible names gets six.
+Rule: Before writing a measured name into acceptance notes, load each named state fresh (new context, no
+carried focus) and record whether the element was focused; scope the claim to that condition.
+
+### 2026-11-10: Restated an inherited accessible name as exact for new states without measuring it (#72, judge_ux round 4, accessibility)
+Lesson acceptance.md:293, a line #72 added, defines "Check bar of №8's run" with tab name "Проверки, идёт
+проверка". #72 also added its 14 running states to #69's `.sr-only` span (prototype.html:224), and in all 14
+(both themes, fresh loads) Chromium computes "Проверки , идёт проверка": the span is a flex child of the tab, a
+known #69 defect. The round-4 name sweep checked the plain item but not the tab name the same paragraph states.
+Rule: Every quoted accessible name in a line you add is measured in the states it describes, including names
+copied from another issue's state; if the prototype differs for a known upstream reason, refer to that state
+instead of quoting the name, or say so next to it.
+
 ### 2026-11-10: Quiz states carried the v1 empty text and a first-attempt send state into later attempts (#70, judge_ux round 1, usability)
 Three gaps of one kind: a v1 or first-attempt element reused in quiz states where its facts are false.
 (1) `lesson/prototype.html:1192` shows "Попыток пока нет. Нажмите "Проверить", когда будете готовы." in

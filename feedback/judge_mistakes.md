@@ -260,6 +260,32 @@ Rule: When prescribing a protected set for an agent on a shared host, start from
 did not create") and name the owner's known objects as detection subsets. Before sending, ask what else on the host
 holds secrets or feeds the owner's stack.
 
+### 2026-11-04: Usability judge checked the summary rule but not the design note's drawn examples (#72, judge_design round 2)
+Round 2 checked A72-6 and A72-8 against #69 at the rule level and did not recount the §5.2 states. In those
+states, "№ 3" ("1 из 2") is expanded into a three-item panel. Found in round 3.
+Rule: When a review checks a counting or summary rule, also recount each example state the design note names
+for the author phase, not only the rule text.
+
+### 2026-11-04: Walked only some prototype samples against the icon and count rule (#72, judge_design round 2, consistency)
+Round 2 checked the dashboard `attempts-mixed` rows against A72-8 but not the lesson samples of the same
+design note. `history` gave "№ 3" "1 из 2" while `history-open` expands it to three items; it surfaced in
+round 3.
+Rule: When a rule maps summaries to items or icons, recount every sample state in the design note that names
+both, on every page, not one table of them.
+
+### 2026-11-04: Recounted the samples but never followed the prescribed links between them (#72, judge_design rounds 1-3, usability)
+The design note's single dashboard-row href (`#state-history-deep-link`) was there from round 1. Three rounds
+checked the deep-link table and the sample summaries but not which lesson state each dashboard sample row
+opens, so the running and no-result rows landing on an expanded attempt surfaced only in round 4.
+Rule: In judge_design, for every cross-page link the design note prescribes, walk each source sample to its
+target state and check it against the arrival table row for that sample's case.
+
+### 2026-11-10: Round-2 measurement of a name carried focus from the previous state (#72, judge_ux round 2, accessibility)
+Round-2 `plain.mjs` loaded `#state-history-deep-link-plain` and then `#state-history` in the same page by hash, so
+focus on `#attempt-2` carried over and the report (and then acceptance.md:797) said Chromium names the plain item
+in `#state-history`. A fresh load of `#state-history` gives the unfocused `li` no name. Found in round 3.
+Rule: Measure each state in a new browser context and print the `focused` property with every computed name.
+
 ### 2026-11-04: Prescribed `data-select-tab` on a goto control without tracing Back (#70, judge_design round 2, consistency)
 Round 2 asked "Пройти квиз" to carry `data-select-tab="tab-quiz"` after tracing only the forward path through
 `gotoState`. Once the tab changes after the push, the page script writes the new `?tab=` into the new history entry.
@@ -446,6 +472,12 @@ so it could not show a difference. The issue is about build-cache growth, and th
 tester's M1/M2). The mount had to be restored in 1ac739d.
 Rule: When a change is judged "no effect", measure it with the metric the issue is about (here the new build-cache
 record of the step, matched by before/after ID diff), not with a proxy that prints the same value in both variants.
+
+### 2026-11-10: Suggested fix wording carried an unchecked absolute (#72 merge, judge_design round 2, consistency)
+The round-2 consistency report proposed ""run" in these docs is only the row above" as example wording for
+`ia.md:32`; the fix adopted it, and round 3 found other senses of "run" in `design/flows/` (`progress.md:92`,
+`:358`, `dashboard.md:47`, `auth.md:44`). The judge had grepped only the attempt vocabulary, not the word itself.
+Rule: Grep every word a suggested fix makes a claim about before proposing the wording.
 
 ### 2026-11-10: Design round passed a prescribed "the only way" header comment without a counter-example grep (#121, judge_design, architecture)
 Design 1.1 dictated the log-fields.ts header "these four functions are the only way a field taken from a thrown value
