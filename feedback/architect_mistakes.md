@@ -1509,6 +1509,17 @@ visible hint.
 Rule: A pre-decided rule for a cache or layer change measures the issue's own metric (the step's record size in
 `docker buildx du --verbose`, or the Build Cache delta) for both variants, never only a tool's progress counter.
 
+### 2026-11-10: Prescribed a module header claiming "the only way" without grepping the other log lines (#121, judge_code, architecture)
+Design 1.1 prescribed the log-fields.ts header "these four functions are the only way a field taken from [a thrown
+value] reaches a log line". The coder wrote it faithfully (log-fields.ts:2-4). It is false in the same service: our
+own classes' fields reach log lines directly at http/errors.ts:96 (`error.message`), reconcile.ts:109 (`error.file`,
+`error.reason` of CourseReadError) and main.ts:30 (`error.message` of the config error). A reader auditing log
+injection would trust the header and skip those three lines. The design's own section 2 even lists the
+`${kind}: ${error.message}` branch as kept, so the claim contradicted the design it lives in.
+Rule: Before prescribing an exclusivity comment ("the only way", "never", "every"), grep the codebase for the
+counter-examples (here every `log.*(`/`console.*(` line that interpolates a property of a caught value) and scope the
+sentence to what the grep proves.
+
 ### 2026-11-10: Operator view listed a starter refusal that cannot happen and missed the image build (#117)
 Design 3 F8 said that after the fix a bad alias also gives "StarterRefusedError in starter.ts:112". That line wraps
 only `lstatBelowRoot` of the lesson directory; no YAML is parsed on the starter path, so a YAML failure never

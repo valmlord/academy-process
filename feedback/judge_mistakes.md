@@ -396,3 +396,10 @@ so it could not show a difference. The issue is about build-cache growth, and th
 tester's M1/M2). The mount had to be restored in 1ac739d.
 Rule: When a change is judged "no effect", measure it with the metric the issue is about (here the new build-cache
 record of the step, matched by before/after ID diff), not with a proxy that prints the same value in both variants.
+
+### 2026-11-10: Design round passed a prescribed "the only way" header comment without a counter-example grep (#121, judge_design, architecture)
+Design 1.1 dictated the log-fields.ts header "these four functions are the only way a field taken from a thrown value
+reaches a log line"; all three design judges passed it. http/errors.ts:96, reconcile.ts:109 and main.ts:30 log fields
+of our own error classes directly, so the coder shipped a false comment and judge_code had to FAIL it.
+Rule: In judge_design, treat every comment text a design dictates as code: for an exclusivity claim, grep the
+counter-examples before PASS.
