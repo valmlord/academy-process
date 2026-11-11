@@ -260,6 +260,68 @@ Rule: When prescribing a protected set for an agent on a shared host, start from
 did not create") and name the owner's known objects as detection subsets. Before sending, ask what else on the host
 holds secrets or feeds the owner's stack.
 
+### 2026-11-04: Prescribed `data-select-tab` on a goto control without tracing Back (#70, judge_design round 2, consistency)
+Round 2 asked "Пройти квиз" to carry `data-select-tab="tab-quiz"` after tracing only the forward path through
+`gotoState`. Once the tab changes after the push, the page script writes the new `?tab=` into the new history entry.
+Back then changes the query too, Chromium fires `popstate` with no `hashchange`, and proto.js leaves the state
+unchanged. Round 3 found this by running it, and the round-2 prescription was part of the defect.
+Rule: Before prescribing a prototype attribute, run the control in a browser: forward, Back, reload. Check that
+the URL query and the hash both round-trip, and that the listener the code relies on actually fires.
+
+### 2026-11-04: Usability round 3 fixed the refusal notice but not the refusal in the panel (#70, judge_design round 4, usability)
+Round 3 item 3 flagged that the refused-send notice claimed the answers were checked, and stopped at the notice.
+The panel-shown end of the same refusal (`quiz.md` Error states) still renders F15.4's result block, "Верно C из
+Q. Нужно K. Ответы остались выбранными.", for another tab's attempt. The usability judge also walked "focus in/out"
+in rounds 2-3 without the pointer-only Safari case, where focus is `body`. Both surfaced in round 4.
+Rule: A finding about what one surface says of an event names every surface that reports that event in the same
+round; and every "focus in/out" walk includes a Safari mouse learner whose focus is `body`.
+
+### 2026-11-04: Usability round 4 named the refusal's panel and notice but not the check bar (#70, judge_design round 5, usability)
+Round 4 item 2 asked the refusal to say the same fact in the panel and the notice, right after the lesson "name every
+surface". The check bar is a third surface of the quiz state ("Check bar after a quiz send", P7/P8), and a refusal that
+finds the quiz passed or closed is in none of its rows. It surfaced in round 5.
+Rule: Before sending a "surfaces of an event" finding, grep every table and rule keyed on that event's outcomes (here
+`quiz.md` P6-P8 table, notice table, focus table) and list each one in the finding.
+
+### 2026-11-04: Accessibility judge passed round 5 with the open user menu implicitly "in the panel" (#70, judge_design round 6)
+Round 5's away rule ("panel hidden or focus in terminal/editor") already made the open top-bar user menu "not
+away", and the accessibility judge passed it. The menu is a Radix modal menu (focus trap, `aria-hidden` on the
+rest), so the focus move to the result block cannot happen and the outcome goes unannounced. Found in round 6.
+Rule: For any rule that moves focus on a background event, walk every open overlay on the page (menus,
+dialogs, popovers) and check in the app's component source whether it traps focus before passing.
+
+### 2026-11-04: Accessibility judge passed the notice behind modal menus without reading `hideOthers` (#70, judge_design round 7)
+Round 6 classified the "Действия" menu and the reset AlertDialog as away with the outcome announced by the quiz
+notice, and the accessibility judge accepted it. Both modals call `aria-hidden` `hideOthers`, which spares only
+`[aria-live]` nodes, and the notice container is `role="status"` only, so the announcement is lost while the
+modal is open. Found in round 7, a round later than it could have been.
+Rule: For every live region that must announce while a modal is open, read the modal library's hide routine and
+confirm the container matches what it spares (attribute, not role) before passing.
+
+### 2026-11-04: Usability judge walked "focus stays" without the controls the same answer removes (#70, judge_design round 8)
+P8's removal of "К окружению" / "Переподключиться" and the row's "Пройти квиз" after a pass or close were in the design
+from rounds 4-6. "Focus stays where the learner put it" when away (check bar and Проверки away with the panel hidden)
+came in round 6. Rounds 6-7 walked the away places but never asked whether the answer removes the focused control,
+so focus could fall to `body` and nobody saw it until round 8.
+Rule: For every "focus stays" rule, cross every place it keeps focus with every control the same event removes
+(grep the "goes", "removed" and "no action" sentences and #69's B-table), before passing.
+
+### 2026-11-04: Accessibility judges passed the quiz notice markup without checking the app Alert's default role (#70, judge_design round 8)
+The notice composition ("an Alert ... inside a `role="status"` container", `quiz.md:442`) stood through several
+accessibility rounds. In rounds 7 and 8 the container's own attributes were checked, but not the role of the component
+put inside it. The app's `Alert` defaults to `role="alert"` (`alert.tsx:36`), so a faithful build nests an assertive
+region inside the polite one. Found in round 8.
+Rule: When reviewing a live container, also read the default ARIA role of every app component the spec puts inside it,
+and confirm the spec removes it or justifies keeping it.
+
+### 2026-11-10: Consistency round 1 listed three shadcn departures and missed `outline-none` (#70, judge_ux round 2)
+Round 1 FAILed the RadioGroup/Checkbox bullet for three departures but did not walk the full upstream class
+string. The designer then wrote "changes exactly these classes, nothing else", and upstream's `outline-none`,
+which would hide the app's base-layer focus ring, was still missing. Round 2 found it. That is the #29 lesson
+again.
+Rule: When a FAIL concerns departures from a vendored component, list every upstream class token as kept,
+changed or removed in the FAIL itself, so the fix cannot claim to be complete without covering all of them.
+
 ### 2026-11-04: Prescribed a string-length check before `timingSafeEqual` over UTF-8 bytes (#32, security round 1)
 Round-1 S-N1 prescribed "compare the expected MAC's base64url string (length check, timingSafeEqual over string bytes)".
 The architect applied it word for word. String length is not byte length: a percent-decoded non-ASCII character keeps
