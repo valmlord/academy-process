@@ -3,7 +3,7 @@
 - Status: Proposed
 - Date: 2026-10-27
 - Issue: #21
-- Amended: #23 (items 6, 7, 8 and 9); #27 (item 10); #86 (item 11, Proposed)
+- Amended: #23 (items 6, 7, 8 and 9); #27 (item 10); #86 (item 11, Proposed); #89 (item 12, Proposed)
 
 ## Context
 Pipeline v1 assumed one checkout. With git worktrees (#15) every hook still read the main
@@ -103,7 +103,8 @@ decisions 1-7: `plans/21-pipeline-v2-research.md`; full design: `plans/21-pipeli
 11. **Process repository (#86, amendment, status Proposed; Stepan accepts).** The process files
     (this ADR, `.claude/CLAUDE.md`, agents, feedback, hooks, `pipeline.json`, settings, the self-test,
     the learner notes) are the private repository `valmlord/academy-process`, cloned at the product's
-    `.claude/`, which the product ignores as a whole. Its `.gitignore` is an allowlist, so runtime
+    `.claude/` in the main checkout, which the product ignores as a whole; a linked worktree's
+    `.claude/` is a worktree of that clone (item 12). Its `.gitignore` is an allowlist, so runtime
     files (state, parked states, flock, grant, `settings.local.json`, `worktrees/`) stay untracked.
     Every process change is a commit on a branch named like the product branch, footer
     `Refs valmlord/academy#<n>`, a process PR with CI (`tests/pipeline/check.sh`), merged by Stepan
@@ -118,10 +119,12 @@ decisions 1-7: `plans/21-pipeline-v2-research.md`; full design: `plans/21-pipeli
     `Refs #<n>`) reachable from a local or remote-tracking protected process branch, process commits on
     a detached or unpushed protected HEAD, a last process commit without the footer, a tracked file
     outside the allowlist, and (`pr`) a task with no commit in either repository
-    (`hooks/lib/pl_process_repo.py`). A missing `.claude/.git` skips these rules with a log line;
-    a `.git` that is not a directory and any git error refuse. Residual risks, accepted:
+    (`hooks/lib/pl_process_repo.py`). In the main checkout, a missing `.claude/.git` skips these
+    rules with a log line, and a `.git` that is not a directory and any git error refuse; a linked
+    worktree's layout is checked as item 12 says. Residual risks, accepted:
     1. A CLI session in a `git worktree add` checkout loads no hooks (the worktree has no
-       `.claude/`); only Stepan's habit of working in the main checkout stops it.
+       `.claude/`); only Stepan's habit of working in the main checkout stops it. For worktree
+       sessions since #89: item 12, residual 1.
     2. Tree-moving git verbs in `.claude/` (`checkout`, `restore`, `switch <existing>`, `reset`,
        `pull`, `merge`, `rebase`, `stash`, `clean`) swap the live hooks under a running session: a
        rule in `.claude/CLAUDE.md` section 3, no guard. The shell guard's write-verb list does not see
@@ -147,6 +150,72 @@ decisions 1-7: `plans/21-pipeline-v2-research.md`; full design: `plans/21-pipeli
        issue commit on it; a push outside any task, and a process commit on `main` that carries
        neither `Refs valmlord/academy#<n>` nor `Refs #<n>`, once `main` is pushed or HEAD has left
        `main`, are seen only by Stepan (while HEAD is on an unpushed `main`, the gates refuse it).
+
+12. **Worktree sessions (#89, amendment, status Proposed; Stepan accepts).** A Desktop worktree side
+    session works in a linked product worktree `{wt}` under `{main}/.claude/worktrees/`, with its own
+    task, pipeline state, judges and process PR. It extends item 2 (state per checkout) and item 11
+    (the process clone); design: `plans/89-worktree-process-design.md`.
+    - **Layout.** The worktree's state and process files live in `{wt}/.claude`, a `git worktree` of
+      the main checkout's process clone `{main}/.claude`, on a process branch named like the product
+      branch, cut from process `origin/main` with `--no-track`, so a bare `git push` cannot land on
+      `main`. State paths stay `{root}/.claude/...`: the resolver and the gates do not change. Hooks,
+      `pipeline.json`, agents, the grant and the hook wiring keep coming from main.
+    - **Creation at init.** `pipeline-advance.sh init` in the worktree creates it before taking the
+      state lock (`hooks/lib/pl_process_worktree.py`), with the process repo's own hooks switched off
+      (`core.hooksPath=/dev/null`), or re-checks one an earlier init left. It refuses a protected product
+      branch, a `.claude` that is a file, a symlink or not such a worktree, a process worktree on
+      another branch, a process branch tracking a protected branch, and a half-created worktree (lock
+      left behind or tracked files missing); an existing process branch is reused with a warning. The
+      upstream check reads every spelling of `branch.<b>.merge` (`main`, `refs/heads/main`, any
+      remote), and a product branch name that would shadow another ref in the process clone (first
+      component `origin`, `refs`, `heads`, `tags` or `remotes`, or `HEAD`) is refused; new process
+      branches start at the full `refs/remotes/origin/main`.
+      PIPELINE runs only in the main checkout and is refused before anything is created.
+    - **Validation.** In `ensure` and in the process repo rules alike, `{wt}/.claude/.git` must be a
+      regular file naming an admin dir strictly under `{main}/.claude/.git/worktrees/` whose `gitdir`
+      file points back at that `.git`. At a linked root, anything else is a refusal of `pr` and Stop,
+      never a skip; then every rule of item 11 runs on the process worktree.
+    - **Session-start channel.** A worktree session loads no process `CLAUDE.md` (rehearsal R7), but
+      main's hooks run in it. A SessionStart entry in main's `settings.json` with no matcher, so all
+      five sources (`startup`, `resume`, `clear`, `compact`, `fork`), runs `hooks/session-context.sh`:
+      a session in a linked worktree gets a short text (Read `{main}/.claude/CLAUDE.md`, run the hook
+      probe, the worktree rules), a main-checkout session gets nothing, a directory under
+      `{main}/.claude/worktrees/` that git does not accept gets a short text naming main's `CLAUDE.md`,
+      and any failure gets a fixed fallback text plus a log line with its reason. The self-test pins
+      the whole hook wiring by exact equality.
+    - **Removal.** The app removes worktrees outside any hook, and `git worktree remove` deletes
+      ignored files (parked states, allowlist-hidden paths) without asking. `pipeline-advance.sh
+      worktrees [<path>]` reports unsaved process work (state, parked states, uncommitted, hidden or
+      assume-unchanged/skip-worktree paths, commits on no remote, process worktrees whose product
+      worktree is gone; exit 2 when `<path>` matches no worktree), `status` prints
+      it, and Stepan removes a process worktree only after `worktrees "<wt>"` exits 0
+      (`.claude/CLAUDE.md` section 7). `worktree remove` and `worktree prune` stay his.
+
+    Residual risks, accepted:
+    1. A session that loads no project hooks (CLI before init, `claude --worktree` if it loads the
+       worktree's settings, manual worktrees outside the accepted places) gets neither gates nor
+       instructions. Nothing catches it; the only control is the rule not to start those sessions.
+    2. A session with hooks gets the process rules only through the SessionStart injection and its own
+       Read of main's `CLAUDE.md`. If it ignores that text, the gates hold and the instruction-only
+       rules (git verbs in `.claude/`, never `git add -A`, never fix inline) do not. A context hook
+       killed at its 15 s timeout injects nothing, not even the fallback; the gates still hold.
+    3. Uncommitted process edits, parked states and `plans/` die when the app removes a worktree
+       outside the sync procedure.
+    4. Hook wiring after init, not yet observed (live check L5 records which one holds). With
+       `forwarded=false`, a Desktop session keeps main's wiring after init. With `forwarded=true`, a
+       session that starts or resumes in a worktree after init wires its hooks from that process
+       branch's `settings.json`: gate code still comes from main (forwarding), but the injection
+       arrives only if the branch was cut after #89 reached process `origin/main` (L5b), and any later
+       wiring change in main reaches the worktree only on a newly cut branch. A CLI session in a
+       worktree after init behaves the same way.
+    5. Hook edits in main are live for every worktree session.
+    6. Role prompts `Read .claude/agents/<team>/<file>.md` resolve to `{wt}/.claude/agents` (the
+       `origin/main` copy), while `phase-gate` validates main's `.claude/agents`: a role file changed in
+       main and not yet merged differs between what is gated and what is read.
+    7. After init, `CLAUDE.md`'s relative `.claude/...` references resolve to the process worktree's
+       copy; `bash .claude/hooks/pipeline-advance.sh` there refuses by design (`common.sh`) and names
+       main's path; `$CLAUDE_PROJECT_DIR` is empty in a worktree session's Bash and is never used in
+       Bash commands.
 
 ## Alternatives considered
 - Dispatch to the resolved checkout's own scripts: an old-commit worktree or a fake `.git`-file

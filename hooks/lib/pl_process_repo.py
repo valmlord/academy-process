@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Commit-time rules for the process repository cloned at <state root>/.claude (issue #86).
+"""Commit-time rules for the process repository at <state root>/.claude: the main checkout's clone
+(issue #86), or a linked worktree's process worktree of that clone (issue #89).
 
   pl_process_repo.py pr <state root> <issue>     rules 0-5 for the process repo, 6-7 for the product
   pl_process_repo.py stop <state root> [issue]   rules 0-5 only (Stop at done; product checked by the hook)
@@ -213,12 +214,16 @@ def dirty_rule(proc: Repo) -> list[str]:
     return problems
 
 
-def hidden_edits_rule(proc: Repo) -> list[str]:
+def flagged_paths(proc: Repo) -> list[str]:
     """Tracked files whose edits git is told not to look at."""
     # ls-files -v prints the tag in lower case for assume-unchanged and S for skip-worktree; either
     # makes status report an edited tracked hook as clean.
     records = [r for r in git(proc, "ls-files", "-v", "-z").out.split("\0") if r]
-    flagged = [r[2:] for r in records if r[0].islower() or r[0] == "S"]
+    return [r[2:] for r in records if r[0].islower() or r[0] == "S"]
+
+
+def hidden_edits_rule(proc: Repo) -> list[str]:
+    flagged = flagged_paths(proc)
     if not flagged:
         return []
     return ["tracked file(s) flagged assume-unchanged or skip-worktree hide their edits: %s. Stepan clears the "
@@ -250,22 +255,43 @@ def protected_head_ahead(proc: Repo, branch: str) -> bool:
     return int(git(proc, "rev-list", "--count", remote + "..refs/heads/" + branch).out.strip() or "0") > 0
 
 
+def linked_process_repo(path: str, main_root: str) -> tuple[Optional[Repo], list[str]]:
+    """A linked worktree's process repo must be a process worktree of main's clone, back-pointer
+    included; anything else is one problem line, never a skip. -> (repo, []) or (None, [problem])."""
+    # Imported here: pl_process_worktree imports this module for its git helpers.
+    import pl_process_worktree
+    try:
+        if os.path.islink(path):
+            raise pl_process_worktree.NotAProcessWorktree(path, main_root, "a symlink")
+        return Repo(path, pl_process_worktree.admin_dir_of(path, main_root)), []
+    except pl_process_worktree.NotAProcessWorktree as exc:
+        # Not "run init": init refuses while this directory is in the way.
+        return None, ["%s; %s" % (exc, exc.remedy)]
+
+
 def process_rules(state_root: str, issue: Optional[int], protected: Sequence[str],
                   task_branch: str) -> tuple[list[str], bool]:
     """Rules 0-5. -> (problems, whether the process repo has commits outside its protected branches)."""
     path = os.path.join(state_root, PROCESS_DIR)
     dotgit = os.path.join(path, ".git")
-    try:
-        mode = os.lstat(dotgit).st_mode
-    except FileNotFoundError:
-        # Fixtures and a fresh device before the clone have no process repo.
-        checkout.log_event(event="process-check-skipped", reason="process repo check skipped: %s missing" % dotgit,
-                           path=path)
-        return [], False
-    if not stat.S_ISDIR(mode):
-        return ["%s is not a directory; the process repo must be a plain clone" % dotgit], False
+    main_root = checkout.code_root()
+    if os.path.realpath(state_root) != main_root:
+        linked, refused = linked_process_repo(path, main_root)
+        if linked is None:
+            return refused, False
+        proc = linked
+    else:
+        try:
+            mode = os.lstat(dotgit).st_mode
+        except FileNotFoundError:
+            # Fixtures and a fresh device before the clone have no process repo.
+            checkout.log_event(event="process-check-skipped", reason="process repo check skipped: %s missing" % dotgit,
+                               path=path)
+            return [], False
+        if not stat.S_ISDIR(mode):
+            return ["%s is not a directory; the process repo must be a plain clone" % dotgit], False
+        proc = Repo(path, dotgit)
 
-    proc = Repo(path, dotgit)
     problems = dirty_rule(proc) + hidden_edits_rule(proc)
     refs = protected_refs(proc, protected)
     ahead = ahead_count(proc, refs) > 0

@@ -567,3 +567,102 @@ without trying to cheat.
 Rule: For each artifact a lesson asks the learner to write, name the requirement and the check that show the
 artifact is used by the code under test, not only that it exists and is well formed. Walk the outcome's nouns
 (contract, schema, config) and for each ask "which check fails if the code never reads it?".
+
+### 2026-11-03: Capstone sequence contradicted its own slicing rubric; an honest suite lacked the inputs it needed (#44, design round 1, pedagogy)
+
+Revision 1 of #44 said each lesson's "Готово, когда" is one slice of the L1 reference plan, and the L1 rubric
+demanded that every slice be vertical. Yet the lessons run layer by layer: the whole contract (L2), the engine (L3),
+the API (L4-L5), the UI (L6), CI (L7). That is the horizontal plan that 01 L4's rubric fails. The design also never
+said how the learner's own L1 plan relates to the fixed lesson order. In L7 the learner's suite had to pass and fail
+grader variants whose slots depend on `CALENDAR_NOW`, but nothing passed that clock to `make ci`. So no honest
+suite could compute expected slots or reach the 12 engine mutants. The check's failure message was also left
+unspecified, although each submission costs 8-10 minutes. The grader's image-only PATH
+(`/usr/local/go/bin:/usr/bin:/bin`) did not provably contain node, npm, tsp or openapi-typescript, which honest
+`make ci`, `make gen` and `build-web` call. L2, L4 and L5 had no per-part minutes. L1 gave 10 minutes for
+hand-computed exact DST instant lists. And because each lesson's starter is the previous lesson's reference, with
+no prerequisite gate, copying the next starter passes L1-L7.
+Rule: Walk the module's own reference plan through every rubric the module grades the learner by, and justify any
+exception in the learner-facing text. For every check that runs the learner's code against grader-owned state,
+list each input the honest solution needs (clock, delays, seeds, URLs) and pass it in. Run the honest commands
+under the grader's exact env (PATH, HOME, network) before pinning that env. Give per-part minutes for every
+lesson. Say which lessons a starter reveals the answer of, and how that is gated.
+
+### 2026-11-03: Standards cited for semantics while the mandated syntax contradicted them; Docker and Nuxt rules not walked against the docs (#44, design round 1, accuracy)
+
+Revision 1 of #44 mandated `Idempotency-Key` as an unquoted `[A-Za-z0-9_-]{8,64}` token and cited the IETF httpapi
+draft for 409/422. draft-08 (2026-10-22) says the value "MUST be a String" (RFC 9651 sf-string, quoted; example
+`Idempotency-Key: "8e03978e-..."`). The L8 rule "no `latest` or untagged FROM" rejects `FROM scratch` and
+`FROM <stage>`, the very multi-stage and scratch forms the design expects. The L6 honest `routeRules` proxy reads the
+backend URL only at `serve-web` time. Nuxt documents env overrides for `runtimeConfig` keys only, and the research
+marked the route-rule override as "observed only". Pinned decision 5 claimed that `seal-object-schemas` makes the
+openapi-typescript types exact. openapi-typescript already omits index signatures by default
+(`--additional-properties` defaults to false), and its docs never mention `unevaluatedProperties`.
+Rule: When a design cites a standard for part of a mandated surface, check the rest of that surface against the
+standard too. Then either conform, or say in the brief which part is the course's own choice. For every
+syntax rule over a vendor format (FROM refs, config keys), list the vendor's documented special forms and exempt or
+reject each one explicitly. Never build an honest variant on a behaviour the research marked "observed only".
+Every "because" in a pinned decision is a factual claim; check it against the tool's own docs.
+
+### 2026-11-03: Anti-cheat claims rested on unrun stand-ins; the cheapest attacks were fingerprints and placement, not the listed classes (#44, design round 1, assessment)
+
+Revision 1 of #44 put the L7 blind-guess bound at 5.9e-6 under a "nothing observable" model. But each of the 4
+green variants differs from the reference in one cosmetic thing: id scheme, problem text, charset plus 50 ms
+latency, Allow order. The 18 mutants share the reference's cosmetics. So a suite with no behavioural test calls
+those 4 green and guesses among the 19 runs that look like the reference. That passes 2.0% of submissions, and
+5.3% with a counter in /tmp or the live workspace, which the learner uid can write even under R0. That is about 19
+submissions with no attempt caps. The L5 probe recorded R3, the delay placed outside the critical section, as
+residual "because it needs the skill". A toy Go server that sleeps first and then does a racy check-then-insert
+passed the 12x6 probe 15/15. A one-rule timing check (a POST that fails the check answers in under delay/2) fails
+it by construction. The L7 drift case (3), one property removed, is passed by `cmp schema.d.ts golden`. The
+TypeSpec host allowed any JS whose realpath is inside the pinned dir. A `.tsp` import of the image's
+`@typespec/compiler/cmd/tsp.js` ran the CLI and killed the compile. `import "yaml"` ran the JS and compiled clean.
+Rule: For every "cannot pass" claim, write the cheapest stand-in that uses each observable the check leaves
+uninformative (cosmetics, timing, a counter across runs) and compute its pass rate before stating a bound.
+Randomise every non-graded dimension the same way over the green and red sets. Before recording a residual, look
+for a by-construction observable of the effect, such as where in the handler time is spent. A JS-loading guard is
+an exact allowlist of entry files, not a directory.
+
+### 2026-11-03: A time estimate rested on reuse that the earlier lessons never set up (#44, design round 2, pedagogy)
+
+Revision 2 of #44 fixed L7's clock at `CALENDAR_NOW=2026-03-01T08:00:00Z` and budgeted 15 min for "replaying his L3
+cases through the HTTP slots endpoint", on the grounds that the cases were "written against this `now`". But L1 and L3
+never ask for that `now`. Each case carries its own `request.now`, and the L3 bounds don't constrain it. The case's
+`bookings[]` are only required to be "consistent with the model", but over HTTP every booking has to be created
+through POST /bookings, which rejects bookings that are off-grid, outside availability or inside notice. Bookings
+also conflict host-wide, so cases replayed against one server interfere with each other unless they are cancelled
+or put on disjoint dates. So an honest learner's L3 cases mostly cannot be replayed. The 12 engine mutants then have
+to be killed by new HTTP tests, and the 85-min suite estimate doesn't hold.
+Rule: When a later lesson's minutes count on reusing an earlier artefact, write the reuse conditions (fixed inputs,
+which data must be creatable through the public interface, isolation between cases) into the earlier lesson's
+task.md and bounds. Then have a demo run the reuse on the reference artefact, not only on a suite the designer wrote.
+
+### 2026-11-04: A tool self-check compared realpaths to install dirs without reading the install layout (#44, design round 2, accuracy)
+
+Revision 2 of #44 (7.1) required `go`, `node`, `npm`, `npx`, `tsp`, `openapi-typescript`, `make`, `git` and
+`python3` to "resolve under that PATH to the 11 install dirs (realpath compared)". The PATH has 5 dirs and section 11
+pins 3, so "11" matches nothing. And on the official Node build, `bin/npm` and `bin/npx` are symlinks to
+`../lib/node_modules/npm/bin/npm-cli.js` and `npx-cli.js` (node `tools/install.py`, `package_files`). Their realpath is
+under `/opt/node/lib/...`, not `/opt/node/bin`, so the check would fail closed on the honest image at every check
+start. Revision 2 also copied the judge's "earlier stage name, case-insensitive" into the FROM set (F2) without
+opening the BuildKit source; see judge_mistakes 2026-11-04.
+Rule: Before pinning a check over installed files (paths, realpaths, symlinks), write the expected value of each
+member from the vendor's install script or a listing of the real artefact, as a table, and count its rows against the
+number in the text. A judge's wording tagged [J-x] is still a claim: open its source before building a closed set on it.
+
+### 2026-11-04: Closed a concurrency residual with the judge's two rules and did not probe their neighbours (#44, design round 2, assessment)
+
+Revision 2 of #44 deleted residual R3 ("R3 is closed (S3)") after adding the judge's rule a (fast 409 on a taken slot)
+and rule b (no booking visible before 0.9 x delay). A prototype of the 3.2.8 probe found three servers with no atomic
+check-and-write that pass all of the rev-2 rules: an unlocked check, then the delay, then an unlocked recheck and
+write, 30/30; the same with a racy pending set, 30/30; and a racy reservation, 9/30. The first is "optimistic read,
+lock, recheck, delay, write" with the lock left out, which is a natural mistake. One more observable (a conflicting
+POST sent at 0.5 x delay must get 409 no earlier than the winner's 201 and no later than 1.3 x delay) brings all
+three to 0/30, and the honest forms stay at 30/30. Revision 2 also recorded the TypeSpec JS allowlist from the
+reference compile and required every member to be necessary for that compile. But an honest `import
+"@typespec/openapi3"` requests `openapi3/dist/src/tsp-index.js`, and a reference that does not import openapi3 never
+requests it. The (3a) drift case also leaves the hand edit uncommitted, so the listed honest form
+`make gen && git diff --exit-code` exits 0 on it.
+Rule: When a residual is closed with prescribed rules, list the attack's neighbours before deleting the residual:
+the same race moved to another point in the request, each lock removed from each honest form, the delay outside the
+atomic section. Prototype each one against every rule. When a closed set is recorded from a run, record it over the
+whole honest corpus, not only the reference. When a git-based honest form must pass a planted case, commit the plant.

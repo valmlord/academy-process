@@ -92,3 +92,81 @@ switch"), AC7 ("A run does not switch the tab") and the new AC17, on the core pa
 `?tab=` writer then publishes the wrong tab ("Войти снова" carries theory).
 Rule: After adding URL or selection state, run every simulated action from each tab and assert the tab and
 the URL are unchanged unless the acceptance notes say the action switches them.
+
+### 2026-11-09: A focused row button falls to `main` on a background change (#69, judge_ux round 1)
+`data-focus-fallback` was put on the check bar and on every `.check-row-panel`, but not on anything that
+contains the row button itself. The prototype draws each state's rows as separate markup, so a background
+change hides the focused `.check-row-trigger` and the focus repair finds no ancestor fallback and focuses
+`main`. Measured headless at 1280 and 375 px in 9 transitions each (for example `#state-results-limit-known`
+-> `setState("check-running")`): focus lands on `main#main`. `checks.md` says the row buttons are never removed,
+so in B8-B14 focus stays on that row's button. The 26 background pairs focused "Подробности", "Проверить",
+"К окружению", "Переподключиться", "Открыть результаты" and "Отмена", never a row button, which is the
+element most likely to have focus in Проверки. So the run could not catch this.
+Rule: In a prototype that swaps markup per state, every element that "is never removed" in the flows needs
+a fallback to its own counterpart in the next state (here `data-focus-fallback` on each row `li`). The
+background focus pairs include focus on each kind of element that a background change can hide, not only
+the controls the flows list as removed.
+
+### 2026-11-03: Not-found Route reversed the "course id unknown" implication (#83, judge_ux round 1)
+`design/pages/not-found/acceptance.md:13-14` says that while the course cannot be read only way (1) reaches
+the page "and then the course id is unknown (`#state-no-course`)". The judged design (D2) and `ia.md` R6 say
+the converse: the id is unknown only when `course.yaml` itself is unreadable; when it parsed and a later file
+failed, the id is known and "Курс" stays. A dev following the note would hide "Курс" and "Открыть курс" on
+not-found for every course read failure, so the top bar would differ between pages in the same request,
+against R6. The check passed because it asserts only the quoted members, not the sentences around them.
+Rule: When a note restates a condition from `ia.md`, copy its direction and its trigger ("`course.yaml`
+unreadable"), and read every sentence of the note against the rule, not only the asserted phrases.
+
+### 2026-11-03: Course-error `<title>` stated three ways across the catalog prototype and two notes (#83, judge_ux round 1, accessibility)
+`design/pages/catalog/acceptance.md` Route (:6-7) and AC8 now say the catalog's `<title>` is "Не удалось
+загрузить курс" while the course cannot be read, but `catalog/prototype.html#state-course-error` renders
+`<title>` "ИИ для разработчиков" (measured at 320/375/1280, both themes) and the note gives no caveat, though it
+gives one for the top bar and the retry in the same rows. `lesson/acceptance.md:159` then lists `<title>` "Не
+удалось загрузить курс" as one of the "three things only" in which the lesson course error differs from the
+catalog, which contradicts the catalog's own Route. A dev or tester checking 2.4.2 gets two answers.
+Rule: When a note states a per-state `<title>` the static prototype cannot render, say so in that row, and
+when another page's note lists differences from it, compare against that page's note, not its prototype.
+
+### 2026-11-10: An app-test AC rewritten without its release scope (#72 judge_ux round 2)
+AC44 in `lesson/acceptance.md:1014-1022` was rewritten from "run the design script" into app-test behaviour,
+but it tells "the dev tester of #35" to assert it "in every #72 state of the States table". Nine of those states
+(seven rows, `:319-325`) are tagged "(from #37)" or "(from #39)", the cost and budget states, so a #35 tester cannot pass the
+AC, and the AC's own tag "(#72)" names the design issue, not a release, unlike AC30-AC43 next to it.
+Rule: When an AC is rewritten to bind the app, give it a release tag like its neighbours and scope every
+state list it names by release ("each state from the release its row is tagged with").
+
+### 2026-11-10: Wrote a measured name for the plain item in a state where it has none (#72, judge_ux round 3, accessibility)
+Lesson acceptance.md:795-797 says Chromium computes the plain item's name from contents "in
+`#state-history-deep-link-plain` and `#state-history`", and AC31 (:953-954) asks `#state-history` for "seven
+names, each the accessible name of its disclosure button". On a fresh load of `#state-history` the `li` is not
+focused and Chromium gives it no name (name "", no source); it computes "№ 2. 4 ноября, 13:50. ..." only while
+the item has focus. "№ 2" has no button either. A #35 tester asserting AC31 by accessible names gets six.
+Rule: Before writing a measured name into acceptance notes, load each named state fresh (new context, no
+carried focus) and record whether the element was focused; scope the claim to that condition.
+
+### 2026-11-10: Restated an inherited accessible name as exact for new states without measuring it (#72, judge_ux round 4, accessibility)
+Lesson acceptance.md:293, a line #72 added, defines "Check bar of №8's run" with tab name "Проверки, идёт
+проверка". #72 also added its 14 running states to #69's `.sr-only` span (prototype.html:224), and in all 14
+(both themes, fresh loads) Chromium computes "Проверки , идёт проверка": the span is a flex child of the tab, a
+known #69 defect. The round-4 name sweep checked the plain item but not the tab name the same paragraph states.
+Rule: Every quoted accessible name in a line you add is measured in the states it describes, including names
+copied from another issue's state; if the prototype differs for a known upstream reason, refer to that state
+instead of quoting the name, or say so next to it.
+
+### 2026-11-10: Quiz states carried the v1 empty text and a first-attempt send state into later attempts (#70, judge_ux round 1, usability)
+Three gaps of one kind: a v1 or first-attempt element reused in quiz states where its facts are false.
+(1) `lesson/prototype.html:1192` shows "Попыток пока нет. Нажмите "Проверить", когда будете готовы." in
+quiz-failed, -last-attempt, -closed, -row-closed, -limit-unknown, -answered-away, -notice-two-pane and -refused,
+right under the quiz row's "Неудачных попыток: N из 3". `checks.md:522-524` ties that text to "every check as
+"Не запускалась"", which no longer holds once the quiz row shows a sent attempt. In F15.6 (`#state-quiz-row-closed`)
+the learner reads "Закрыта: не пройдено, Неудачных попыток: 3 из 3" and then "Попыток пока нет".
+(2) `#quiz-send` (`:1464`) always goes to the one `quiz-sending` state, whose header is "Попытка 1 из 3"
+(`:1208`) and whose quiz row is "Ответы не отправлялись, 0 из 3" (`:1007`). So a send from quiz-failed,
+-last-attempt or -refused drops the attempt line and the "Осталась 1 попытка" warning. This is not in
+"Prototype limitations", and quiz-run.js asserts H1 for every send, so the regression counts as expected.
+(3) The refusal that finds the quiz passed or closed (`quiz.md:640-644`, AC43) is neither drawn nor listed as
+not drawn. Its composition (refusal title, then "Квиз пройден" or the close line, icon) is left to dev.
+AC56 also names only limitation 1 as an exception, though limitations 2-3 are Back and Forward cases its own sweep runs.
+Rule: For every element shared across quiz states, check its facts against each state's attempt number and quiz
+row, and do the same for every state a control leads to. Each quiz.md state is drawn or listed in "Prototype
+limitations", and every limitation the headless AC runs into is named as an exception in that AC.

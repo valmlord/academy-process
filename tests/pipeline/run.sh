@@ -1706,6 +1706,719 @@ capture python3 -I "$PH/lib/pl_process_repo.py" pr "$PB" " 86"
 if [ "$RC" = 1 ] && [ "$ERR" = "pl_process_repo.py: issue must be ASCII digits, got ' 86'" ]; then
   ok "malformed issue argument: rc 1 and one line with the value"
 else bad "malformed issue argument: rc 1 and one line with the value (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+echo "== worktree sessions"
+# A product worktree where the Desktop app creates one: under <main>/.claude/worktrees/, with a
+# space in its name on purpose. Hooks always come from main ($PH).
+WTP="$PB/.claude/worktrees/w one"
+PLOG="$PB/.git/pipeline-hooks.log"
+wt_reset() { rm -rf "$WTP"; prod worktree prune; }
+wt_reset
+prod worktree add -q -B feat/90-w "$WTP"
+plog_last() { # plog_last <field>: that field of the newest line of fixture 2's hook log
+  tail -n 1 "$PLOG" 2>/dev/null | python3 -c "import json,sys; print(json.loads(sys.stdin.read() or '{}').get(sys.argv[1], ''))" "$1"; }
+ctx_json() { # ctx_json <cwd> <source>: a SessionStart hook input
+  python3 -c "import json,sys; print(json.dumps({'hook_event_name':'SessionStart','session_id':'s89','cwd':sys.argv[1],'source':sys.argv[2]}))" "$1" "$2"; }
+ctx() { printf '%s' "$1" | bash "$PH/session-context.sh"; }
+fmt() { python3 -I "$PH/lib/pl_session_context.py" "$@"; }
+# context_has <stdout> <substring...>: stdout is one SessionStart JSON object whose context holds every substring.
+context_has() {
+  python3 -I - "$@" <<'PY' 2>/dev/null
+import json, sys
+spec = json.loads(sys.argv[1])["hookSpecificOutput"]
+text = spec["additionalContext"]
+sys.exit(0 if spec["hookEventName"] == "SessionStart" and all(s in text for s in sys.argv[2:]) else 1)
+PY
+}
+
+# W14
+OUT=$(ctx "$(ctx_json "$WTP" startup)" 2>/dev/null); RC=$?
+if [ "$RC" = 0 ] && context_has "$OUT" "Read $PB/.claude/CLAUDE.md" "Worktree: $WTP." \
+    "echo hook-probe >> /dev/null settings.pipeline-grant.json" "bash \"$PB/.claude/hooks/pipeline-advance.sh\"" \
+    "PIPELINE tasks run only in the main checkout" \
+  && python3 -I - "$OUT" "$PH/lib" <<'PY' 2>/dev/null \
+  && [ "$(plog_last event)" = session-context ] && [ "$(plog_last reason)" = linked ]
+import json, sys
+sys.path.insert(0, sys.argv[2])
+from pl_session_context import SESSION_CONTEXT_MAX_CHARS
+sys.exit(0 if len(json.loads(sys.argv[1])["hookSpecificOutput"]["additionalContext"]) < SESSION_CONTEXT_MAX_CHARS else 1)
+PY
+then ok "W14 a linked worktree session gets main's CLAUDE.md path, the probe and the rules; log reason=linked"
+else bad "W14 a linked worktree session gets main's CLAUDE.md path, the probe and the rules; log reason=linked (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+
+# W14b
+LONG_ROOT=$(python3 -c "print('/' + 'r' * 2100)")
+FOUT=$(fmt "$LONG_ROOT" "$PB" cwd own:TASK:coder 2>"$BASE/fmt.err"); RC=$?
+if [ "$RC" = 3 ] && [ -z "$FOUT" ] && grep -qF SESSION_CONTEXT_MAX_CHARS "$BASE/fmt.err"; then
+  ok "W14b a context over SESSION_CONTEXT_MAX_CHARS exits 3 with nothing on stdout"
+else bad "W14b a context over SESSION_CONTEXT_MAX_CHARS exits 3 with nothing on stdout (rc=$RC)"; fi
+
+# W14c: json.dumps escapes controls on the wire anyway, so the decoded context is what is checked.
+CRAFTED=$(fmt $'/x/a\nb\x1bc' $'/m/d\ne' cwd $'own:TASK:coder\xc2\x9b' 2>/dev/null)
+PLAIN=$(fmt /x/abc /m/de cwd own:TASK:coder 2>/dev/null)
+if python3 -I - "$CRAFTED" "$PLAIN" <<'PY' 2>/dev/null
+import json, sys, unicodedata
+crafted, plain = (json.loads(s)["hookSpecificOutput"]["additionalContext"] for s in sys.argv[1:3])
+controls = [ch for ch in crafted if unicodedata.category(ch) == "Cc" and ch != "\n"]
+sys.exit(0 if not controls and crafted.count("\n") == plain.count("\n") and "/x/abc" in crafted else 1)
+PY
+then ok "W14c control characters in paths and status never reach the decoded context"
+else bad "W14c control characters in paths and status never reach the decoded context"; fi
+
+# W14p
+if python3 -I - "$PH/lib" <<'PY' 2>/dev/null
+import sys
+sys.path.insert(0, sys.argv[1])
+from pl_text import printable
+sys.exit(0 if printable("a\x00b\x1b\x7f\u0085\u009bc\nd\té→") == "abcdé→" else 1)
+PY
+then ok "W14p printable drops C0, DEL and C1 (tab and newline too), keeps other text"
+else bad "W14p printable drops C0, DEL and C1 (tab and newline too), keeps other text"; fi
+if python3 -I - "$PH/lib" <<'PY' 2>/dev/null
+import sys
+sys.path.insert(0, sys.argv[1])
+from pl_text import printable
+sys.exit(0 if printable("x\u202ey\u2066z\u2028w\u2029v\u200f") == "xyzwv" else 1)
+PY
+then ok "W14p printable drops bidi controls and the U+2028/U+2029 line breaks"
+else bad "W14p printable drops bidi controls and the U+2028/U+2029 line breaks"; fi
+
+# W15
+OUT=$(ctx "$(ctx_json "$PB" startup)" 2>/dev/null); RC=$?
+if [ "$RC" = 0 ] && [ -z "$OUT" ] && [ "$(plog_last event)" = session-context ] && [ "$(plog_last reason)" = main ]; then
+  ok "W15 a main-checkout session gets no context; log reason=main"
+else bad "W15 a main-checkout session gets no context; log reason=main (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+
+# W15u: git does not list this directory, so the resolver gives main with source cwd; the session
+# loads no CLAUDE.md there, so it gets the fallback-resolution text, not silence.
+STRAY="$PB/.claude/worktrees/stray"
+mkdir -p "$STRAY"
+OUT=$(ctx "$(ctx_json "$STRAY" startup)" 2>/dev/null); RC=$?
+rmdir "$STRAY"
+if [ "$RC" = 0 ] && context_has "$OUT" "did not resolve to an accepted academy checkout (unaccepted worktree under" \
+    "Read $PB/.claude/CLAUDE.md first" && [ "$(plog_last reason)" = unaccepted-worktree ]; then
+  ok "W15u an unaccepted directory under .claude/worktrees gets the fallback-resolution text; log reason=unaccepted-worktree"
+else bad "W15u an unaccepted directory under .claude/worktrees gets the fallback-resolution text; log reason=unaccepted-worktree (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+
+# W16: common.sh stops at its python3 probe; pl_fail exits 0 for an observer and the trap prints.
+mkdir -p "$BASE/emptypath"
+CTX_IN=$(ctx_json "$PB" startup)
+OUT=$(printf '%s' "$CTX_IN" | PATH="$BASE/emptypath" /bin/bash "$PH/session-context.sh" 2>/dev/null); RC=$?
+if [ "$RC" = 0 ] && context_has "$OUT" "the session-context hook failed" "$PB/.claude/CLAUDE.md"; then
+  ok "W16 no python3: the fallback text names main's CLAUDE.md"
+else bad "W16 no python3: the fallback text names main's CLAUDE.md (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+QROOT="$BASE/q\"uo\\te"
+mkdir -p "$QROOT/.claude/hooks/lib"
+cp "$PH/session-context.sh" "$QROOT/.claude/hooks/" && cp "$PH/lib/common.sh" "$QROOT/.claude/hooks/lib/"
+OUT=$(printf '%s' "$CTX_IN" | PATH="$BASE/emptypath" /bin/bash "$QROOT/.claude/hooks/session-context.sh" 2>/dev/null); RC=$?
+if [ "$RC" = 0 ] && context_has "$OUT" "the session-context hook failed" "$QROOT/.claude/CLAUDE.md"; then
+  ok "W16 a quote and a backslash in the root still give one parsable JSON object"
+else bad "W16 a quote and a backslash in the root still give one parsable JSON object (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+rm -rf "$QROOT"
+
+# W16b: a linked copy whose main has no session-context.sh cannot forward (common.sh), so the
+# fallback must name main's CLAUDE.md through _pl_main, not the stranded copy's own root.
+S16="$BASE/w16b"
+mkdir -p "$S16/wt/.claude/hooks/lib" "$S16/admin" "$S16/fm/.git"
+cp "$PH/session-context.sh" "$S16/wt/.claude/hooks/" && cp "$PH/lib/common.sh" "$S16/wt/.claude/hooks/lib/"
+printf 'gitdir: %s\n' "$S16/admin" > "$S16/wt/.git"
+printf '%s\n' "$S16/fm/.git" > "$S16/admin/commondir"
+OUT=$(printf '%s' "$CTX_IN" | bash "$S16/wt/.claude/hooks/session-context.sh" 2>/dev/null); RC=$?
+if [ "$RC" = 0 ] && context_has "$OUT" "$S16/fm/.claude/CLAUDE.md" && ! printf '%s' "$OUT" | grep -qF "$S16/wt"; then
+  ok "W16b a stranded linked copy's fallback names main's CLAUDE.md"
+else bad "W16b a stranded linked copy's fallback names main's CLAUDE.md (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+rm -rf "$S16"
+
+# W17: run as a script, so no bytecode cache applies; python3 exits 2 and the trap prints.
+chmod 000 "$H/lib/pl_session_context.py"
+OUT=$(at "$WORK" ctx_json "$WORK" startup | bash "$H/session-context.sh" 2>/dev/null); RC=$?
+chmod 644 "$H/lib/pl_session_context.py"
+if ! test -r "$H/lib/pl_session_context.py"; then bad "W17 chmod restored"
+elif [ "$RC" = 0 ] && context_has "$OUT" "the session-context hook failed"; then
+  ok "W17 a formatter crash prints exactly one fallback JSON object"
+else bad "W17 a formatter crash prints exactly one fallback JSON object (rc=$RC: $(printf '%s' "$OUT" | cut -c1-200))"; fi
+# The newest session-context line, not the newest line: a background watchdog of an earlier row may log after it.
+CTX_LOGGED=$(python3 -I - "$LOG" <<'PY' 2>/dev/null
+import json, sys
+lines = [json.loads(line) for line in open(sys.argv[1], encoding="utf-8") if '"session-context"' in line]
+print("%s %s" % (lines[-1].get("reason", ""), lines[-1].get("rc", "")) if lines else "")
+PY
+)
+if [ "$CTX_LOGGED" = "fallback:formatter 2" ]; then ok "W17 the fallback logs its reason and the formatter's exit code"
+else bad "W17 the fallback logs its reason and the formatter's exit code (newest session-context line: $CTX_LOGGED)"; fi
+
+# W18: exact equality, because a changed matcher or event keeps every script wired while it
+# switches a gate off. A PIPELINE task that changes the wiring updates this literal in the same commit.
+if python3 -I - "$WORK/.claude/settings.json" <<'PY' 2>/dev/null
+import json, sys
+
+PINNED = json.loads(r"""{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-pipeline.sh\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/phase-gate.sh\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/bash-code-guard.sh\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "SubagentHandback",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/judge-handback.sh\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pipeline-watchdog.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/judge-count.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/phase-complete.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/judge-vote.sh\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}""")["hooks"]
+SESSION_START = [{"hooks": [{"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-context.sh\"", "timeout": 15}]}]
+
+settings = json.load(open(sys.argv[1]))
+hooks = dict(settings["hooks"])
+session_start = hooks.pop("SessionStart", None)
+sys.exit(0 if set(settings) == {"hooks"} and hooks == PINNED and session_start == SESSION_START else 1)
+PY
+then ok "W18 settings.json wiring equals the pinned literal, SessionStart without a matcher"
+else bad "W18 settings.json wiring equals the pinned literal, SessionStart without a matcher"; fi
+
+# Init in a worktree creates <wt>/.claude as a worktree of the process clone $P.
+WTP2="$PB/.claude/worktrees/w two"
+WSTATE="$WTP/.claude/pipeline_state.json"
+wadv()  { (cd "$WTP" && bash "$PH/pipeline-advance.sh" "$@"); }
+wadv2() { (cd "$WTP2" && bash "$PH/pipeline-advance.sh" "$@"); }
+wpg()   { git -c user.name=t -c user.email=t@t -C "$WTP/.claude" "$@"; }
+# wt_fresh: a fresh process clone (which also drops every process worktree and the product
+# worktrees inside it), then product worktree "w one" on feat/90-w cut from main.
+wt_fresh() {
+  proc_reset
+  prod worktree prune
+  prod worktree add -q -B feat/90-w "$WTP" main
+}
+# expect_out <desc> <want rc> <substring...>: RC and ERR (from capture) against the expectation.
+expect_out() {
+  local d="$1" want="$2"; shift 2
+  if [ "$RC" = "$want" ] && has_all "$ERR" "$@"; then ok "$d"
+  else bad "$d (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+}
+# wt_layout_ok <process worktree>: its .git names an admin dir directly under $P/.git/worktrees/
+# whose gitdir file points back at that .git.
+wt_layout_ok() {
+  python3 -I - "$1" "$P" <<'PY'
+import os, sys
+wt, p = sys.argv[1:3]
+line = open(os.path.join(wt, ".git")).readline().strip()
+admin = os.path.realpath(line[len("gitdir: "):]) if line.startswith("gitdir: ") else ""
+back = os.path.realpath(open(os.path.join(admin, "gitdir")).readline().strip()) if admin else ""
+root = os.path.realpath(os.path.join(p, ".git", "worktrees"))
+sys.exit(0 if os.path.dirname(admin) == root and back == os.path.realpath(os.path.join(wt, ".git")) else 1)
+PY
+}
+
+# W1
+wt_fresh
+capture wadv init TASK 90
+if [ "$RC" = 0 ] && wt_layout_ok "$WTP/.claude" && [ "$(wpg symbolic-ref --short HEAD)" = feat/90-w ] \
+    && [ "$(wpg rev-parse HEAD)" = "$(pg rev-parse origin/main)" ] && [ -f "$WSTATE" ] && [ ! -e "$P/pipeline_state.json" ]; then
+  ok "W1 init in a worktree creates its process worktree on feat/90-w at origin/main; the state lands there"
+else bad "W1 init in a worktree creates its process worktree on feat/90-w at origin/main; the state lands there (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+if pg config --get branch.feat/90-w.merge >/dev/null; then bad "W1 the new process branch has no upstream"
+else ok "W1 the new process branch has no upstream"; fi
+
+# W1b
+wt_fresh
+pg branch -q feat/90-w "$(pg commit-tree "$(pg rev-parse 'origin/main^{tree}')" -p origin/main -m "an older task")"
+rm -f "$PLOG"
+capture wadv init TASK 90
+if [ "$RC" = 0 ] && has_all "$ERR" "reusing existing process branch feat/90-w at" "(1 commits not on origin/main)" \
+    && grep -qF '"process-worktree-reused-branch"' "$PLOG"; then
+  ok "W1b an existing process branch is reused with a warning and a log line"
+else bad "W1b an existing process branch is reused with a warning and a log line (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+# W1c
+wt_fresh
+printf '#!/bin/sh\n: > "%s"\n' "$BASE/post-checkout-ran" > "$P/.git/hooks/post-checkout"
+chmod +x "$P/.git/hooks/post-checkout"
+rm -f "$BASE/post-checkout-ran"
+capture wadv init TASK 90
+if [ "$RC" = 0 ] && [ ! -e "$BASE/post-checkout-ran" ]; then ok "W1c init runs no hook of the process repo"
+else bad "W1c init runs no hook of the process repo (rc=$RC)"; fi
+
+# W2
+wt_fresh
+capture eval 'at "$WTP" write_json "$WTP/apps/x.txt" | bash "$PH/require-pipeline.sh"'
+if [ "$RC" = 2 ] && [ "$(plog_last reason)" = "no-pipeline:apps/x.txt" ]; then ok "W2 a product write in a worktree before init is blocked"
+else bad "W2 a product write in a worktree before init is blocked (rc=$RC)"; fi
+capture wadv pause
+if [ "$RC" = 1 ] && has_all "$ERR" "$WTP/.claude does not exist" "run init" && ! has_all "$ERR" Traceback; then
+  ok "W2 pause before init names the missing .claude and init, without a traceback"
+else bad "W2 pause before init names the missing .claude and init, without a traceback (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+# W3
+wt_fresh
+prod worktree add -q -B feat/91-w "$WTP2" main
+wadv init TASK 90 >/dev/null 2>&1; wadv2 init TASK 91 >/dev/null 2>&1; padv init TASK 92 >/dev/null 2>&1
+wadv researcher >/dev/null 2>&1
+if [ "$(state_get "$WTP" "d['phase']")" = researcher ] && [ "$(state_get "$WTP2" "d['phase']")" = init ] \
+    && [ "$(state_get "$PB" "d['phase']")" = init ] && [ "$(state_get "$WTP2" "d['issue']")" = 91 ]; then
+  ok "W3 two worktrees and main run their own tasks; advancing one leaves the others"
+else bad "W3 two worktrees and main run their own tasks; advancing one leaves the others"; fi
+
+# W6
+wt_fresh
+mkdir "$WTP/.claude"
+capture wadv init TASK 90
+if [ "$RC" = 1 ] && has_all "$ERR" "$WTP/.claude is not a process worktree" && [ ! -e "$WSTATE" ] \
+    && ! pg show-ref --verify --quiet refs/heads/feat/90-w; then
+  ok "W6 a plain .claude in the worktree is refused, naming it; no branch, no state"
+else bad "W6 a plain .claude in the worktree is refused, naming it; no branch, no state (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+# W7
+wt_fresh
+printf '%s\n' '{"version": 1, "pipeline_init": [90]}' > "$P/settings.pipeline-grant.json"
+capture wadv init PIPELINE 90
+rm -f "$P/settings.pipeline-grant.json"
+if [ "$RC" = 1 ] && has_all "$ERR" "run in the main checkout" && [ ! -e "$WTP/.claude" ]; then
+  ok "W7 PIPELINE init in a worktree is refused before anything is created"
+else bad "W7 PIPELINE init in a worktree is refused before anything is created (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+# W8
+wt_fresh
+pg switch -q -c feat/90-w
+capture wadv init TASK 90
+expect_out "W8 the process branch checked out in main's process repo: init refused, naming it and worktree list" 1 \
+  "feat/90-w" "worktree list"
+# git prints "Preparing worktree (...)" before its fatal: line; the refusal quotes the cause.
+if has_all "$ERR" "git worktree add failed: fatal: " && ! has_all "$ERR" "Preparing worktree"; then
+  ok "W8 the refusal quotes git's fatal: line, not its progress line"
+else bad "W8 the refusal quotes git's fatal: line, not its progress line ($(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+pg switch -q main && pg branch -q -D feat/90-w
+
+# W8b
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+pg worktree lock "$WTP/.claude"
+rm -f "$WSTATE"
+capture wadv init TASK 90
+expect_out "W8b (a) a locked process worktree is half-created: init refused, hint unlocks first" 1 \
+  "half-created process worktree at $WTP/.claude" "worktree unlock $WTP/.claude, then"
+pg worktree unlock "$WTP/.claude"
+rm -f "$WTP/.claude/CLAUDE.md"
+capture wadv init TASK 90
+expect_out "W8b (b) a tracked file missing in the process worktree: init refused" 1 "half-created" "worktree remove --force"
+# worktree unlock fails on a worktree that is not locked, so the hint must not send Stepan there.
+if has_all "$ERR" "worktree unlock"; then bad "W8b (b) not locked: the hint names no worktree unlock ($(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"
+else ok "W8b (b) not locked: the hint names no worktree unlock"; fi
+
+# W9
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+prod -C "$WTP" switch -q -c feat/93-w
+capture wadv init TASK 93
+expect_out "W9 a second task in the same worktree session is refused" 1 "is on feat/90-w"
+
+# W9b
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+rm -f "$WSTATE"
+pg config branch.feat/90-w.remote origin
+pg config branch.feat/90-w.merge refs/heads/main
+capture wadv init TASK 90
+expect_out "W9b a reused process branch tracking main is refused" 1 "tracks main" "branch --unset-upstream feat/90-w"
+# git takes the short form too: with push.default=upstream a bare push of merge=main lands on main.
+pg config branch.feat/90-w.merge main
+capture wadv init TASK 90
+expect_out "W9b an upstream in short form (merge=main) is refused" 1 "tracks main"
+pg config branch.feat/90-w.remote .
+rm -f "$WSTATE"
+capture wadv init TASK 90
+expect_out "W9b an upstream main on remote . is refused" 1 "tracks main"
+# A case variant: on case-insensitive APFS a push to Main moves main.
+pg config branch.feat/90-w.merge Main
+capture wadv init TASK 90
+expect_out "W9b an upstream Main (a case variant of main) is refused" 1 "tracks Main"
+rm -f "$WSTATE"
+pg config branch.feat/90-w.remote origin
+pg config branch.feat/90-w.merge refs/heads/feat/90-w
+capture wadv init TASK 90
+expect_out "W9b an upstream of its own name is fine" 0
+
+# W9c: a product branch named like a remote-tracking ref would create refs/heads/origin/main in the
+# process clone, after which origin/main there means an unreviewed local commit.
+wt_fresh
+prod -C "$WTP" switch -q -c origin/main
+capture wadv init TASK 90
+expect_out "W9c a product branch origin/main is refused" 1 "the product branch origin/main would shadow another ref"
+if pg show-ref --verify --quiet refs/heads/origin/main || [ -e "$WTP/.claude" ]; then
+  bad "W9c the refusal creates no process branch and no .claude"
+else ok "W9c the refusal creates no process branch and no .claude"; fi
+prod -C "$WTP" switch -q feat/90-w && prod branch -q -D origin/main
+# A case variant: on case-insensitive APFS refs/heads/Origin/main is the file git reads for origin/main.
+wt_fresh
+prod -C "$WTP" switch -q -c Origin/main
+capture wadv init TASK 90
+expect_out "W9c a product branch Origin/main is refused" 1 "the product branch Origin/main would shadow another ref"
+if [ -n "$(pg for-each-ref --format='%(refname)' refs/heads/Origin refs/heads/origin)" ] || [ -e "$WTP/.claude" ]; then
+  bad "W9c the Origin/main refusal creates no process branch and no .claude"
+else ok "W9c the Origin/main refusal creates no process branch and no .claude"; fi
+prod -C "$WTP" switch -q feat/90-w && prod branch -q -D Origin/main
+# A case variant of a protected name: on APFS a process branch MASTER would write onto master.
+# (Main itself cannot be created next to the product's main on APFS, so MASTER stands in.)
+wt_fresh
+prod -C "$WTP" switch -q -c MASTER
+capture wadv init TASK 90
+expect_out "W9c a product branch MASTER is refused" 1 "the product branch is MASTER"
+if [ -n "$(pg for-each-ref --format='%(refname)' refs/heads/MASTER refs/heads/master)" ] || [ -e "$WTP/.claude" ]; then
+  bad "W9c the MASTER refusal creates no process branch and no .claude"
+else ok "W9c the MASTER refusal creates no process branch and no .claude"; fi
+prod -C "$WTP" switch -q feat/90-w && prod branch -q -D MASTER
+# A local origin/main left by anything else must not become the start point.
+wt_fresh
+pg branch -q origin/main "$(pg commit-tree "$(pg rev-parse 'refs/remotes/origin/main^{tree}')" -p refs/remotes/origin/main -m "unreviewed")" 2>/dev/null
+capture wadv init TASK 90
+if [ "$RC" = 0 ] && [ "$(wpg rev-parse HEAD)" = "$(pg rev-parse refs/remotes/origin/main)" ]; then
+  ok "W9c a new process branch starts at refs/remotes/origin/main, not a local branch origin/main"
+else bad "W9c a new process branch starts at refs/remotes/origin/main, not a local branch origin/main (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+pg branch -q -D origin/main
+
+# The process repo rules run on the worktree's process worktree.
+W_FOOTER="Refs valmlord/academy#90"
+wpr() { put_state "$WTP" TASK commit 90; capture wadv pr skip "fixture"; }
+wstop() { at "$WTP" stop_json 0 | bash "$PH/phase-complete.sh"; }
+
+# W4
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+capture eval 'at "$WTP" write_json "$WTP/.claude/feedback/w4.md" | bash "$PH/require-pipeline.sh"'
+expect_out "W4 a feedback write in the worktree's process worktree is allowed" 0
+echo "lesson" > "$WTP/.claude/feedback/w4.md"
+wpr
+expect_out "W4 pr with an uncommitted process edit is refused" 1 "the process repo has uncommitted changes: feedback/w4.md"
+wpg add feedback/w4.md && wpg commit -qm "fix: w4
+
+$W_FOOTER" && wpg push -q -u origin feat/90-w
+wpr
+expect_out "W4 after commit and push, pr is allowed" 0 "PR skipped"
+
+# W5: a real worktree of a scratch repo, clean and back-pointing, but not under main's process admin dir.
+wt_fresh
+git init -q -b main "$BASE/w5" && git -c user.name=t -c user.email=t@t -C "$BASE/w5" commit -q --allow-empty -m init
+git -C "$BASE/w5" worktree add -q -b w5 "$WTP/.claude"
+wpr
+expect_out "W5 a .claude that is a worktree of another repo: pr refused" 1 "$WTP/.claude is not a process worktree of $P"
+rm -rf "$BASE/w5"
+
+# W5b: w one's .git names w two's admin dir.
+wt_fresh
+prod worktree add -q -B feat/91-w "$WTP2" main
+wadv init TASK 90 >/dev/null 2>&1; wadv2 init TASK 91 >/dev/null 2>&1
+cp "$WTP2/.claude/.git" "$WTP/.claude/.git"
+wpr
+expect_out "W5b a .git borrowing a sibling's admin dir: pr refused" 1 "not a process worktree" "belongs to another worktree"
+capture wadv init TASK 90
+expect_out "W5b a .git borrowing a sibling's admin dir: init refused" 1 "not a process worktree" "belongs to another worktree"
+
+# W5c: an unreadable admin dir is an access problem; "another worktree" or "move it aside" misinforms.
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+chmod 000 "$P/.git/worktrees"
+wpr
+chmod 755 "$P/.git/worktrees"
+if ! { test -r "$P/.git/worktrees" && test -x "$P/.git/worktrees"; }; then bad "W5c chmod restored"
+elif [ "$RC" = 1 ] && has_all "$ERR" "is unreadable (PermissionError)" "restores read access" \
+    && ! has_all "$ERR" "belongs to another worktree" && ! has_all "$ERR" "moves it aside"; then
+  ok "W5c an unreadable process admin dir: pr names the access problem"
+else bad "W5c an unreadable process admin dir: pr names the access problem (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+
+# W11
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+wstop_expect() { # wstop_expect <desc> <want rc> <stderr substring...>: Stop at a done TASK state in w one
+  local d="$1" want="$2"; shift 2
+  put_state "$WTP" TASK "done" 90
+  edit_state "$WTP" '{"artifacts": {"notify": "x", "judge_votes": [
+    {"round": "judge_design", "agent": "security", "verdict": "PASS"},
+    {"round": "judge_design", "agent": "architecture", "verdict": "PASS"},
+    {"round": "judge_design", "agent": "operations", "verdict": "PASS"},
+    {"round": "judge_code", "agent": "security", "verdict": "PASS"},
+    {"round": "judge_code", "agent": "architecture", "verdict": "PASS"},
+    {"round": "judge_code", "agent": "operations", "verdict": "PASS"}]}}'
+  capture wstop
+  expect_out "$d" "$want" "$@"
+}
+: > "$WTP/.claude/feedback/w11.md"
+wstop_expect "W11 Stop at done in a worktree refused: dirty process worktree" 2 "process repo: the process repo has uncommitted changes: feedback/w11.md"
+rm -f "$WTP/.claude/feedback/w11.md"
+wstop_expect "W11 Stop at done in a worktree allowed: clean process worktree" 0
+if [ ! -e "$WSTATE" ] && [ ! -e "$P/pipeline_state.json" ] && [ "$(pg symbolic-ref --short HEAD)" = main ] && [ -z "$(pg status --porcelain)" ]; then
+  ok "W11 the allowed Stop removes the worktree's done state and leaves main's process repo alone"
+else bad "W11 the allowed Stop removes the worktree's done state and leaves main's process repo alone"; fi
+
+# W13
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+for f in .claude/settings.local.json .claude/hooks/x.sh; do
+  capture eval 'at "$WTP" write_json "$WTP/$f" | bash "$PH/require-pipeline.sh"'
+  if [ "$RC" = 2 ] && [ "$(plog_last reason)" = "core:$f" ]; then ok "W13 $f in the process worktree is core, never writable"
+  else bad "W13 $f in the process worktree is core, never writable (rc=$RC, reason=$(plog_last reason))"; fi
+done
+capture eval 'at "$WTP" write_json "$WSTATE" | bash "$PH/require-pipeline.sh"'
+if [ "$RC" = 2 ] && [ "$(plog_last reason)" = "protected:.claude/pipeline_state.json" ]; then ok "W13 the worktree's state file is protected"
+else bad "W13 the worktree's state file is protected (rc=$RC, reason=$(plog_last reason))"; fi
+
+# W10: the worktree report behind status and Stepan's sync gate.
+# wreport [<path>]: `worktrees` from main; stdout and stderr in OUT, exit code in RC.
+wreport() { OUT=$(padv worktrees "$@" 2>&1); RC=$?; }
+# (a)
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+echo "lesson" > "$WTP/.claude/feedback/w10.md"
+capture wadv status
+if [ "$RC" = 0 ] && has_all "$ERR" "Worktree $WTP: uncommitted: feedback/w10.md"; then ok "W10 (a) status names the worktree's uncommitted process edit"
+else bad "W10 (a) status names the worktree's uncommitted process edit (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+wreport "$WTP"
+if [ "$RC" = 1 ] && has_all "$OUT" "Worktree $WTP: uncommitted: feedback/w10.md"; then ok "W10 (a) worktrees <it> exits 1 on an uncommitted process edit"
+else bad "W10 (a) worktrees <it> exits 1 on an uncommitted process edit (rc=$RC: $OUT)"; fi
+# (b)
+prod worktree remove --force "$WTP"
+capture padv status
+if has_all "$ERR" "Worktree $WTP/.claude: removed with its product worktree; commits kept on feat/90-w"; then
+  ok "W10 (b) status names a process worktree whose product worktree was removed"
+else bad "W10 (b) status names a process worktree whose product worktree was removed (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+wreport "$WTP"
+expect_rc_out() { # expect_rc_out <desc> <want rc> <substring...>: RC and OUT (from wreport)
+  local d="$1" want="$2"; shift 2
+  if [ "$RC" = "$want" ] && has_all "$OUT" "$@"; then ok "$d"; else bad "$d (rc=$RC: $(printf '%s' "$OUT" | tr '\n' ' ' | cut -c1-300))"; fi
+}
+expect_rc_out "W10 (b) worktrees <removed one> exits 1 naming it" 1 "Worktree $WTP/.claude: removed"
+# (c)
+wt_fresh
+prod worktree add -q -B feat/91-w "$WTP2" main
+wreport "$WTP2"
+if [ "$RC" = 0 ] && [ "$OUT" = "Worktree $WTP2: no process worktree yet (no init)" ]; then ok "W10 (c) a worktree without init is a note, exit 0"
+else bad "W10 (c) a worktree without init is a note, exit 0 (rc=$RC: $OUT)"; fi
+# (d)
+wt_fresh
+wadv init TASK 90 >/dev/null 2>&1
+rm -f "$WSTATE"
+wreport "$WTP"
+if [ "$RC" = 0 ] && [ -z "$OUT" ]; then ok "W10 (d) a clean process worktree: exit 0, no line"
+else bad "W10 (d) a clean process worktree: exit 0, no line (rc=$RC: $OUT)"; fi
+# (i) status shows a flagged file as clean, and worktree remove (no --force) would delete its edit.
+echo "an edit status does not show" >> "$WTP/.claude/CLAUDE.md"
+for flag in assume-unchanged skip-worktree; do
+  wpg update-index "--$flag" CLAUDE.md
+  wreport "$WTP"
+  expect_rc_out "W10 (i) a $flag edit: worktrees <it> exits 1 naming it" 1 \
+    "Worktree $WTP: flagged assume-unchanged or skip-worktree: CLAUDE.md"
+  wpg update-index "--no-$flag" CLAUDE.md
+done
+wpg checkout -q -- CLAUDE.md
+# (j) a typo must not read as "nothing unsaved".
+wreport "$BASE/no such worktree"
+expect_rc_out "W10 (j) worktrees <a path that matches no worktree> exits 2 naming it" 2 \
+  "Worktree report failed: $BASE/no such worktree matches no linked worktree"
+# (e) A git that fails only `worktree list` in a .claude repo; the product resolver's call passes.
+mkdir -p "$BASE/gitstub"
+{
+  echo '#!/bin/bash'
+  printf 'REAL_GIT=%q\n' "$(command -v git)"
+  cat <<'SH'
+prev=""; in_claude=0; lists=0
+for arg in "$@"; do
+  [ "$prev" = -C ] && case $arg in */.claude) in_claude=1 ;; esac
+  [ "$prev" = worktree ] && [ "$arg" = list ] && lists=1
+  prev=$arg
+done
+[ "$in_claude" = 1 ] && [ "$lists" = 1 ] && exit 1
+exec "$REAL_GIT" "$@"
+SH
+} > "$BASE/gitstub/git"
+chmod +x "$BASE/gitstub/git"
+capture eval 'PATH="$BASE/gitstub:$PATH" padv status'
+if [ "$RC" = 0 ] && [ "$(printf '%s\n' "$ERR" | grep -c '^WARNING: worktree report failed (rc 2)$')" = 1 ]; then
+  ok "W10 (e) a failed report is one warning line and status still exits 0"
+else bad "W10 (e) a failed report is one warning line and status still exits 0 (rc=$RC: $(printf '%s' "$ERR" | tr '\n' ' ' | cut -c1-300))"; fi
+OUT=$(PATH="$BASE/gitstub:$PATH" padv worktrees 2>&1); RC=$?
+expect_rc_out "W10 (e) worktrees exits 2 when the report cannot run" 2 "Worktree report failed: git failed in $P"
+# (f)
+chmod 000 "$WTP/.claude"
+wreport "$WTP"
+chmod 755 "$WTP/.claude"
+if ! { test -r "$WTP/.claude" && test -x "$WTP/.claude"; }; then bad "W10 (f) chmod restored"
+elif [ "$RC" = 1 ] && has_all "$OUT" "Worktree $WTP: cannot inspect" && ! has_all "$OUT" "not a process worktree" \
+    && ! has_all "$OUT" "run init" && ! has_all "$OUT" WARNING; then
+  ok "W10 (f) an inaccessible process worktree is \"cannot inspect\", never \"run init\""
+else bad "W10 (f) an inaccessible process worktree is \"cannot inspect\", never \"run init\" (rc=$RC: $OUT)"; fi
+# (g)
+chmod 000 "$P/.git/worktrees"
+wreport
+chmod 755 "$P/.git/worktrees"
+if ! { test -r "$P/.git/worktrees" && test -x "$P/.git/worktrees"; }; then bad "W10 (g) chmod restored"
+else expect_rc_out "W10 (g) an unreadable process admin dir fails the report" 2 "process admin dir unreadable"; fi
+# (h)
+python3 -I -c 'import sys; open(sys.argv[1] + "/feedback/a\nb\x1b[31m.md", "w").close()' "$WTP/.claude"
+OUT=$(padv worktrees "$WTP"); RC=$?
+if [ "$RC" = 1 ] && python3 -I - "$OUT" <<'PY'
+import sys, unicodedata
+out = sys.argv[1]
+lines = out.split("\n")
+controls = [ch for ch in out if unicodedata.category(ch) == "Cc" and ch != "\n"]
+sys.exit(0 if all(line.startswith("Worktree ") for line in lines) and not controls and "feedback/ab[31m.md" in out else 1)
+PY
+then ok "W10 (h) a file name with a newline and ESC stays on its report line, without controls"
+else bad "W10 (h) a file name with a newline and ESC stays on its report line, without controls (rc=$RC)"; fi
+
+# W12: Stepan's sync (.claude/CLAUDE.md section 7), in procedure order, after a pushed process commit.
+# Steps 1-2 and the gh step need GitHub; the tester runs those by hand.
+wt_fresh
+prod worktree add -q -B feat/91-w "$WTP2" main
+wadv init TASK 90 >/dev/null 2>&1; wadv2 init TASK 91 >/dev/null 2>&1
+echo "lesson" > "$WTP/.claude/feedback/w12.md"
+wpg add feedback/w12.md && wpg commit -qm "fix: w12
+
+$W_FOOTER" && wpg push -q -u origin feat/90-w
+PUSHED=$(wpg rev-parse HEAD)
+# (a) why the gate exists: git removes ignored files with the worktree, without refusing.
+pg worktree add -q -b w12-scratch "$BASE/w12a" origin/main
+mkdir -p "$BASE/w12a/pipeline_state.parked" "$BASE/w12a/rules"
+echo '{}' > "$BASE/w12a/pipeline_state.parked/90-1.json"; echo x > "$BASE/w12a/rules/x.md"
+if pg worktree remove "$BASE/w12a" 2>/dev/null && [ ! -e "$BASE/w12a" ]; then
+  ok "W12 (a) git worktree remove deletes a parked state and an allowlist-hidden file without refusing"
+else bad "W12 (a) git worktree remove deletes a parked state and an allowlist-hidden file without refusing"; fi
+pg branch -q -D w12-scratch
+# (c) a squash merge: the PR head is the pushed tip, and the local branch is inside it.
+SQUASH=$(pg commit-tree "$(pg rev-parse 'feat/90-w^{tree}')" -p origin/main -m "fix: w12 (#7)" -m "$W_FOOTER")
+pg push -q origin "$SQUASH:refs/heads/main" && pg fetch -q --prune origin
+if [ "$(pg rev-parse origin/feat/90-w)" = "$PUSHED" ] && pg merge-base --is-ancestor feat/90-w "$PUSHED"; then
+  ok "W12 (c) after a squash merge, origin/<b> is the PR head and the local branch is its ancestor"
+else bad "W12 (c) after a squash merge, origin/<b> is the PR head and the local branch is its ancestor"; fi
+# (d) a conflict resolved in GitHub's editor adds a merge commit on the PR branch.
+MERGED=$(pg commit-tree "$(pg rev-parse 'feat/90-w^{tree}')" -p feat/90-w -p origin/main -m "Merge main into feat/90-w")
+pg push -q origin "$MERGED:refs/heads/feat/90-w" && pg fetch -q --prune origin
+if [ "$(pg rev-parse origin/feat/90-w)" = "$MERGED" ] && pg merge-base --is-ancestor feat/90-w "$MERGED"; then
+  ok "W12 (d) after an editor merge commit, the new head still contains the local branch"
+else bad "W12 (d) after an editor merge commit, the new head still contains the local branch"; fi
+pg branch -q feat/90-w-extra "$(pg commit-tree "$(pg rev-parse 'feat/90-w^{tree}')" -p feat/90-w -m "a local commit never pushed")"
+if pg merge-base --is-ancestor feat/90-w-extra "$MERGED"; then bad "W12 (d) a local commit outside the merged head fails the ancestry check"
+else ok "W12 (d) a local commit outside the merged head fails the ancestry check"; fi
+pg branch -q -D feat/90-w-extra
+# (e) GitHub deleted the branch: only the PR ref is left. Precondition: no state in w one.
+rm -f "$WSTATE"
+git -C "$PUP" update-ref refs/pull/7/head "$MERGED" && git -C "$PUP" update-ref -d refs/heads/feat/90-w
+pg fetch -q --prune origin
+if pg rev-parse --verify -q origin/feat/90-w >/dev/null || [ -e "$WSTATE" ]; then bad "W12 (e) precondition: origin/feat/90-w pruned, no state in w one"
+else ok "W12 (e) precondition: origin/feat/90-w pruned, no state in w one"; fi
+pg fetch -q origin pull/7/head
+wreport "$WTP"
+expect_rc_out "W12 (e) fetched into FETCH_HEAD only, the branch's commits are on no remote: exit 1" 1 "commit(s) on no remote"
+pg fetch -q origin pull/7/head:refs/remotes/origin/pull/7
+if [ "$(pg rev-parse refs/remotes/origin/pull/7)" = "$MERGED" ] && pg merge-base --is-ancestor feat/90-w "$MERGED"; then
+  ok "W12 (e) the named pull ref holds the PR head, which contains the local branch"
+else bad "W12 (e) the named pull ref holds the PR head, which contains the local branch"; fi
+wreport "$WTP"
+if [ "$RC" = 0 ] && [ -z "$OUT" ]; then ok "W12 (e) with the named pull ref, worktrees <it> exits 0"
+else bad "W12 (e) with the named pull ref, worktrees <it> exits 0 (rc=$RC: $OUT)"; fi
+# (b) step 6: the gate refuses while removal would lose a parked state or a hidden path.
+mkdir -p "$WTP/.claude/pipeline_state.parked"; echo '{}' > "$WTP/.claude/pipeline_state.parked/90-1.json"
+wreport "$WTP"
+expect_rc_out "W12 (b) a parked state in the process worktree: worktrees <it> exits 1" 1 "Worktree $WTP: 1 parked state(s)"
+rm -rf "$WTP/.claude/pipeline_state.parked"
+mkdir -p "$WTP/.claude/rules"; echo x > "$WTP/.claude/rules/x.md"
+wreport "$WTP"
+expect_rc_out "W12 (b) a new rules/ in the process worktree: worktrees <it> exits 1" 1 "Worktree $WTP: hidden by the allowlist: rules/"
+rm -rf "$WTP/.claude/rules"
+wreport "$WTP"
+if [ "$RC" = 0 ] && pg worktree remove "$WTP/.claude" && pg branch -q -D feat/90-w && [ ! -e "$WTP/.claude" ]; then
+  ok "W12 (b) exit 0, then worktree remove and branch -D succeed"
+else bad "W12 (b) exit 0, then worktree remove and branch -D succeed (rc=$RC: $OUT)"; fi
+pg fetch -q --prune origin
+if pg rev-parse --verify -q refs/remotes/origin/pull/7 >/dev/null; then bad "W12 (b) the next fetch --prune drops the pull ref"
+else ok "W12 (b) the next fetch --prune drops the pull ref"; fi
+# (f) the app removed the product worktree first: the gate's one line is the removed one, then
+# step 6's prune and step 7, then a rerun of the gate finds no record (rc 2).
+prod worktree remove --force "$WTP2"
+wreport "$WTP2"
+W12F_LINE="Worktree $WTP2/.claude: removed with its product worktree; commits kept on feat/91-w, uncommitted edits there are lost; Stepan: git -C .claude worktree prune, then sync feat/91-w"
+if [ "$RC" = 1 ] && [ "$OUT" = "$W12F_LINE" ]; then ok "W12 (f) a removed product worktree: worktrees <it> exits 1 with only the removed line"
+else bad "W12 (f) a removed product worktree: worktrees <it> exits 1 with only the removed line (rc=$RC: $OUT)"; fi
+if pg worktree prune && pg branch -q -D feat/91-w && ! pg worktree list | grep -qF "$WTP2"; then
+  ok "W12 (f) then worktree prune and branch -D succeed and drop the record"
+else bad "W12 (f) then worktree prune and branch -D succeed and drop the record"; fi
+wreport "$WTP2"
+expect_rc_out "W12 (f) after the prune, worktrees <it> exits 2: no record left" 2 "matches no linked worktree"
+wt_reset
+prod branch -q -D feat/90-w
 rm -rf "$PB" "$PUP" "$PSEED" "$BASE/pgit.saved" "$BASE/process-excludes"
 
 echo "== design validator output vs vote parser"
