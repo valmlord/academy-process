@@ -360,3 +360,9 @@ so it could not show a difference. The issue is about build-cache growth, and th
 tester's M1/M2). The mount had to be restored in 1ac739d.
 Rule: When a change is judged "no effect", measure it with the metric the issue is about (here the new build-cache
 record of the step, matched by before/after ID diff), not with a proxy that prints the same value in both variants.
+
+### 2026-11-10: Suggested fix wording carried an unchecked absolute (#72 merge, judge_design round 2, consistency)
+The round-2 consistency report proposed ""run" in these docs is only the row above" as example wording for
+`ia.md:32`; the fix adopted it, and round 3 found other senses of "run" in `design/flows/` (`progress.md:92`,
+`:358`, `dashboard.md:47`, `auth.md:44`). The judge had grepped only the attempt vocabulary, not the word itself.
+Rule: Grep every word a suggested fix makes a claim about before proposing the wording.
