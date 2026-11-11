@@ -1536,6 +1536,131 @@ defect, so a correct mutation run would be reported as one.
 Rule: When a change adds an early exit before a function call, reread that function's doc comment against the new
 path; for every mutation row, evaluate each new test's assertions under the mutation, not only the ones it targets.
 
+### 2026-11-10: A destructive e2e guard keyed on a variable the owner's .env and CI's own command both set (#106, judge_design round 1, security)
+D8 says the reset spec skips without E2E_BASE_URL and never runs on Stepan's 3080 stack. Design 7.4 implemented only
+the first half: "skipped unless E2E_BASE_URL is set", reasoning that the default URL is the owner's stack. But
+.env.example:34 offers `E2E_BASE_URL=http://127.0.0.1:3080` as a root .env line, playwright.config.ts:8-12 loads the
+root .env into process.env, and ci.yml:190 sets exactly that value; README:139 documents the override. Any of these
+makes the spec reset the owner's own working folder. "Is the variable set" is not "is this not the owner's stack".
+Rule: Guard a destructive test on a signal only the disposable stacks produce and that the owner's .env cannot supply
+(read before loadRootEnv), and refuse the owner's default origin explicitly; check each half of the decision's wording
+against .env.example, README and CI before writing the guard.
+
+### 2026-11-10: Tester commands neither run at base nor match CI's checks job (#106, judge_design round 1, operations)
+Design 7.5 prescribed the tester's commands without running them at e469b09. Run verbatim, command 4 was red there
+(a pre-existing 5 s timeout under host load), and command 6's `--glob '!lib/copy.ts'` did not exclude
+apps/web/lib/copy.ts, so it printed 87 lines. 7.5 also left out `pnpm build`, check-build-course.sh and the
+porcelain check that ci.yml runs, and section 9's "each commit builds and is green" had no command behind it. E-reset
+asserted that a file was gone without creating it in the same test.
+Rule: Run every prescribed gate command once at the base in a scratch clone and record its output in the design.
+Mirror every step of the CI job the change touches. Back a per-commit claim with a loop command. Give every
+"X is gone" e2e assertion its own setup and a check that X exists before the action.
+
+### 2026-11-10: Library calls and test queries assumed to work in the context the design puts them in (#106, judge_design round 1, architecture)
+Design 7.3 said `getByText(regionKeyHint)` keeps matching once the hint is split into `<kbd>` parts, but
+@testing-library/dom 10.4.2 `getNodeText` joins only the element's own text nodes, so panel tests :260 and :267 go
+red. Section 5 had Notifications `flushSync` on `IDLE_CLEARED_EVENT`, which the watcher's `stop()` dispatches inside
+the panel's effect cleanup; React 19.3.1 runs that under CommitContext, where `flushSync` logs an error and flushes
+nothing. Test I1 (warning in 10 min, "no read at 9:59") contradicted the design's own 5 min read cap. The AlertDialog
+state table copied proto.css but not the `<dialog>` UA max-height/overflow the prototype relies on at 320x200.
+Rule: For every library call and test query the design keeps or adds, read its installed source for the context it
+will run in (commit phase, nested markup, UA defaults), and run each named test input through the design's own
+schedule before writing the expected result.
+
+### 2026-11-10: Gate loop whose known red hides the steps after it, and a guard that can skip silently in CI (#106, judge_design round 2, operations)
+Design 7.5 command 8 chains typecheck, lint, test, build, check-build-course and porcelain with `&&` and sends
+stdout to /dev/null. The pre-existing lesson-markdown timeout is red on this host every time, so the loop printed
+`commit <base> red` and never ran the build (no `.next/standalone` afterwards). The flaky rule's "red alone -> a real
+failure" is also red at base: the file alone timed out twice at load 38-45 and passed only with a longer timeout.
+Section 2.8 says CI runs the destructive spec, but if the spec skips there nothing fails. On main's turbo.json the
+switch does not reach the task (`DS=undefined`), so one lost passthrough entry or a live `.env.example` line skips
+the spec and CI stays green.
+Rule: A per-commit gate runs every step on every commit and reports each step's exit code; a known flaky red never
+stops the later steps. Run it at base first: base must come out green under the rule. A guard that may skip must
+fail the run in the one place where it has to run (CI with the switch set).
+
+### 2026-11-10: Layout rules placed in a cascade layer that the elements' own utilities beat; e2e asserts not run through the tool's rules (#106, judge_design round 2, architecture)
+Design 2.2 puts `.lesson-layout > .resizable-handle { display:none }` and the [R3-N7] frame rule `flex:none; height:12rem`
+in `@layer components`, while the same elements carry the Tailwind utilities `flex` (handle, 2.7) and `flex-1` (frame,
+2.5). Tailwind 4.3.3 declares `@layer theme, base, components, utilities` (index.css:1), so the utilities win: the
+handle shows and takes focus in one-pane mode, and the "fixed" terminal still grows to the lesson's height below 30rem.
+The CSS comment and key decision 2 claim the fix anyway. Two tests were also red on correct code: terminal.spec.ts:217
+`toHaveAccessibleDescription` (Playwright pads every non-inline child, so `inline-flex` Kbd parts add spaces), and
+E-dialog-small (Radix AlertDialog focuses Cancel with `preventScroll: true`, so in a dialog that scrolls inside, the
+focused footer stays clipped). The commit plan also missed six existing `WorkspaceClient`/`EnvironmentDeps` literals in
+open-terminal.test.ts, terminal-revoked.int.test.ts and environment.test.ts, and LL1's actions in commit 9.
+Rule: For every CSS rule, name the layer it lives in and check every class on the same element for a property it sets;
+for every kept or new assertion, run the expected value through the assertion tool's own algorithm (accname, focus
+options); when a type gains a required member, grep every literal of that type and list each file in its commit.
+
+### 2026-11-10: Sized a flex item without checking its container's main axis (#106, judge_design round 3, architecture)
+Revision 4 gives the terminal frame `flex:none; height:12rem` below 30rem and `flex: 1 1 0%` above it, reasoning about
+`flex` as if it set the height. The frame's parent is the TabsContent `min-w-0 flex flex-1`, a row flex container
+(proto.css:646 too), so `flex` sets the frame's width. With `flex:none` the width is the frame's max-content, which is
+xterm's own screen width (DomRenderer.ts:152). FitAddon subtracts the scrollbar from that width, so every ResizeObserver
+refit drops about two columns, down to 2 (or, if the scrollbar counts in the intrinsic width, it stays at 80 columns in
+a 320 px viewport). Above 30rem the frame has no `overflow` or `min-width:0`, unlike proto's `overflow:auto`, so its
+automatic minimum is the current terminal width and every narrowing overflows first. Layer probe 3 cannot fail,
+because `flex` on a row item never changes its height. The round-2 judge text assumed the same wrong axis; the design
+accepted it without checking.
+Rule: Before writing `flex`, `height` or `width` on a flex item, name its container's `flex-direction` (from the actual
+class list) and say which axis each declaration sizes. For any item that holds self-sized content (xterm, canvas,
+tables), set `min-width:0` or `overflow`. Then add one e2e assert per axis that fails if the rule is wrong.
+
+### 2026-11-10: Closed a "three routes" finding for two of them, and wrote gate strings that are not in the log (#106)
+Round-2 operations issue 3 named three ways the destructive spec skips silently in CI: the turbo entry, the ci.yml
+step env, and a live `.env.example` line (`E2E_DISPOSABLE_STACK`, `E2E_BASE_URL` or `CI`). Revision 4's
+`requireDestructiveE2eInCi` only throws when `CI` is not a root .env key, so a live `CI=` line in `.env.example` (CI's
+`.env` is a copy of it) still skips the spec with no throw, while design 10's risk row says "a live `.env.example`
+line" throws. Simulated with 2.8's own conditions: `+ CI=true` gives allowed=false, guard=no-throw. The flaky rule
+also states its conditions as literals (`Tests 1 failed`, the test's full name) that a grep of the kept log never
+finds: turbo forces colour into the log, and vitest prints `Tests  1 failed` with two spaces.
+Rule: When a finding names several routes, write one test row per route and run each against the new construction
+before claiming the class closed; when a rule says "check X from the log", give the exact command and run it on the
+real log at base.
+
+### 2026-11-10: A flaky rule that admits exactly one known test, on a host where other tests time out too (#106, judge_design round 4, operations)
+Revision 5's command F counts a red root test as pre-existing only when the lesson-markdown timeout is the single
+failure, and 8b says a base that does not pass it means "stop, the gate is broken at base". The anchor was right
+against round 3's four logs, which were the only evidence offered. In round 4, three fresh full runs at e469b09
+(load 8 to 54 on 10 cores, other sessions running) gave `not-met (0111)`, `not-met (0011)` and `met`: vitest's 5 s
+default also hit `starter-walk.test.ts > accepts 2000 entries` (workspace) and a `sign-in-form.test.tsx` retry test
+(web). Both pass alone. A tester following 8b verbatim stops at base in two runs of three. The same suite with
+`-- --testTimeout=60000` passed through turbo was 6/6 green at load 52-54.
+Rule: A local gate on a shared host must not depend on which test the load happens to slow down. Before narrowing a
+flaky rule to one named test, run the full suite at base at least three times under the current load; if any other
+test times out, fix the timeout class (a gate-wide timeout, CI keeping the default as the authority), not the name.
+
+### 2026-11-10: A focus-return rule written for keyboard focus only, against a design that names the mouse case (#106, judge_design round 5, architecture)
+Revision 6 rebuilt "Продолжить работу" from AC30. It acts only "if focus is inside the wrapper", and it remembers the
+last `focusin` outside the wrapper as the return target. Safari and Firefox on macOS do not focus a clicked button,
+which #138's quiz.md (:289, :360, :600) and acceptance.md (:578, :609) state. In those browsers focus is on `body` at
+the click, nothing moves, and the Alert's removal leaves focus on `body`, which AC30 forbids. In Chromium, a click on
+plain text first moves focus to `body` with no `focusin`, so the stale target wins where AC30 says "none". The unit
+tests put focus on the button with `focus()`, so they cannot see either case.
+Rule: For every focus rule triggered by a control, walk the pointer path in each engine the design names (focus on
+`body`, or left where it was), and the blur-to-`body` path, before relying on `focusin`. Give each path its own test.
+
+### 2026-11-10: A gate proof read from a tool's dry-run field whose meaning was never checked (#106, judge_design round 5, operations)
+Revision 6 added command 4a to prove that `-- --testTimeout=60000` reaches the four vitest tasks and no build task. It
+reads `cliArguments` from `turbo run test --dry=json` and asks for `[]` on every non-test task. In turbo 2.11.10 that
+field holds the run's pass-through arguments on every task in the graph, `^build` dependencies included, while the
+real run gives them only to the named tasks (a planted `lesson-schema` build that prints its argv prints `[]`). So 4a
+says `test-args bad` at 0167a5d on correct code, and the design tells the tester to stop there. The design itself
+said the turbo leg was "not read from its sources" and rested on 4a, but 4a was never run.
+Rule: A check that proves how a tool behaves reads the tool's actual effect (the command lines pnpm echoes in the run's
+own log, or a planted script that prints its argv), not a report field. Run it at base green and on a red plant before
+it goes into the design.
+
+### 2026-11-11: One of two entry listeners filtered "outside the wrapper", the other did not (#106, judge_design round 6, architecture)
+Revision 7's Notifications entry record took `relatedTarget` at `focusin` only when it was outside the wrapper, but took
+`document.activeElement` at `pointerdown` unfiltered. An outside press that moves no focus (a Chromium scrollbar press,
+a touch press that becomes a scroll) clears the entry while focus stays on "Продолжить работу". The next press then
+records the button itself, the activation "returns" focus to it, and the Alert's removal drops focus to `body`, which
+AC30 forbids. Every N test started the press with focus outside the wrapper or on `body`, so none could see it.
+Rule: When two listeners feed one record, state its invariant (here: the target is never inside the wrapper) and
+enforce it in every writer. Walk the clear-then-record order for a press that clears the record but moves no focus.
+
 ### 2026-11-10: A mutation named "style" whose literal form kills its own script, and a socket-release test with no timeout stated (#110, judge_design round 1, architecture)
 Design 8.4 M17 ("KILL_SCRIPT `pkill -HUP -u 1000 -x sh` style (kills by name)") claims I-term-exit goes red. The
 kill script runs as `/bin/sh -c`, comm `sh`, uid 1000, so a by-name HUP on line 4 kills the script itself: `sleep 2`

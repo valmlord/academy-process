@@ -380,6 +380,39 @@ The architect combined both and made a valid ready lesson without `checks:` a U1
 Rule: When suggesting that a check run on pre-parse data, name the parser defaults and optionals it will no longer
 get and say how the check treats each.
 
+### 2026-11-10: Round 1 compared layout rules with proto.css but never checked their cascade layer (#106, judge_design round 2, architecture)
+Round 1 walked the `.lesson-layout` block against proto.css rule by rule and passed `.lesson-layout > .resizable-handle
+{ display:none }`. That rule sits in `@layer components`, while the handle's class string (2.7) has the `flex`
+utility, and Tailwind 4's `utilities` layer beats `components`. Round 1 also passed E-hint ("accessible description
+still matches") without running the Kbd markup through Playwright's accname. Both surfaced in round 2 and cost a round.
+Rule: For hand-written CSS in a Tailwind 4 app, read the layer of every rule and the full class list of each element
+it targets in round 1. For every e2e assertion the design keeps, read the matcher's algorithm in the installed tool.
+
+### 2026-11-10: Round-1 gate prescriptions were not run on a loaded host before sending (#106, judge_design round 2, operations)
+Round-1 operations prescribed the per-commit loop as one `&&` chain ending in `|| echo "commit $c red"`, and the
+flaky rule as "re-run alone, must be green alone". Round 1 had already seen that test go red in the full suite.
+Neither prescription was run at base. In round 2 at base the chain stopped at the test step, so the build never
+ran. The file alone was red twice and passed only with `--testTimeout=60000`.
+Rule: Before prescribing a gate command, run it at base under the host's current load and check that each step it
+lists actually ran (look for the step's output artefact). A known-flaky test's rerun rule must give green at base.
+
+### 2026-11-10: Round-2 frame finding described `flex` as sizing the height, without checking the container's axis (#106, judge_design round 3, architecture)
+Round-2 architecture blocker 1 said the frame's `flex-1` beats `flex:none` and that "with `flex-basis: 0%` the main size
+comes from flex, not from `height`". The frame's container (TabsContent `flex flex-1`) is a row, so `flex` sets the
+frame's width and `height` sets its cross size. The architect built revision 4's `flex:none` below 30rem on that
+framing, which makes the frame as wide as xterm's own screen and lets FitAddon shrink the terminal on every refit. Found
+in round 3.
+Rule: Before stating what a flex declaration does to an element, read the parent's full class list for `flex-col` and
+name the main axis in the finding.
+
+### 2026-11-10: Round-3 operations prescribed a one-test flaky check from four logs, without repeated base runs (#106, judge_design round 4, operations)
+Round-3 operations issue 2 gave command F, which accepts a red root test only when the lesson-markdown timeout is the
+single failure. It was checked on four logs, two of them at base. In round 4, two of three fresh base runs had other
+5 s timeouts (`starter-walk`, `sign-in-form`) as well, so command F said `not-met` and 8b stops the tester at base.
+The architect applied the prescription word for word; it cost a round.
+Rule: Before prescribing a flaky-test rule, run the full suite at base at least three times under current load and
+list every test that timed out; prescribe for the class of failure seen, not for the one test seen first.
+
 ### 2026-11-09: Round-1 construction for blocker 1 contradicted blocker 2 of the same report (#101, judge_design round 2, security)
 Round-1 security blocker 1 offered "the sweep and the deadline mark as `error` only the included checks that have no
 committed result", while blocker 2 of the same report said a missing result after the grader started is counted. The

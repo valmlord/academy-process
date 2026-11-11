@@ -437,6 +437,33 @@ that was right came from the operations judge, who implemented the design in a s
 Rule: when an operations judge implements the design in a scratch clone, take its `git diff --stat` as the size,
 re-tier from it before planner and tell Stepan then if it crosses a tier. Count test lines: the tier table does.
 
+### 2026-11-11: A focus rule took three design rounds, one neighbouring case per round (#106)
+
+judge_design for #106 ran seven rounds (Stepan allowed the extra ones). From round 5 to round 7 every architecture
+blocker was the same "Продолжить работу" focus rule: first the mouse path in browsers that do not focus a clicked
+button, then a stale target after a click on text, then an outside press that moves no focus. Each fix closed the case
+named and left the next one. Round 7 passed only after the brief asked for a full decision table over every input
+combination with one invariant.
+Rule: at the first FAIL on a stateful UI rule (focus, entry records, event ordering), brief the architect for the
+decision table over all inputs and the invariant it must keep, not for the listed case.
+
+### 2026-11-11: The tester brief left out ADR-0006's design conformance section (#106)
+
+judge_code round 1 failed because the test report had no "Design conformance" section (ADR-0006 item 5: screenshots,
+per-AC lines, token diff, contrast, raw colour grep) for a diff under the lesson page. My tester briefs listed
+commands, e2e, mutations and Docker rules but not that section, and they did not ask the tester to explain the history
+rewrites it ran after. A fourth stack run was then needed for the screenshots.
+Rule: when a diff implements a page in design/pages, the first tester brief names ADR-0006 item 5 and asks for the
+screenshots in the same stack run as the e2e suite, plus a section listing every fixup folded into history.
+
+### 2026-11-11: main moved under the design, and the researcher ran before the first advance (#106)
+
+Halfway through judge_design, main gained the quiz prototype (#138), which rewrote the lesson acceptance notes and
+prototype the design cited; a judge found it only through a stale course count. Separately, I spawned the researcher
+while the phase was still `init` and advanced afterwards; the gate did not stop it.
+Rule: `git fetch` and compare origin/main with the branch base before every judge_design round and before the coder,
+and re-base the design when design/ or the touched code moved. Advance the phase before spawning its role.
+
 ### 2026-11-10: Mutation rows prescribed by an architect with no shell cost a design round (#110)
 
 The #110 architect brief carried the #112 rule (trace every mutation, dry-run every procedure), but the architect role
