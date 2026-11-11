@@ -202,3 +202,10 @@ in "design 4.Q5", "(Arch A4)", "O N2", "decision A8" outside `design/flows/`, "r
 the architect fixed the 33 and round 2 was spent on the rest.
 Rule: For a "class of references" finding, grep the class with several neighbouring forms (section numbers, decision
 ids, review finding ids) before sending round 1, and state that the list is an example and the effect is the target.
+
+### 2026-11-11: Six design rounds checked the call line's flags but not that the call carries the contract (#43, assessment)
+Design-review assessment rounds 1-6 for #43 attacked every C3-C10 flag rule and passed, but none asked whether
+`role-call` fails when `call_role` never gives the role its contract. It surfaced only in judge_content, where
+removing `--append-system-prompt-file` from the reference still passed both L2 command checks.
+Rule: For every learner artifact an outcome names, run in round 1 the variant where the graded code ignores
+that artifact entirely, and require that some check goes red.
