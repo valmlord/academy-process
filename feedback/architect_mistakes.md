@@ -1508,3 +1508,21 @@ build, which is exactly what #113 exists to cut (B4 delta +0.20 GB -> +0.35 GB).
 visible hint.
 Rule: A pre-decided rule for a cache or layer change measures the issue's own metric (the step's record size in
 `docker buildx du --verbose`, or the Build Cache delta) for both variants, never only a tool's progress counter.
+
+### 2026-11-10: Operator view listed a starter refusal that cannot happen and missed the image build (#117)
+Design 3 F8 said that after the fix a bad alias also gives "StarterRefusedError in starter.ts:112". That line wraps
+only `lstatBelowRoot` of the lesson directory; no YAML is parsed on the starter path, so a YAML failure never
+becomes `starter-invalid` (it is 500 `course-unreadable` through manager.ts:79 and mapError). The claim was copied
+from the research without reading the call. The same table missed the one build-time consumer of `readCourse`,
+`apps/web/scripts/export-course.ts` (Dockerfile:35): today an unresolved alias aborts the web image build with an
+uncaught ReferenceError whose message prints the alias name, file text, into the build log.
+Rule: The "what the operator sees" row is built from `git grep` of every caller of the changed function and of the
+function above it (here `parseYamlFile` and `readCourse`), each call read, never from a caller list in the research.
+
+### 2026-11-10: ADR text stated the alias limit as "100 aliases", dropping the research's "to one anchor" (#117, judge_design round 2, operations)
+Design 6 dictated the ADR-0009 Consequences text "unknown anchor, or 100 aliases at the parser's default limit".
+The research measured only one anchor with 100 aliases to it. yaml 2.9.1 checks `count * aliasCount > maxAliasCount`
+per anchor (dist/nodes/Alias.js:61-67), so 120 aliases split over two scalar anchors (60 + 60) pass, and 30 aliases
+(20 to an anchor that holds 10 aliases) fail. An author reading the ADR is misinformed in both directions.
+Rule: When an ADR or reason text restates a measured limit, keep every condition the measurement had (here "to one
+anchor"), or describe the mechanism, never the bare number.

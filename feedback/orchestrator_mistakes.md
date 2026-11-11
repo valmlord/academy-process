@@ -443,3 +443,15 @@ Rule: when a design pre-decides a keep/drop rule, the architect brief requires t
 metric (here: build-cache record size per step from `buildx du --verbose`), with a negative control that shows the
 metric moves. Every architect re-brief says: you have no shell; record only results a named run produced, labelled
 with that run.
+
+### 2026-11-10: A measured number lost its condition on the way into the ADR text (#117)
+
+judge_design took three rounds (Stepan allowed the third). Round 1 failed on a researcher claim the architect copied
+(a loader error reaching StarterRefusedError at starter.ts:112, where no YAML is parsed) and a missed caller
+(export-course.ts in the image build). Round 2 failed on one parenthetical: the research measured "100 aliases to one
+anchor", the design's ADR text said "100 aliases", and yaml's limit is per anchor with nesting multiplying. My own E0
+probe printed "aliases 100" without the condition too, so my briefs carried the shortened form. The code, tests and
+mutations passed every round; all three failures were prose stating a measured fact more broadly than it was measured.
+Rule: when a design turns a measurement into doc or ADR text, the architect brief asks for each number to keep the
+condition it was measured under (which input shape, per what), and for every claim about a caller or error path to be
+checked against the cited line, not taken from the research. My own probe output labels its inputs fully.
