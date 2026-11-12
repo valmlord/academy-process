@@ -276,6 +276,19 @@ Rule: For any new gate, the tester brief names the gate and asks for bypass atte
 did not list (config, symlinks, odd names, nested paths), on scratch copies. A coder's own
 mutation set shows the guard can fail, not that it covers the class.
 
+## 2026-11-04 #43: a task-level constraint left out of a spawned brief
+The parent task said "do not run Docker or docker compose". The L3 student re-run brief did not repeat it, and the
+student graded in a Docker `python:3.12-slim` container. Spawned agents see only their brief.
+Rule: every brief repeats the task's hard constraints (no Docker, paths not to touch, files never read), not only the
+role's own rules. Write them once in the plan and paste that block into every spawn.
+
+## 2026-11-11 #43: "stopped" background tasks after an app restart are not lost work
+After two restarts the app marked three background shells and two agents as stopped. The shells were only
+`tail -f` watchers and the corpus they watched had already finished; the scratchpad was wiped twice, though.
+Rule: after a restart, check what the runs left on disk (logs, report sections, TOTAL lines) before rerunning
+anything, and keep long-run logs and reports under `plans/` or report files rather than only in the scratchpad.
+Resume a stopped agent with SendMessage when its context still holds the work.
+
 ### 2026-11-03: Tester fixes moved the code past the design, and nobody updated the design (#89)
 
 Three tester rounds on #89 added behaviour the judged design never described (casefolded names, shadow-ref
@@ -318,6 +331,16 @@ Rule: in a DESIGN brief that edits design/system/README.md, require each changed
 proto.css and the app classes (file:line). When a brief asks for an executable check over a class of members, say
 that every member's expected count is asserted in code and that absence is a finding.
 
+### 2026-11-10: Extra judge round planned for one judge only, and a check fix not re-run by the student (#44)
+
+After the two-round limit Stepan approved a third round, and I planned to re-run only the judge that failed.
+The parent session caught it: a round counts only with all three judges in one message. Separately, two student
+cheater rounds each found new passing cheats in checks that the designer had already "closed", and assessment
+then found three more bypass families in docker-static over rounds 2-3.
+Rule: an extra judge round always spawns all three judges, scoped to the changes. When a check is rewritten to
+close a cheat, brief the designer to run a differential or adversarial corpus against the real tool's parser or
+semantics (not only the reported forms), and plan one focused student cheater rerun before the judges.
+
 ### 2026-11-03: Scoped out an item the issue owner had assigned to design, without reading the comments (#83)
 
 The #83 architect brief put F3 (Radix Tabs ring on mousedown) out of scope as app behaviour. An owner comment on
@@ -327,6 +350,41 @@ follow-ups recorded only in git-ignored `plans/`.
 Rule: read `gh issue view <n> --comments` before writing the architect brief, list every owner comment as an
 in-scope item or a decision for Stepan, and require each out-of-scope item to be recorded in a committed file or a
 follow-up issue, never only in `plans/`.
+
+### 2026-11-04: judge_design rounds spent on sample states nobody had walked as one timeline (#72)
+
+judge_design on #72 took six rounds. Rounds 1-3 closed real flow gaps (deep-link focus, the attempt summary
+against #69's per-check words), but every blocker from round 3 on was a prototype sample in the design note:
+a row whose panel had another item count, every dashboard row linked to one state, a "Где трудно" list that
+needed attempts the 5-row list could not hide, cost rows opening states without cost, and finally samples that
+#69's run composition made impossible. Each fix redrew samples in isolation, and the next round found the next
+impossible pair. Round 6 passed once the architect rebuilt every sample from one dated timeline.
+Rule: when a DESIGN brief asks for page work items with sample states, require in round 1 one sample timeline
+(learner, lessons, checks, attempts with dates and costs) from which every state and every link target is
+derived, checked against the run and counting rules of the flows it depends on; brief the judges to walk it.
+
+### 2026-11-10: judge_ux rounds spent on doc claims nobody had measured on a fresh load (#72)
+
+judge_ux on #72 took five rounds, each FAIL a single item: stale line citations after a merge, a missing
+README member, gallery sizes copied from the wrong scale, an AC not split by release, and twice an
+accessible-name claim (the plain item's name, the Проверки tab name) measured in a state reached by hash from
+another state, so focus or markup from the previous state leaked into the measurement.
+Rule: in the author brief, require every accessible-name and computed-style claim in acceptance notes and
+flows to be measured on a fresh load in a new browser context per state, every AC to name the release whose
+tester can see its states, and file citations by selector, never by line, once a branch has merged main.
+
+### 2026-11-10: Eleven design rounds on one class, closed by one rule only in round 9 (#70)
+
+judge_design for the quiz flows took 11 rounds. From round 2 on almost every blocker was one more case of "where does
+focus go when an answer arrives and the learner is not on the panel": tab switch, Safari mouse focus on `body`, open
+menus and dialogs, the idle warning, a control the answer removes. Each fix named the cases the judges listed, and the
+next round found the next one. Round 9 replaced the cases with one R2 rule ("focus after a background change", a
+fallback order per region) and the tail ended in two rounds. Rounds 3-4 were also spent on prototype mechanics traced
+against a sibling task's unmerged proto.js; they went to the author phase only after Stepan decided it.
+Rule: at the second FAIL of the same shape, brief the architect for one general rule over the whole class (list the
+members, then one rule with a fallback), not the listed cases. Do not judge behaviour that depends on another
+branch's uncommitted code in judge_design: state the required behaviour in the flows and test the mechanics in the
+author phase, after that branch merges.
 
 ### 2026-11-09: My own suggested comment wording cost a judge round (#33)
 
@@ -378,6 +436,23 @@ Rule: a fix round after a FAIL carries the blocker and its class only. Non-block
 follow-up or are dropped unless Stepan asks for them, and any procedure text added gets the same run-it rehearsal as the
 original steps.
 
+### 2026-11-10: First architect brief carried my summary of the issue, not the issue (#101)
+
+The first #101 architect brief retold the issue's fields in my words and dropped the definition of
+`lastAttemptCount` and the Acceptance list. The architect, who has no shell, invented a definition and could not
+map acceptance, so a whole revision went to restoring the issue's text before any judge saw the design.
+Rule: before the first architect spawn, save the verbatim issue (body and comments) to `plans/<n>-issue.md` with
+`gh issue view <n> --json title,body,comments` and point every brief at it; a summary in the brief is a pointer,
+never the source.
+
+### 2026-11-11: Advanced to compound before deciding the last code fixes (#101)
+
+All three code judges passed with non-blocking notes, two of them false doc comments. I advanced judge_code ->
+compound and only then asked Stepan whether to fix them in the PR; the coder window ends at judge_code, so the fix
+had to move to a separate HOTFIX.
+Rule: after the last judge_code PASS, decide every non-blocking note that touches product files (fix now with a
+narrow re-judge, or a follow-up) with Stepan before advancing to compound.
+
 ### 2026-11-09: Design rounds spent on the test plan, not the fix (#112)
 
 judge_design took three rounds (Stepan approved the third). The fix itself (shouldUpgradeCallback, no timer) passed
@@ -396,6 +471,33 @@ count. The phases match, so nothing was skipped, but the size reached Stepan onl
 that was right came from the operations judge, who implemented the design in a scratch clone during judge_design.
 Rule: when an operations judge implements the design in a scratch clone, take its `git diff --stat` as the size,
 re-tier from it before planner and tell Stepan then if it crosses a tier. Count test lines: the tier table does.
+
+### 2026-11-11: A focus rule took three design rounds, one neighbouring case per round (#106)
+
+judge_design for #106 ran seven rounds (Stepan allowed the extra ones). From round 5 to round 7 every architecture
+blocker was the same "Продолжить работу" focus rule: first the mouse path in browsers that do not focus a clicked
+button, then a stale target after a click on text, then an outside press that moves no focus. Each fix closed the case
+named and left the next one. Round 7 passed only after the brief asked for a full decision table over every input
+combination with one invariant.
+Rule: at the first FAIL on a stateful UI rule (focus, entry records, event ordering), brief the architect for the
+decision table over all inputs and the invariant it must keep, not for the listed case.
+
+### 2026-11-11: The tester brief left out ADR-0006's design conformance section (#106)
+
+judge_code round 1 failed because the test report had no "Design conformance" section (ADR-0006 item 5: screenshots,
+per-AC lines, token diff, contrast, raw colour grep) for a diff under the lesson page. My tester briefs listed
+commands, e2e, mutations and Docker rules but not that section, and they did not ask the tester to explain the history
+rewrites it ran after. A fourth stack run was then needed for the screenshots.
+Rule: when a diff implements a page in design/pages, the first tester brief names ADR-0006 item 5 and asks for the
+screenshots in the same stack run as the e2e suite, plus a section listing every fixup folded into history.
+
+### 2026-11-11: main moved under the design, and the researcher ran before the first advance (#106)
+
+Halfway through judge_design, main gained the quiz prototype (#138), which rewrote the lesson acceptance notes and
+prototype the design cited; a judge found it only through a stale course count. Separately, I spawned the researcher
+while the phase was still `init` and advanced afterwards; the gate did not stop it.
+Rule: `git fetch` and compare origin/main with the branch base before every judge_design round and before the coder,
+and re-base the design when design/ or the touched code moved. Advance the phase before spawning its role.
 
 ### 2026-11-10: Mutation rows prescribed by an architect with no shell cost a design round (#110)
 
@@ -430,3 +532,60 @@ the evidence. Separately, after two auto-mode classifier failures I re-sent judg
 architecture; operations was missing until the third send.
 Rule: a judge whose verdict must change is re-spawned as a new agent, never resumed. Before sending a judge round,
 count the Agent calls in the message against the tier's judge list.
+
+### 2026-11-11: A merge pass reopened a judged design and ran seven flow rounds (#72)
+
+After #138 (quiz) merged, #72's PR conflicted in 41 hunks. The merge pass was meant to be narrow, but the
+researcher made the quiz send an attempt record and every reader of attempt records had to be re-derived; seven
+judge_design rounds followed, each FAIL one edge of the same class (run baseline, vocabulary, the lesson outcome
+on a timed-out send, the send window). Two of those edges came from non-blocking notes the orchestrator folded
+in, which widened a rule without following what it suppressed.
+Rule: when two DESIGN tasks touch the same page, merge the second onto the first before its judge_ux, not after
+its PR; in a merge pass, brief the architect to list every decision that goes beyond keeping both sides and put
+each to Stepan before judge_design; fold a non-blocking note in only after asking what the changed rule suppresses.
+
+### 2026-11-11: Four design rounds spent on a mutation procedure, not the fix (#129)
+
+The #129 fix (listener error handler, graceful probe, readiness poll, peer on the other network) passed all three
+judges in round 1. Every later FAIL was in section 5.1, the procedure for running mutation patches: patching the
+real test file and restoring it (round 1: a partial patch left it mutated; round 2: the junk cleanup deleted four
+tracked course/*.orig files and the restore trap fired on the exit meant to protect a fix), then a clone-based
+rewrite whose leftover check missed the runtime's own objects and took the run id unchecked (round 3). Stepan
+allowed rounds 3 and 4. The size also crossed the TASK line (diff 155+/37-, one file); I kept TASK because the
+phases match PROJECT and said so in the report, not before planner.
+Rule: when a test plan mutates a file that is in the pending diff, the architect brief prescribes from the start
+that mutations run only in a throwaway clone (git clone --local into the scratchpad, git apply all-or-nothing,
+leftovers listed with the harness's own selectors, run id validated), and the operations judge dry-runs that
+procedure with negative controls in round 1. Name the tier change to Stepan when the architect's estimate crosses it.
+
+### 2026-11-10: A judge_code brief let the operations judge mutate product files in the task worktree (#121)
+
+The #121 judge_code round 1 brief asked the operations judge to spot-check mutation rows "on a copy". It mutated the
+live files in the task worktree with `*.judgebak` backups, while the architecture judge was reading the same files; the
+architecture judge saw `http/errors.ts.judgebak` appear and vanish and had to check its reads against the saved diff.
+The tree came back byte-identical (cmp against plans/121-clamp-log-error-fields.diff), so nothing was lost, but a
+crash mid-row would have left a mutated file in the diff to be committed, and parallel judges may review a mutant.
+Rule: a judge brief that allows mutations names the place: a scratch `git worktree add` under the scratchpad (or a
+copied tree), never the task worktree. Before commit, cmp the tree against the saved diff and check no backup files.
+
+### 2026-11-10: A measured number lost its condition on the way into the ADR text (#117)
+
+judge_design took three rounds (Stepan allowed the third). Round 1 failed on a researcher claim the architect copied
+(a loader error reaching StarterRefusedError at starter.ts:112, where no YAML is parsed) and a missed caller
+(export-course.ts in the image build). Round 2 failed on one parenthetical: the research measured "100 aliases to one
+anchor", the design's ADR text said "100 aliases", and yaml's limit is per anchor with nesting multiplying. My own E0
+probe printed "aliases 100" without the condition too, so my briefs carried the shortened form. The code, tests and
+mutations passed every round; all three failures were prose stating a measured fact more broadly than it was measured.
+Rule: when a design turns a measurement into doc or ADR text, the architect brief asks for each number to keep the
+condition it was measured under (which input shape, per what), and for every claim about a caller or error path to be
+checked against the cited line, not taken from the research. My own probe output labels its inputs fully.
+
+### 2026-11-11: main moved twice while the merge follow-up was in review (#106 merge of #149)
+
+The follow-up to make PR #151 mergeable after #149 was designed against 7aa5a6c. Before the tester finished, main gained
+#140 (design/ and ADR-0007 only), the tester stopped at the append-only simulation, and the plan needed a delta and a
+second merge commit that had no design round of its own (the code judges reviewed it instead). Each round of the follow-up
+took about as long as the time between merges to main.
+Rule: for a merge-of-main follow-up, `git fetch` right before the tester and right before the push, and write the merge
+design so it already covers "main moved by docs-only commits": a further merge commit with the same checks, judged at
+judge_code.

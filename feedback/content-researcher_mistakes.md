@@ -50,3 +50,22 @@ The architect built a closed-set check on these summaries.
 Rule: For every config key or env var a lesson may grade, record its scope limits, its parsing rule (boolean,
 presence-only, exact), every documented alias or deprecated equivalent, and the complete enumeration, with
 row counts. A changelog entry is quoted with its stated scope, never generalised.
+
+### 2026-11-03: CLI flag findings without their scope limits; "pending" items the docs already answered (#43, design round 1, accuracy)
+
+The #43 research listed `--tools` among the restriction flags but omitted the CLI-reference sentence "The flag doesn't
+affect MCP tools; to deny those too, use `--disallowedTools "mcp__*"`". It recorded `--json-schema` without the
+structured-outputs rule that schemas newer than draft-07 are rejected. It left `_FORCE` parsing and the `--tools` value
+format as open questions, though the env-vars on/off note and the `--tools` row answer both. The architect built a
+"tools enforce read-only" check on `--tools` alone.
+Rule: For every flag a check will emulate, copy its whole CLI-reference row, including what it does NOT cover, and
+follow its "See ..." link for validation rules. Before marking an item "pending", grep the env-vars and CLI-reference
+pages for it.
+
+### 2026-11-03: A "what closes X" list that omitted a flag the same addendum recorded as closing X (#43, design round 2, accuracy)
+
+Addendum 1, section 1c, recorded `--safe-mode` as narrowing with "no MCP, hooks, agents, plugins". The list in 1e, "What
+closes MCP", named only `--disallowedTools "mcp__*"`, `--bare` and `--strict-mcp-config`. The architect copied 1e as
+the closed set of accepted closures and rejected `--safe-mode`, a documented form with the effect.
+Rule: When a finding enumerates the ways to get an effect, grep every CLI row for the effect's noun ("MCP", "hooks",
+"permissions") and cross-check it against your own tables in the same file. Say "complete list" only after that grep.

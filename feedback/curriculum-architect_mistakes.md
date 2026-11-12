@@ -381,3 +381,288 @@ Rule:
 - Before shipping either, run an honest corpus against it, not only the attack corpus: the common idioms of the API
   under test (for unittest: `assertLogs`, `mock_open`, `subTest`, class and module fixtures, async tests, warnings,
   unclosed resources).
+
+### 2026-11-03: A "find" verb served by a starter that a fresh rewrite bypasses; an attribution verb with no decoy that needs it (#43, design round 1, pedagogy)
+
+O1 said "Находит, какой файл определения загружается". The design mapped it to the config check ("the starter hides the
+active file") and to a quiz. The check's must-pass corpus accepted deleting every reviewer file and writing one fresh
+file, which passes without any load-rule knowledge. None of the quiz topics covered load or skip rules. O6 said "определяет по
+`parent_tool_use_id`", but the only role-breach look-alike was an allowed tool, so "flag every write tool" matched
+without building the tree.
+Rule:
+- A "find" verb is observed only if the honest shortest route still requires finding it. Walk the must-pass corpus for a
+  "replace everything" route. If one passes, observe the finding on a fresh case: a quiz scenario on an unseen layout.
+- An attribution verb needs a decoy that is identical except for the attribute: the same tool, called by an agent allowed
+  to call it.
+
+### 2026-11-03: Flag-semantics corpora that rejected documented forms or gave false reasons (#43, design round 1, accuracy)
+
+Five places in the round-1 design did not hold against the vendor pages:
+- L1 rejected `model: claude-sonnet-5-5[1m]` "as undocumented". The frontmatter takes "the same values as the `--model`
+  flag", and model-config documents `[1m]` on IDs.
+- L2 C7 failed `--permission-mode auto` without giving a reason, yet auto "auto-approves file edits in your working
+  directory". It also required `Write` beside `Edit`, though "`Edit` rules apply to all built-in tools that edit files".
+- C6 gave "project `permissions.allow` is not used" as the reason a settings-based restriction fails. Deny rules are not
+  trust-gated.
+- The role-call scenarios had 3 of the 4 documented error subtypes. `error_max_structured_output_retries`, the one tied to
+  the schema requirement, was missing.
+- L5 called MAST Insight 3 the peer-reviewed anchor for per-joint gates. It had dropped "low-level" from "sole reliance on
+  final-stage, low-level checks is inadequate".
+
+Rule:
+- For every must-fail form, cite the vendor sentence that shows it lacks the effect, or label it "course rule" in the
+  design and the message.
+- For every enumeration the check samples (subtypes, modes, values), copy the full list from the type definition and
+  count it.
+- Paraphrase a paper's finding only with all its qualifiers.
+
+### 2026-11-03: Grading infrastructure specified by intent, not by the mechanics an honest run hits (#43, design round 1, assessment)
+
+The design specified the fake `claude` as "a grader thread" over a socket. A single serving thread serialises three
+honest parallel calls, so the fan-out overlap rule fails the reference: the prototype gave a 6.0 s span instead of
+2.0 s. The pipeline was to run as `python3 -I`, which breaks the sibling import the starter itself sets up.
+`total_cost_usd` was "equal to the sum", which is float equality, and 344 of 1000 reorderings differ. G3 said
+"spaces" while the snapshots carry tabs. Roles were identified by schema equality while honest L4 schemas can be
+identical. A must-pass `--agent` line could not satisfy C3 under random model draws. The quiz shape "1-2 select-all"
+included a value that misses the design's own 2% bar (3.63%).
+Rule:
+- For every grading mechanism (server, launcher, comparison), write the one sentence that decides concurrency,
+  `sys.path` and equality: per-connection serving, the exact launch line, and tolerance or exact arithmetic.
+- Run the honest corpus through that sentence on paper, line by line, before sending the design.
+- Every honest-corpus line must be checked against every other requirement in the same check, not only the one it
+  was written for.
+- When a parameter is a range, compute the bar for each end of the range.
+
+### 2026-11-03: New decoys broke a planted item; flags rejected by course rules that the task never states (#43, design round 2, pedagogy)
+
+Round 2 added two decoys to force attribution: the tests reviewer running `python3 -m unittest discover` twice, and a
+failing run that the tests reviewer reports. The planted UP1 still said "the tests reviewer reports all tests pass; the
+only test run is in the coder's subtree", which those decoys make false, so the rule-5 walk keys UP1 as "no". The 4.3
+flag table also rejects about fifteen flags as "course rule" (`--debug*`, `--include-*`, `--session-id`, `--name`,
+`--betas`, `--input-format stream-json`, `--permission-prompts host`, `--append-subagent-system-prompt*`, `--worktree`,
+the coder's `--restricted`/`--safe-mode`). None is in the printed course-rule list, and C6/C7 name effects ("add tools,
+approvals, settings, agents, plugins or directories") that these flags do not have.
+Rule:
+- After adding a decoy, re-walk every planted item that shares its agent, tool or category, and rewrite any "the only X"
+  sentence the decoy touches.
+- Every flag a check rejects must follow from a printed requirement or a printed course rule. A failure message whose
+  requirement text does not cover the flag misinforms; give the course rule its own id or line.
+
+### 2026-11-03: Course-rule reasons written as "the docs don't" without searching the docs (#43, design round 2, accuracy)
+
+Round-2 fixes added course rules whose stated reasons were false on the vendor pages:
+- "Repeated and `--flag=value` forms are not documented for `claude`". The CLI reference shows `--debug='mcp,startup'`
+  and `--tmux=classic`, and "Repeat the flag" for `--plugin-dir`/`--plugin-url`.
+- "These three have a quoted MCP effect", used to exclude other closures. The `--safe-mode` row says "MCP servers ... do
+  not load".
+- "The subset is the keywords that both draft-07 and the API accept ... inside both lists". The API requires
+  `additionalProperties: false` on objects, lists only 10 `format` values, and never mentions `title` or `$schema`.
+
+Two new items were also keyed on behaviour that is unsettled or contradicted:
+- A new L1 quiz option, "edit a notebook" under `disallowedTools: Write, Edit`, which the docs leave unsettled.
+- The L6 README run line has no approval for the `python3 -m unittest` calls that the trace shows running.
+
+Rule:
+- A course-rule reason that says "only X" or "not documented" is a claim about every row of the source. Grep the whole
+  page (`=`, "Repeat", the effect word such as "MCP") before writing it.
+- A reason that says "both lists" must be checked against each list's required items, not only its forbidden items.
+- Every new quiz option and every new trace context line gets a quoted vendor sentence that decides it. If none
+  decides it, replace the option.
+
+### 2026-11-03: Round-2 fixes covered the listed forms, and their neighbours failed (#43, design round 2, assessment)
+
+Four round-2 fixes held for the forms the round-1 report named. A neighbouring form of each failed when run:
+- The flag allowlist names `--allowedTools`/`--disallowedTools` only. The documented `--allowed-tools`/`--disallowed-tools`
+  spellings and a prompt after `--` fail honest call lines.
+- References count only inside `<copy>` and the run dir, and H7 diffs only `<copy>`. So a coder narrative stashed in
+  `$TMPDIR`, `$HOME` or `/tmp` and referenced by path reaches the reviewer unseen.
+- A reference to the project root expands the whole copy, `.git` included, past the 4000-file cap: a platform error
+  on an honest line.
+- "Exactly `splitlines()`" is false for an empty file (1 line vs 0), and an honest `splitlines()` gate then returns
+  G2 where only G3 is broken.
+Rule:
+- For every flag a rule names, copy every spelling its CLI row lists, and decide `--`.
+- A "where to look" scope (directories, files) is checked against every place the learner's process can write. Close
+  the scope by effect: read wherever a reference points, and diff every writable tree.
+- A claim that two models agree ("exactly X") gets a run over the degenerate inputs: empty, single separator, no
+  final separator.
+
+### 2026-11-03: A new rule's reason overclaimed its effect; a new fake sentence generalised vendor behaviour (#43, design round 3, accuracy)
+
+Revision 3 fixed the five round-2 accuracy blockers. It also added two sentences that are false on the vendor pages:
+- The C10 reason "так строка вызова целиком описывает права и вывод роли", repeated in RS20 as "a call line that fully
+  describes the role". The module's own L2 theory teaches the opposite: under `-p` the project's hooks, `env` and deny
+  rules apply to every call (permissions trust table), and user settings apply too. So the line does not describe the
+  role's rights "целиком".
+- 4.3 "A documented flag outside the list gets the normal response, because the real CLI accepts it". Headless says
+  "Claude Code rejects `--bg`, and rejects `--cloud` with a task description, with an error naming the conflict", and
+  `--bg`/`--background` are on the must-fail list.
+Rule:
+- A course rule's reason states what the rule guarantees by construction ("every flag on the line is one the lesson
+  explains"), not a wider effect ("fully describes"). Before writing "fully", "entirely" or "every", check the reason
+  against the module's own theory of what else acts on the same object.
+- A sentence about "the real CLI" covering a whole class of flags is a claim about every row in that class. Check it
+  against the headless "Not every CLI option combines with `-p`" list before writing it, or describe only the fake.
+
+### 2026-11-03: Reference and H7 scope closed by a list of places, not by the effect (#43, design round 3, assessment)
+
+Revision 3 closed the round-2 reference blockers for the forms named, and three neighbours broke:
+- Honest prose naming `/tmp` (or `../` with a flat copy layout) expands an ancestor of the run dir, because `<scratch>`
+  sits under `/tmp` as in 02 `grader_runtime.py`. A run dir that keeps raw outputs then leaks the coder's narrative into
+  the reviewer's material, and leftover `make try-fake` dirs push the read past the 4000-file cap.
+- "A directory inside `<copy>` is never expanded, because H7 sees every project change", while H7 excludes every
+  `.git`. A stash dir under `<copy>/.git`, referenced as a directory, passes both.
+- H7 fails on any new uid-owned path under `/tmp` or the home. The learner's own Claude Code session in the same
+  container creates such paths, so honest runs fail at random.
+- The new full quiz key keyed cascade Q1 (c) on an output format the scenario never states.
+Rule:
+- When a rule leaves something unobserved ("not expanded", "excluded"), state the invariant that makes it safe, and
+  check every exclusion of the other rule against it.
+- Run every place-list in a scope ("expanded inside /tmp, /var/tmp, ...") against honest prose that names each place,
+  against the place the grader itself uses, and against concurrent processes of the same uid.
+- Prefer a property only this run can produce (files changed since run start, values drawn for this run) to a list of
+  directories or names.
+- A select-all option whose truth depends on a run parameter (output format, mode, foreground) names that parameter in
+  the scenario.
+
+### 2026-11-03: Stated a "the grader reads all three" invariant without attacking the reader that implements it (#43, design round 4, assessment)
+
+Revision 4 wrote "every in-scope path from the pipeline's output to a role goes through the prompt text, a named file,
+or the run dir, and the grader reads all three". Two neighbours falsified it:
+- The reference tokeniser splits on whitespace and on `, ; : = ( ) [ ] { }` and quotes. So `"<run>/coder out.json"`,
+  `<run>/coder(1).json` and `"/tmp/my stash.json"`, each named whole, are never read.
+- The directory rule tests only the realpath. So the run-dir entry `<run>/linkdir -> /tmp/stash`, named directly, is
+  not expanded, although the same entry is followed when the reviewer is given `<run>/`.
+Rule:
+- When a design states an invariant ("the grader reads X"), attack its implementation with inputs built from the
+  implementation's own edge: names that hold the tokeniser's delimiters, and paths that are inside by name but outside
+  by realpath (or the reverse).
+- When one form of a must-fail line is caught through a parent ("given `<run>/`"), also run the same object named
+  directly.
+
+### 2026-11-03: Bounded a path span by the old tokeniser's own delimiter set and by tokens, then claimed `@` was outside it (#43, judge_design round 5, assessment)
+Revision 5 started a span only at a word whose first character is `/`, `.` or `~`, with words cut on the 4.6
+delimiter set, and ended it only at a whitespace token end, minus a trailing run of that same set. So any character
+outside the set next to a path hides it: `@<run>/a b.json` (unquoted; `@` is not a delimiter, so the word starts
+with `@`), `«<run>/coder.json»`, `“/tmp/my stash.json”`, `**<run>/coder out.json**`, `Read <run>/coder.json!`, and
+the compact JSON `{"ctx":"<run>/coder out.json","diff":"..."}`. The design text said "any `@` ... before it is already
+outside it" without running it. The `.`-strip variants also turn `<run>/..` into `<run>/`, which contradicts the RS21
+sentence beside them. A run-dir entry reached through an in-scope alias (`/tmp/r/linkdir/`) passes both L and R.
+Rule:
+- A span rule for "a path written whole" is checked against what can sit right before and right after a path in real
+  prompts: unquoted `@`, Russian and curly quotes, markdown emphasis, `!`/`?`, and a compact JSON continuation.
+- Each new trimming variant is run on the out-of-scope and `..` lines too, not only on the must-fail lines.
+- When two in-scope aliases are added (an outside link to the run dir, a run-dir link to outside), run their
+  composition.
+
+### 2026-11-11: The L2 call requirements never said the call delivers the role's contract (#43, judge_content round 1, assessment)
+Design 4.3 lists C3-C10 for every role call (model and cap from roles.json, schema in `--json-schema`, tools,
+MCP closure, approvals, call format, flags) but no requirement that the call carries the role's contract
+`pipeline/contracts/<role>.md`. task.md step 3 follows the design and also omits it. So a `call_role` without
+`--append-system-prompt-file` (or any other way of giving the role its contract) passes `role-call` and
+`role-contracts`, while the theory ("the role knows only what came in the prompt and the system prompt"), the
+rubric K4 ("it sees the prompt and this contract only") and L3 task.md ("the starter `claude_call` already passes
+the contract as a file") all assume the contract reaches the role. A learner who follows step 3 literally hits it
+without trying to cheat.
+Rule: For each artifact a lesson asks the learner to write, name the requirement and the check that show the
+artifact is used by the code under test, not only that it exists and is well formed. Walk the outcome's nouns
+(contract, schema, config) and for each ask "which check fails if the code never reads it?".
+
+### 2026-11-03: Capstone sequence contradicted its own slicing rubric; an honest suite lacked the inputs it needed (#44, design round 1, pedagogy)
+
+Revision 1 of #44 said each lesson's "Готово, когда" is one slice of the L1 reference plan, and the L1 rubric
+demanded that every slice be vertical. Yet the lessons run layer by layer: the whole contract (L2), the engine (L3),
+the API (L4-L5), the UI (L6), CI (L7). That is the horizontal plan that 01 L4's rubric fails. The design also never
+said how the learner's own L1 plan relates to the fixed lesson order. In L7 the learner's suite had to pass and fail
+grader variants whose slots depend on `CALENDAR_NOW`, but nothing passed that clock to `make ci`. So no honest
+suite could compute expected slots or reach the 12 engine mutants. The check's failure message was also left
+unspecified, although each submission costs 8-10 minutes. The grader's image-only PATH
+(`/usr/local/go/bin:/usr/bin:/bin`) did not provably contain node, npm, tsp or openapi-typescript, which honest
+`make ci`, `make gen` and `build-web` call. L2, L4 and L5 had no per-part minutes. L1 gave 10 minutes for
+hand-computed exact DST instant lists. And because each lesson's starter is the previous lesson's reference, with
+no prerequisite gate, copying the next starter passes L1-L7.
+Rule: Walk the module's own reference plan through every rubric the module grades the learner by, and justify any
+exception in the learner-facing text. For every check that runs the learner's code against grader-owned state,
+list each input the honest solution needs (clock, delays, seeds, URLs) and pass it in. Run the honest commands
+under the grader's exact env (PATH, HOME, network) before pinning that env. Give per-part minutes for every
+lesson. Say which lessons a starter reveals the answer of, and how that is gated.
+
+### 2026-11-03: Standards cited for semantics while the mandated syntax contradicted them; Docker and Nuxt rules not walked against the docs (#44, design round 1, accuracy)
+
+Revision 1 of #44 mandated `Idempotency-Key` as an unquoted `[A-Za-z0-9_-]{8,64}` token and cited the IETF httpapi
+draft for 409/422. draft-08 (2026-10-22) says the value "MUST be a String" (RFC 9651 sf-string, quoted; example
+`Idempotency-Key: "8e03978e-..."`). The L8 rule "no `latest` or untagged FROM" rejects `FROM scratch` and
+`FROM <stage>`, the very multi-stage and scratch forms the design expects. The L6 honest `routeRules` proxy reads the
+backend URL only at `serve-web` time. Nuxt documents env overrides for `runtimeConfig` keys only, and the research
+marked the route-rule override as "observed only". Pinned decision 5 claimed that `seal-object-schemas` makes the
+openapi-typescript types exact. openapi-typescript already omits index signatures by default
+(`--additional-properties` defaults to false), and its docs never mention `unevaluatedProperties`.
+Rule: When a design cites a standard for part of a mandated surface, check the rest of that surface against the
+standard too. Then either conform, or say in the brief which part is the course's own choice. For every
+syntax rule over a vendor format (FROM refs, config keys), list the vendor's documented special forms and exempt or
+reject each one explicitly. Never build an honest variant on a behaviour the research marked "observed only".
+Every "because" in a pinned decision is a factual claim; check it against the tool's own docs.
+
+### 2026-11-03: Anti-cheat claims rested on unrun stand-ins; the cheapest attacks were fingerprints and placement, not the listed classes (#44, design round 1, assessment)
+
+Revision 1 of #44 put the L7 blind-guess bound at 5.9e-6 under a "nothing observable" model. But each of the 4
+green variants differs from the reference in one cosmetic thing: id scheme, problem text, charset plus 50 ms
+latency, Allow order. The 18 mutants share the reference's cosmetics. So a suite with no behavioural test calls
+those 4 green and guesses among the 19 runs that look like the reference. That passes 2.0% of submissions, and
+5.3% with a counter in /tmp or the live workspace, which the learner uid can write even under R0. That is about 19
+submissions with no attempt caps. The L5 probe recorded R3, the delay placed outside the critical section, as
+residual "because it needs the skill". A toy Go server that sleeps first and then does a racy check-then-insert
+passed the 12x6 probe 15/15. A one-rule timing check (a POST that fails the check answers in under delay/2) fails
+it by construction. The L7 drift case (3), one property removed, is passed by `cmp schema.d.ts golden`. The
+TypeSpec host allowed any JS whose realpath is inside the pinned dir. A `.tsp` import of the image's
+`@typespec/compiler/cmd/tsp.js` ran the CLI and killed the compile. `import "yaml"` ran the JS and compiled clean.
+Rule: For every "cannot pass" claim, write the cheapest stand-in that uses each observable the check leaves
+uninformative (cosmetics, timing, a counter across runs) and compute its pass rate before stating a bound.
+Randomise every non-graded dimension the same way over the green and red sets. Before recording a residual, look
+for a by-construction observable of the effect, such as where in the handler time is spent. A JS-loading guard is
+an exact allowlist of entry files, not a directory.
+
+### 2026-11-03: A time estimate rested on reuse that the earlier lessons never set up (#44, design round 2, pedagogy)
+
+Revision 2 of #44 fixed L7's clock at `CALENDAR_NOW=2026-03-01T08:00:00Z` and budgeted 15 min for "replaying his L3
+cases through the HTTP slots endpoint", on the grounds that the cases were "written against this `now`". But L1 and L3
+never ask for that `now`. Each case carries its own `request.now`, and the L3 bounds don't constrain it. The case's
+`bookings[]` are only required to be "consistent with the model", but over HTTP every booking has to be created
+through POST /bookings, which rejects bookings that are off-grid, outside availability or inside notice. Bookings
+also conflict host-wide, so cases replayed against one server interfere with each other unless they are cancelled
+or put on disjoint dates. So an honest learner's L3 cases mostly cannot be replayed. The 12 engine mutants then have
+to be killed by new HTTP tests, and the 85-min suite estimate doesn't hold.
+Rule: When a later lesson's minutes count on reusing an earlier artefact, write the reuse conditions (fixed inputs,
+which data must be creatable through the public interface, isolation between cases) into the earlier lesson's
+task.md and bounds. Then have a demo run the reuse on the reference artefact, not only on a suite the designer wrote.
+
+### 2026-11-04: A tool self-check compared realpaths to install dirs without reading the install layout (#44, design round 2, accuracy)
+
+Revision 2 of #44 (7.1) required `go`, `node`, `npm`, `npx`, `tsp`, `openapi-typescript`, `make`, `git` and
+`python3` to "resolve under that PATH to the 11 install dirs (realpath compared)". The PATH has 5 dirs and section 11
+pins 3, so "11" matches nothing. And on the official Node build, `bin/npm` and `bin/npx` are symlinks to
+`../lib/node_modules/npm/bin/npm-cli.js` and `npx-cli.js` (node `tools/install.py`, `package_files`). Their realpath is
+under `/opt/node/lib/...`, not `/opt/node/bin`, so the check would fail closed on the honest image at every check
+start. Revision 2 also copied the judge's "earlier stage name, case-insensitive" into the FROM set (F2) without
+opening the BuildKit source; see judge_mistakes 2026-11-04.
+Rule: Before pinning a check over installed files (paths, realpaths, symlinks), write the expected value of each
+member from the vendor's install script or a listing of the real artefact, as a table, and count its rows against the
+number in the text. A judge's wording tagged [J-x] is still a claim: open its source before building a closed set on it.
+
+### 2026-11-04: Closed a concurrency residual with the judge's two rules and did not probe their neighbours (#44, design round 2, assessment)
+
+Revision 2 of #44 deleted residual R3 ("R3 is closed (S3)") after adding the judge's rule a (fast 409 on a taken slot)
+and rule b (no booking visible before 0.9 x delay). A prototype of the 3.2.8 probe found three servers with no atomic
+check-and-write that pass all of the rev-2 rules: an unlocked check, then the delay, then an unlocked recheck and
+write, 30/30; the same with a racy pending set, 30/30; and a racy reservation, 9/30. The first is "optimistic read,
+lock, recheck, delay, write" with the lock left out, which is a natural mistake. One more observable (a conflicting
+POST sent at 0.5 x delay must get 409 no earlier than the winner's 201 and no later than 1.3 x delay) brings all
+three to 0/30, and the honest forms stay at 30/30. Revision 2 also recorded the TypeSpec JS allowlist from the
+reference compile and required every member to be necessary for that compile. But an honest `import
+"@typespec/openapi3"` requests `openapi3/dist/src/tsp-index.js`, and a reference that does not import openapi3 never
+requests it. The (3a) drift case also leaves the hand edit uncommitted, so the listed honest form
+`make gen && git diff --exit-code` exits 0 on it.
+Rule: When a residual is closed with prescribed rules, list the attack's neighbours before deleting the residual:
+the same race moved to another point in the request, each lock removed from each honest form, the delay outside the
+atomic section. Prototype each one against every rule. When a closed set is recorded from a run, record it over the
+whole honest corpus, not only the reference. When a git-based honest form must pass a planted case, commit the plant.

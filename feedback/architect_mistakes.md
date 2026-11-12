@@ -1394,6 +1394,97 @@ fail-closed branch, so the first such content PR would get a red `content` job o
 Rule: A scan shows only that today's files pass. Before claiming a new rule restricts no valid input, walk the schema
 for valid shapes the corpus lacks (defaults, optional keys, every lesson `type`) and add a test for each.
 
+### 2026-11-09: A persisted fact derived from filtered inputs was stored without the filter key (#101, judge_design round 1, architecture)
+The design makes a check-kind change ignore old results (D8 Q8, deviation 4: "a quiz with limit 3 must not inherit
+nine command failures and close at once"), but `check_closures` has no `check_kind` and `isClosed` reads any closure
+row for the check id. A command check closed after 10 failures and later changed to a quiz is closed at once with
+`failedCount` 0, the exact case the deviation names. The startup recompute also skips `completed` rows, so a closure a
+lowered limit causes in a completed lesson (a check added after completion) is never persisted, and a later raised
+limit reopens it, against D4.
+Rule: When a persisted row records a conclusion drawn from filtered facts, store every key the filter uses and apply
+the same filter on read; and run "persist when it happens" over every row where it can happen, not only the rows
+whose stored status can still change.
+
+### 2026-11-09: A port type for live data reused the committed-fact type with a field live data cannot have (#101, judge_design round 1, architecture)
+`LiveCheckProgress` `done` carries a `ResultFact`, which requires `attemptFinishedAt: Date`; a result streamed from a
+running attempt has no attempt finish time, so #34 must invent one, and `ResultView.finishedAt` then shows it.
+Rule: For every port another issue implements, fill each field of its types from the state the implementer has at
+that moment; a field it cannot know gets its own live type, not a placeholder.
+
+### 2026-11-09: Amended an ADR's rules and left contradicting sentences of the same item standing (#101, judge_design round 1, architecture)
+Rule 7 makes `applyLessonOutcome` "the only writer of `completed`" and rule 4 derives `in-progress` for a lesson with
+no counted check, while ADR-0007 item 5 "Theory lessons" (a "mark as done" action completes them) and the #34
+follow-up "write step (4) as `UPDATE ... WHERE status = 'in-progress'`" stay in force; the second blocks the
+`not-passed` -> `completed` move rule 4 allows.
+Rule: Before finishing an ADR amendment, grep the whole ADR for every sentence the new rules touch (writers, status
+values, guards in follow-ups) and replace or retire each one explicitly.
+
+### 2026-11-09: Streamed live results that a rolled-back finish later turns into uncounted errors (#101, judge_design round 1, security)
+Design 7.1 shows a running attempt's live `done` results (with `details`) through `LiveAttemptSource` before the finish
+commits, R34-8 streams them, and 6.2/R34-14 say a failed finish rolls back and the sweep makes every included check an
+uncounted `error`. A learner who can make the finish fail (a NUL byte or invalid UTF-8 echoed into the grader message,
+which Postgres `text` rejects) sees counted-failure messages derived from the key for free, against the owner's F1
+counting floor.
+Rule: For every result path, show nothing to the learner that is not yet durable with its counted status, and check
+that no later failure (rollback, sweep, deadline) can turn a result already shown into an uncounted one.
+
+### 2026-11-09: Mapped learner-triggerable grader deaths to the uncounted platform `error` (#101, judge_design round 1, security)
+Rule 3 maps "no exit code because the runner failed (container gone, ...)" to `error`, never counted, and leaves a grader
+killed by a signal unmapped. Graders run learner code as children in the learner's own container (verify_hook.py:253
+feeds hidden probe input to the learner's hook), so that code can save the input to `/workspace` and SIGKILL its
+parent or stop the container: an uncounted, unlimited probe of grader material.
+Rule: When a contract exempts "platform" failures from a counter, define them by who can cause them; anything code
+under test can cause after grading started is counted.
+
+### 2026-11-09: Prescribed a pnpm command that fails verbatim, and missed existing tests the new index breaks (#101, judge_design round 1, operations)
+Design 5.1 prescribes `pnpm --filter @academy/db run db:generate -- --name check_limits`; pnpm 10.28 passes the `--`
+through and drizzle-kit exits 1 ("Unrecognized options for command 'generate': --, check_limits"). Design 5.4 lists only
+new db tests, but the planned migration turns six existing ones red in a scratch run: migrate.int.test.ts I1 compares an
+exact table list (no `check_closures`), and schema.int.test.ts I11 seeds a `running` attempt in `beforeAll` and then
+inserts more `running` attempts of the same lesson, which `attempts_one_running_idx` now rejects with 23505.
+Rule: For a new constraint or table, grep every existing test that inserts into or enumerates the touched tables and
+name its change in the design; never prescribe a script invocation without its exact argument-forwarding form.
+
+### 2026-11-09: Rollback covered only "start the previous image", not a code revert (#101, judge_design round 1, operations)
+Design 2.7 and 5.3 say the migration is additive and the previous image ignores it, which holds. A `git revert -m 1` of
+the merge deletes `0002_check_limits.sql` and its snapshot, and CI's append-only step fails on that (rehearsed), so the
+standard revert path is closed and the design does not say what to revert instead.
+Rule: For a PR that adds a migration, state the code-revert plan (which commits are reverted, that the migration commit
+stays, and that removing the schema is a later forward migration), checked against check-append-only.sh.
+
+### 2026-11-09: The run deadline relabels a started check's runner fault as an uncounted platform stop (#101, judge_design round 2, security)
+R34-15 says itself that a started check reaches the deadline without a row "only when web's runner itself failed", and
+R34-3 sends a twice-failed result insert to the deadline. The deadline then writes `platform-stop: run-deadline`
+(uncounted) for every rowless included check, started or not. D11 says a platform fault after the grader started
+spends the attempt, and the deadline never stops a started grader (R34-4's timer already did), so this reopens an
+uncounted end after start for every runner fault a learner can provoke through grader output.
+Rule: A cleanup path that writes results for "rows still missing" must split them by the same cause test the main
+rule uses (here: did the grader start?), never apply one label to all of them.
+
+### 2026-11-09: Replaced an ADR sentence by quoting it with "..." and dropped the safety clause in the elided part (#101, judge_design round 2, architecture)
+S11 quotes ADR-0007 "Dashboard" sentence 3 as "Course percentage = completed counted lessons / counted lessons;" and
+replaces it with rule 8, which does not restate the rest of that sentence: "a course with 0 counted lessons shows no
+percentage (never `0/0`, `NaN` or `0%`)". In the same revision 7.4 adds a fallback that makes `next` non-null with
+`totalLessons` 0, the exact state the dropped clause forbids: `CourseProgress` renders `<Progress max={0}>`, whose
+indicator is `width: ${(0 / 0) * 100}%` = `NaN%` (components/ui/progress.tsx:35).
+Rule: When an amendment replaces a sentence, quote it whole (no "..."), list every clause it carries and say where each
+clause now lives; walk any new view state through the components that render it.
+
+### 2026-11-09: The sweep sets an attempt `error` unconditionally while the same amendment defines `error` as "at least one result is error" (#101, judge_design round 2, architecture)
+S2 redefines the attempt status `error` as "at least one result is `error`", and R34-14 / R34-15 / S13 set the attempt
+`error` whatever rows it holds. Under D10 an attempt whose every included check committed its row before a crash gets
+no new row from the sweep, so it ends `error` with `errorCheckCount` 0, and the R34-11 end text reads "Проверок со
+сбоем: 0".
+Rule: A cleanup path that sets a summary status derives it with the same aggregation as the normal path, over the rows
+present after its own inserts.
+
+### 2026-11-09: Code-rollback plan reverts individual commits of a repository that squash-merges (#101, judge_design round 2, architecture)
+Design 5.6 says "`git revert -m 1` of the merge" and "one PR that reverts commits 9, 7, 6, 5, 4"; the repository
+squash-merges (CLAUDE.md section 2 item 7; main is `... (#120)`, `... (#116)`), so main holds one #101 commit, with no
+merge commit and none of commits 1-9.
+Rule: Write a rollback plan against the history the merge method produces, and rehearse it on a scratch clone merged
+the same way.
+
 ### 2026-11-09: Rerouted an input class without grepping the tests that send it (#112, judge_design round 1, architecture)
 The design sends every non-terminal upgrade, `//[` included, to the request listener through `shouldUpgradeCallback`
 and changes the shared harness to use it, then states "All existing relay tests ... must stay green unchanged".
@@ -1444,6 +1535,131 @@ lesson fails and whose `[1, 1, 1]` count becomes `[1, 1, 0]`; the tester is told
 defect, so a correct mutation run would be reported as one.
 Rule: When a change adds an early exit before a function call, reread that function's doc comment against the new
 path; for every mutation row, evaluate each new test's assertions under the mutation, not only the ones it targets.
+
+### 2026-11-10: A destructive e2e guard keyed on a variable the owner's .env and CI's own command both set (#106, judge_design round 1, security)
+D8 says the reset spec skips without E2E_BASE_URL and never runs on Stepan's 3080 stack. Design 7.4 implemented only
+the first half: "skipped unless E2E_BASE_URL is set", reasoning that the default URL is the owner's stack. But
+.env.example:34 offers `E2E_BASE_URL=http://127.0.0.1:3080` as a root .env line, playwright.config.ts:8-12 loads the
+root .env into process.env, and ci.yml:190 sets exactly that value; README:139 documents the override. Any of these
+makes the spec reset the owner's own working folder. "Is the variable set" is not "is this not the owner's stack".
+Rule: Guard a destructive test on a signal only the disposable stacks produce and that the owner's .env cannot supply
+(read before loadRootEnv), and refuse the owner's default origin explicitly; check each half of the decision's wording
+against .env.example, README and CI before writing the guard.
+
+### 2026-11-10: Tester commands neither run at base nor match CI's checks job (#106, judge_design round 1, operations)
+Design 7.5 prescribed the tester's commands without running them at e469b09. Run verbatim, command 4 was red there
+(a pre-existing 5 s timeout under host load), and command 6's `--glob '!lib/copy.ts'` did not exclude
+apps/web/lib/copy.ts, so it printed 87 lines. 7.5 also left out `pnpm build`, check-build-course.sh and the
+porcelain check that ci.yml runs, and section 9's "each commit builds and is green" had no command behind it. E-reset
+asserted that a file was gone without creating it in the same test.
+Rule: Run every prescribed gate command once at the base in a scratch clone and record its output in the design.
+Mirror every step of the CI job the change touches. Back a per-commit claim with a loop command. Give every
+"X is gone" e2e assertion its own setup and a check that X exists before the action.
+
+### 2026-11-10: Library calls and test queries assumed to work in the context the design puts them in (#106, judge_design round 1, architecture)
+Design 7.3 said `getByText(regionKeyHint)` keeps matching once the hint is split into `<kbd>` parts, but
+@testing-library/dom 10.4.2 `getNodeText` joins only the element's own text nodes, so panel tests :260 and :267 go
+red. Section 5 had Notifications `flushSync` on `IDLE_CLEARED_EVENT`, which the watcher's `stop()` dispatches inside
+the panel's effect cleanup; React 19.3.1 runs that under CommitContext, where `flushSync` logs an error and flushes
+nothing. Test I1 (warning in 10 min, "no read at 9:59") contradicted the design's own 5 min read cap. The AlertDialog
+state table copied proto.css but not the `<dialog>` UA max-height/overflow the prototype relies on at 320x200.
+Rule: For every library call and test query the design keeps or adds, read its installed source for the context it
+will run in (commit phase, nested markup, UA defaults), and run each named test input through the design's own
+schedule before writing the expected result.
+
+### 2026-11-10: Gate loop whose known red hides the steps after it, and a guard that can skip silently in CI (#106, judge_design round 2, operations)
+Design 7.5 command 8 chains typecheck, lint, test, build, check-build-course and porcelain with `&&` and sends
+stdout to /dev/null. The pre-existing lesson-markdown timeout is red on this host every time, so the loop printed
+`commit <base> red` and never ran the build (no `.next/standalone` afterwards). The flaky rule's "red alone -> a real
+failure" is also red at base: the file alone timed out twice at load 38-45 and passed only with a longer timeout.
+Section 2.8 says CI runs the destructive spec, but if the spec skips there nothing fails. On main's turbo.json the
+switch does not reach the task (`DS=undefined`), so one lost passthrough entry or a live `.env.example` line skips
+the spec and CI stays green.
+Rule: A per-commit gate runs every step on every commit and reports each step's exit code; a known flaky red never
+stops the later steps. Run it at base first: base must come out green under the rule. A guard that may skip must
+fail the run in the one place where it has to run (CI with the switch set).
+
+### 2026-11-10: Layout rules placed in a cascade layer that the elements' own utilities beat; e2e asserts not run through the tool's rules (#106, judge_design round 2, architecture)
+Design 2.2 puts `.lesson-layout > .resizable-handle { display:none }` and the [R3-N7] frame rule `flex:none; height:12rem`
+in `@layer components`, while the same elements carry the Tailwind utilities `flex` (handle, 2.7) and `flex-1` (frame,
+2.5). Tailwind 4.3.3 declares `@layer theme, base, components, utilities` (index.css:1), so the utilities win: the
+handle shows and takes focus in one-pane mode, and the "fixed" terminal still grows to the lesson's height below 30rem.
+The CSS comment and key decision 2 claim the fix anyway. Two tests were also red on correct code: terminal.spec.ts:217
+`toHaveAccessibleDescription` (Playwright pads every non-inline child, so `inline-flex` Kbd parts add spaces), and
+E-dialog-small (Radix AlertDialog focuses Cancel with `preventScroll: true`, so in a dialog that scrolls inside, the
+focused footer stays clipped). The commit plan also missed six existing `WorkspaceClient`/`EnvironmentDeps` literals in
+open-terminal.test.ts, terminal-revoked.int.test.ts and environment.test.ts, and LL1's actions in commit 9.
+Rule: For every CSS rule, name the layer it lives in and check every class on the same element for a property it sets;
+for every kept or new assertion, run the expected value through the assertion tool's own algorithm (accname, focus
+options); when a type gains a required member, grep every literal of that type and list each file in its commit.
+
+### 2026-11-10: Sized a flex item without checking its container's main axis (#106, judge_design round 3, architecture)
+Revision 4 gives the terminal frame `flex:none; height:12rem` below 30rem and `flex: 1 1 0%` above it, reasoning about
+`flex` as if it set the height. The frame's parent is the TabsContent `min-w-0 flex flex-1`, a row flex container
+(proto.css:646 too), so `flex` sets the frame's width. With `flex:none` the width is the frame's max-content, which is
+xterm's own screen width (DomRenderer.ts:152). FitAddon subtracts the scrollbar from that width, so every ResizeObserver
+refit drops about two columns, down to 2 (or, if the scrollbar counts in the intrinsic width, it stays at 80 columns in
+a 320 px viewport). Above 30rem the frame has no `overflow` or `min-width:0`, unlike proto's `overflow:auto`, so its
+automatic minimum is the current terminal width and every narrowing overflows first. Layer probe 3 cannot fail,
+because `flex` on a row item never changes its height. The round-2 judge text assumed the same wrong axis; the design
+accepted it without checking.
+Rule: Before writing `flex`, `height` or `width` on a flex item, name its container's `flex-direction` (from the actual
+class list) and say which axis each declaration sizes. For any item that holds self-sized content (xterm, canvas,
+tables), set `min-width:0` or `overflow`. Then add one e2e assert per axis that fails if the rule is wrong.
+
+### 2026-11-10: Closed a "three routes" finding for two of them, and wrote gate strings that are not in the log (#106)
+Round-2 operations issue 3 named three ways the destructive spec skips silently in CI: the turbo entry, the ci.yml
+step env, and a live `.env.example` line (`E2E_DISPOSABLE_STACK`, `E2E_BASE_URL` or `CI`). Revision 4's
+`requireDestructiveE2eInCi` only throws when `CI` is not a root .env key, so a live `CI=` line in `.env.example` (CI's
+`.env` is a copy of it) still skips the spec with no throw, while design 10's risk row says "a live `.env.example`
+line" throws. Simulated with 2.8's own conditions: `+ CI=true` gives allowed=false, guard=no-throw. The flaky rule
+also states its conditions as literals (`Tests 1 failed`, the test's full name) that a grep of the kept log never
+finds: turbo forces colour into the log, and vitest prints `Tests  1 failed` with two spaces.
+Rule: When a finding names several routes, write one test row per route and run each against the new construction
+before claiming the class closed; when a rule says "check X from the log", give the exact command and run it on the
+real log at base.
+
+### 2026-11-10: A flaky rule that admits exactly one known test, on a host where other tests time out too (#106, judge_design round 4, operations)
+Revision 5's command F counts a red root test as pre-existing only when the lesson-markdown timeout is the single
+failure, and 8b says a base that does not pass it means "stop, the gate is broken at base". The anchor was right
+against round 3's four logs, which were the only evidence offered. In round 4, three fresh full runs at e469b09
+(load 8 to 54 on 10 cores, other sessions running) gave `not-met (0111)`, `not-met (0011)` and `met`: vitest's 5 s
+default also hit `starter-walk.test.ts > accepts 2000 entries` (workspace) and a `sign-in-form.test.tsx` retry test
+(web). Both pass alone. A tester following 8b verbatim stops at base in two runs of three. The same suite with
+`-- --testTimeout=60000` passed through turbo was 6/6 green at load 52-54.
+Rule: A local gate on a shared host must not depend on which test the load happens to slow down. Before narrowing a
+flaky rule to one named test, run the full suite at base at least three times under the current load; if any other
+test times out, fix the timeout class (a gate-wide timeout, CI keeping the default as the authority), not the name.
+
+### 2026-11-10: A focus-return rule written for keyboard focus only, against a design that names the mouse case (#106, judge_design round 5, architecture)
+Revision 6 rebuilt "Продолжить работу" from AC30. It acts only "if focus is inside the wrapper", and it remembers the
+last `focusin` outside the wrapper as the return target. Safari and Firefox on macOS do not focus a clicked button,
+which #138's quiz.md (:289, :360, :600) and acceptance.md (:578, :609) state. In those browsers focus is on `body` at
+the click, nothing moves, and the Alert's removal leaves focus on `body`, which AC30 forbids. In Chromium, a click on
+plain text first moves focus to `body` with no `focusin`, so the stale target wins where AC30 says "none". The unit
+tests put focus on the button with `focus()`, so they cannot see either case.
+Rule: For every focus rule triggered by a control, walk the pointer path in each engine the design names (focus on
+`body`, or left where it was), and the blur-to-`body` path, before relying on `focusin`. Give each path its own test.
+
+### 2026-11-10: A gate proof read from a tool's dry-run field whose meaning was never checked (#106, judge_design round 5, operations)
+Revision 6 added command 4a to prove that `-- --testTimeout=60000` reaches the four vitest tasks and no build task. It
+reads `cliArguments` from `turbo run test --dry=json` and asks for `[]` on every non-test task. In turbo 2.11.10 that
+field holds the run's pass-through arguments on every task in the graph, `^build` dependencies included, while the
+real run gives them only to the named tasks (a planted `lesson-schema` build that prints its argv prints `[]`). So 4a
+says `test-args bad` at 0167a5d on correct code, and the design tells the tester to stop there. The design itself
+said the turbo leg was "not read from its sources" and rested on 4a, but 4a was never run.
+Rule: A check that proves how a tool behaves reads the tool's actual effect (the command lines pnpm echoes in the run's
+own log, or a planted script that prints its argv), not a report field. Run it at base green and on a red plant before
+it goes into the design.
+
+### 2026-11-11: One of two entry listeners filtered "outside the wrapper", the other did not (#106, judge_design round 6, architecture)
+Revision 7's Notifications entry record took `relatedTarget` at `focusin` only when it was outside the wrapper, but took
+`document.activeElement` at `pointerdown` unfiltered. An outside press that moves no focus (a Chromium scrollbar press,
+a touch press that becomes a scroll) clears the entry while focus stays on "Продолжить работу". The next press then
+records the button itself, the activation "returns" focus to it, and the Alert's removal drops focus to `body`, which
+AC30 forbids. Every N test started the press with focus outside the wrapper or on `body`, so none could see it.
+Rule: When two listeners feed one record, state its invariant (here: the target is never inside the wrapper) and
+enforce it in every writer. Walk the clear-then-record order for a press that clears the record but moves no focus.
 
 ### 2026-11-10: A mutation named "style" whose literal form kills its own script, and a socket-release test with no timeout stated (#110, judge_design round 1, architecture)
 Design 8.4 M17 ("KILL_SCRIPT `pkill -HUP -u 1000 -x sh` style (kills by name)") claims I-term-exit goes red. The
@@ -1603,3 +1819,107 @@ noble-backports to resolve its five packages. Before, one unreachable suite was 
 failed attempts and the give-up line at 215 s. Section 6 did not list it, so the change turns a green case red.
 Rule: Before making a failure strict on a source, list every index the source config fetches, and for each one the
 build does not need, state what the old command did when only that index failed and whether the new one keeps it.
+
+### 2026-11-10: Mutation guard exited on a failed patch without restoring the file it had half patched (#129, judge_design, operations)
+Design 5.1 applied each mutation with `patch -p1 --forward < M<n>.patch || { echo "GUARD FAILED"; exit 1; }`
+and restored the backup only after the test run. Dry-run in a scratch copy (Apple patch 2.0): a two-hunk patch whose
+second hunk does not match applies the first hunk, exits 1, and leaves `.orig`, `.rej` beside the file, so the guard
+exits with the pending-diff file mutated. The next mutation then backs up the mutated file, and its final `cmp -s`
+proves only that it restored the corrupted copy. The procedure also never said which directory `-p1` runs from;
+from `services/workspace` it prompts for a file name and writes `Oops.rej` there.
+Rule: A patch-apply guard checks with `patch --dry-run -d <root>` before the real apply, keeps one pristine copy
+with its sha256 taken before the first mutation, and every exit path (guard failure, red run, interrupted call)
+restores from it and checks the sha. Dry-run the failure path, not only the success path.
+
+### 2026-11-10: Restore trap armed before the check that must exit without restoring (#129, judge_design round 2, architecture)
+Rewritten 5.1.3 sets `trap restore EXIT INT TERM` in step 1, and step 2 then says: when `F` differs from the
+pristine sha and there is no `in-flight`, print `STALE PRISTINE` and "exit without restoring", because `F` was
+changed by someone else (a coder fix) and restoring would destroy it. The exit fires the trap, `restore` copies
+`pristine.ts` over `F`, the sha matches, and the call prints `RESTORED OK` over the coder's lost fix. The 5.1.5
+"already-applied" row ("nothing written") contradicts the same steps. The 5.1.5 cut-off row also says "kill it",
+but INT/TERM run the trap, so only SIGKILL leaves the `in-flight` state the row wants to recover from.
+Rule: Walk every exit of a guarded script with the trap that is armed at that point. Arm a restore trap only once
+the script itself has changed the file (here right after writing `in-flight`), or make `restore` a no-op unless
+the marker exists; name the signal a cut-off test sends.
+
+### 2026-11-10: Mutation guard's junk check and STALE PRISTINE exit fail on the real tree (#129, judge_design round 2, operations)
+Round-2 5.1 defines junk as every `*.orig`/`*.rej` under ROOT (node_modules and .git pruned) and arms
+`trap restore EXIT INT TERM` in step 1. Dry-run in a scratch copy (Apple patch 2.0-12u11, bash): in the real worktree
+the junk check prints four tracked files (`course/.../checks/data/{CLAUDE.md,Makefile,procedures,release.py}.orig`),
+so setup step 1 stops on every round and the procedure can never start; with those files present, one M5 call's
+`restore` deleted all four and printed `RESTORED OK`. And step 2's `STALE PRISTINE; exit` runs the armed trap, which
+copied pristine over a hand-applied F (measured: F rewritten), the exact case 5.1.5 says must write nothing.
+Rule: Before defining a cleanup by glob, run the glob on the real tree and subtract tracked files (or delete only
+the exact names the tool creates); arm a restoring trap only after the last exit that must not restore.
+
+### 2026-11-10: Leftover check filtered by the test-run label only, which the runtime's own objects never carry (#129, judge_design round 3, security)
+Round-3 5.1.3 step 5 and 5.1.4 step 1 declare "leftovers none" from `docker ... ls --filter
+label=academy.workspace.test-run=<id>`. The workspace container, its volume and `wks-t<id>-h-net` are created by
+the src runtime with `workspaceLabels` (`academy.workspace.managed=true`, `academy.workspace.instance=t<id>-h`,
+`src/identity.ts:94-108`) and no test-run label; the harness itself finds them by the managed+instance pair
+(`harness.ts:141-156`). So a killed or broken mutation run that leaves the workspace container (the one M4 connects
+to `otherNetwork`) prints "leftovers none" and `MUTATIONS CLOSED`. The run id is also taken from a log line that
+global-setup prints only after setup succeeds (`global-setup.ts:46`, after `createSentinel` at :39), with no format
+check, so a run that died in setup gives no id or an arbitrary string, and the check runs vacuously or interpolates
+unvalidated text into a shell command.
+Rule: A leftover check uses the same selectors as the code that removes the objects (run label OR managed+instance,
+plus the network name), and a run id read from a log is matched against its generator's format (`^[0-9a-f]{8}$`,
+exactly one per log) or the check stops instead of passing.
+
+### 2026-11-10: The leftover check was carried into the clone rewrite without re-deriving its selector (#129, judge_design round 3, architecture)
+Architecture confirms the security finding above independently. The round-3 rewrite of 5.1 replaced the whole restore
+scheme but kept the step 5 leftover check from earlier rounds as it was. Nobody re-read who creates the objects the
+I-network run leaves: helpers, peer and `otherNetwork` carry the run label, while the workspace container, volume and
+instance network come from `src/identity.ts` `workspaceLabels`/`networkLabels`, which have none. The 5.1.3
+killed-call branch ("re-run the baseline if a killed run still has objects") and 5.1.4 step 1 both take their
+decision from that check, so they skip the very case they exist for.
+Rule: When a procedure is rewritten, re-derive every check you keep from the code that creates and removes the objects
+it watches (here `harness.ts` `listRunObjects`), and do not copy it over unchanged.
+
+### 2026-11-10: 5.1.3 step 1 path guard is a string test, and the missing run id passes silently (#129, judge_design round 3, operations)
+Dry run of the clone rewrite. 5.1.3 step 1 says `C` must "contain `services/workspace`"; the clone path string never
+does (measured: `[[ $C == *services/workspace* ]]` false on `.../scratchpad/m129-clone-ZRrW04`, while
+`$C/services/workspace` exists), so a literal run stops every mutation call; 5.1.4 step 2 already had the right form.
+The run-id gap in the security entry above is measured, not only read: with a labelled container present,
+`docker ps -a --filter label=<key>= -q` (empty value) prints nothing, so a log with no run line gives "leftovers none".
+Rule: An existence guard is a path test (`-d <C>/services/workspace`), never "the string contains"; every value a
+check is keyed on is shape-checked first (exactly one `[0-9a-f]{8}`) or the step stops.
+
+### 2026-11-10: Prescribed a module header claiming "the only way" without grepping the other log lines (#121, judge_code, architecture)
+Design 1.1 prescribed the log-fields.ts header "these four functions are the only way a field taken from [a thrown
+value] reaches a log line". The coder wrote it faithfully (log-fields.ts:2-4). It is false in the same service: our
+own classes' fields reach log lines directly at http/errors.ts:96 (`error.message`), reconcile.ts:109 (`error.file`,
+`error.reason` of CourseReadError) and main.ts:30 (`error.message` of the config error). A reader auditing log
+injection would trust the header and skip those three lines. The design's own section 2 even lists the
+`${kind}: ${error.message}` branch as kept, so the claim contradicted the design it lives in.
+Rule: Before prescribing an exclusivity comment ("the only way", "never", "every"), grep the codebase for the
+counter-examples (here every `log.*(`/`console.*(` line that interpolates a property of a caught value) and scope the
+sentence to what the grep proves.
+
+### 2026-11-10: Operator view listed a starter refusal that cannot happen and missed the image build (#117)
+Design 3 F8 said that after the fix a bad alias also gives "StarterRefusedError in starter.ts:112". That line wraps
+only `lstatBelowRoot` of the lesson directory; no YAML is parsed on the starter path, so a YAML failure never
+becomes `starter-invalid` (it is 500 `course-unreadable` through manager.ts:79 and mapError). The claim was copied
+from the research without reading the call. The same table missed the one build-time consumer of `readCourse`,
+`apps/web/scripts/export-course.ts` (Dockerfile:35): today an unresolved alias aborts the web image build with an
+uncaught ReferenceError whose message prints the alias name, file text, into the build log.
+Rule: The "what the operator sees" row is built from `git grep` of every caller of the changed function and of the
+function above it (here `parseYamlFile` and `readCourse`), each call read, never from a caller list in the research.
+
+### 2026-11-10: ADR text stated the alias limit as "100 aliases", dropping the research's "to one anchor" (#117, judge_design round 2, operations)
+Design 6 dictated the ADR-0009 Consequences text "unknown anchor, or 100 aliases at the parser's default limit".
+The research measured only one anchor with 100 aliases to it. yaml 2.9.1 checks `count * aliasCount > maxAliasCount`
+per anchor (dist/nodes/Alias.js:61-67), so 120 aliases split over two scalar anchors (60 + 60) pass, and 30 aliases
+(20 to an anchor that holds 10 aliases) fail. An author reading the ADR is misinformed in both directions.
+Rule: When an ADR or reason text restates a measured limit, keep every condition the measurement had (here "to one
+anchor"), or describe the mechanism, never the bare number.
+
+### 2026-11-11: The merge follow-up told the tester to run ci.yml's commands verbatim, with no local rule for them (#106 merge of #149, judge_design round 1, operations)
+Check 8 of the merge design says to run the `checks` job "as ci.yml runs them ... do not retype from older plans". At this
+load (8 to 22 on 10 cores) a fresh plain `pnpm test` was red in 2 of 3 runs on the merged tree and in 2 of 2 web runs at
+92cb2c0, always `lesson-markdown.test.tsx` with `Test timed out in 5000ms`. That is the pre-existing timeout #106 already
+settled with rule R6-1 (`-- --testTimeout=60000`, any red is real), and the design dropped that rule. Check 10 has the same
+problem: `check-append-only.sh` copied from ci.yml exits 1 at commit B, because it needs a PR merge commit and
+`PR_HEAD_SHA`. Run at commit A it exits 0 against the wrong base.
+Rule: When a design tells the tester to run CI's commands locally, run each one on the host at base first. Carry over any
+local rule the task already has (timeouts, a simulated merge commit), or say why it no longer applies.
