@@ -523,6 +523,16 @@ metric (here: build-cache record size per step from `buildx du --verbose`), with
 metric moves. Every architect re-brief says: you have no shell; record only results a named run produced, labelled
 with that run.
 
+### 2026-11-12: A resumed judge cannot change its vote; a judge round sent only two judges (#130)
+
+The operations judge of judge_design round 4 voted FAIL (CANNOT-CERTIFY: snapshot.ubuntu.com was down). After the
+snapshot recovered I resumed the same agent with SendMessage; it reran and reported PASS, but the gate keeps one vote
+per agent and round, so the PASS was logged as `vote-dup` and the FAIL stayed. A fresh operations judge had to re-check
+the evidence. Separately, after two auto-mode classifier failures I re-sent judge_code with only security and
+architecture; operations was missing until the third send.
+Rule: a judge whose verdict must change is re-spawned as a new agent, never resumed. Before sending a judge round,
+count the Agent calls in the message against the tier's judge list.
+
 ### 2026-11-11: A merge pass reopened a judged design and ran seven flow rounds (#72)
 
 After #138 (quiz) merged, #72's PR conflicted in 41 hunks. The merge pass was meant to be narrow, but the
