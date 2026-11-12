@@ -1508,3 +1508,98 @@ build, which is exactly what #113 exists to cut (B4 delta +0.20 GB -> +0.35 GB).
 visible hint.
 Rule: A pre-decided rule for a cache or layer change measures the issue's own metric (the step's record size in
 `docker buildx du --verbose`, or the Build Cache delta) for both variants, never only a tool's progress counter.
+
+### 2026-11-10: Hard wall-clock kill on apt chosen before the normal durations were known (#130, judge_design round 1, security)
+Design 1/5/D2/D6 bounds each apt helper call by `timeout --kill-after=10 "$remaining"` within a 240 s budget and
+names "normal durations" as unknown (gate G). The research notes already held a slow but working fetch (#128
+42756938732 a1, 5 min 33 s at about 100 kB/s), and gate G then measured green apt RUNs up to 431 s (fetch, ci.yml
+42737998827) and 200.5 s (final, ci.yml 42864732752), 2 of 10 green ci.yml fetch RUNs over 240 s. The design would
+have turned green builds red, which is the opposite of the issue's done criterion, and its own stop rule (no budget
+passes G-A and G-T1 together) sends it back before the coder. A red build on a slow mirror is also the pressure
+that later gets "fixed" with a fallback mirror, i.e. by dropping the pin.
+Rule: Before bounding a step by wall-clock time, read the measured green-run tail of that step; if the tail exceeds
+the bound, bound stalls (no progress, connection timeouts) and the decision to start another attempt, never kill a
+progressing download.
+
+### 2026-11-10: Hard wall-time budget on a network phase chosen before its normal duration was known (#130, judge_design, architecture)
+Design D2/D6 put every networked apt-get call under `timeout "$remaining"` with a 240 s total budget per helper call
+and made the fallback "lower the budget" if gate G failed. Gate G (orchestrator, green runs only) then showed green
+apt RUNs of 246.6 s and 431.0 s (fetch, ci.yml 42756938732, 42737998827) and 194.7-200.5 s (final): the design would
+have turned at least 2 of 10 green ci.yml builds red, and the fallback rule would have made it worse. The flake the
+issue names is fast failure (5xx, rc-0 update with W:, size mismatch), not slowness; apt already retries its own
+connection timeouts, so a wall-time kill bounded nothing the issue asked for and added the timeout/kill-after
+machinery, F3/F4, H2/H5, two stubs, FI-8..10 and M4/M5.
+Rule: Bound a retried network step by attempts and by apt's own no-progress timeouts, never by total wall time,
+unless measured green durations exist and the bound sits well above their maximum; a fallback must never tighten a
+bound that already kills green runs.
+
+### 2026-11-10: Failure text and cache claims written from memory, not from the paths that produce them (#130, judge_design round 1, operations)
+The give-up line ends "the E: and W: lines above name the failing URL", but on the budget-kill path (rc 124) apt is
+killed before it prints any E:/W: line: in the ops rehearsal both a stalled InRelease (full 240 s budget) and a slow
+but progressing .deb (budget lowered to 60 s for the run) printed the give-up line with no E:/W: line above it, and
+the slow case told the reader to "rebuild once these sources answer again" about a source that was answering. H1 also
+claimed complete .deb files of an earlier attempt "stay in archives/ and are reused"; the base's docker-clean has
+`APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb ..." }`, and the rehearsal showed 1 deb after
+--download-only and 0 after the next update, so every retry downloads everything again.
+Rule: For each failure line, name the code path that prints it and state only what that path has actually printed
+before it; read the base's /etc/apt/apt.conf.d before claiming anything about what apt keeps between calls.
+
+### 2026-11-10: The rehearsal for the decisive premise could not fail, and one rehearsal had no rule for its bad result (#130, judge_design round 2, architecture)
+Revision 2 rests on `Acquire::http::Timeout=30` being an inactivity timeout and names FI-slow as what settles it.
+FI-slow's oracle cannot see a total-request cut: the fault proxy forwards `Range` and `Content-Range`, so a try cut
+at 30 s resumes from `archives/partial` and finishes on attempt 1 (rc 0, `complete on attempt 1`, installed, elapsed
+>= 35 all still pass), and the "no `Delaying` line naming `/pool/`" check is vacuous because apt's Delaying line
+prints the item description (`http://.../20261104T000000Z noble InRelease`, ops r1 out-w75.log), never the pool path.
+Separately, FI-6r feeds G-T1d with D but had no rule for the outer 900 s timeout firing (serial per-host retries)
+or for D so large that the download-path give-up line is lost on every run, not only "the slowest ci.yml run".
+The harness pin guard also greps `tzdata=2026e-0ubuntu0.24.04.1`, which is not in the Dockerfile (it is an ARG).
+Rule: For each premise a rehearsal settles, write the oracle that the false premise would turn red (count requests
+at the proxy, not only end states) and a pre-decided consequence for every outcome, including the outer timeout.
+
+### 2026-11-10: Stall arithmetic and a fault case left to the tester without checking the harness can show them (#130, judge_design round 2, operations)
+Revision 2 put a stalled request at "up to 6 tries x 30 s plus 31 s" (about 211 s) and wrote the header claim "a
+stalled connection is ended by apt's 30 s timeout". The ops round-2 rehearsal of the rev-2 helper (FI-hang, hang on
+InRelease and on /dists/) showed each apt try opens two connections 30 s apart, so one stalled request costs 391 s:
+attempt 1 failed at 391 s, attempt 2 at 842 s, and the outer 900 s timeout fired (rc 124) before attempt 3; the
+give-up line cannot print under a stall inside the 15-minute step, and apt names it "Connection failed". FI-6r was
+specified in the FI image, which already has ca-certificates 20260816ubuntu0.24.04.2 and python3 from the live
+archive: the seven-pin list then fails every attempt with "E: Packages were downgraded and -y was used without
+--allow-downgrades", 0 FAULT requests, and still meets every FI-6r pass condition (D would read 49 s and pass G-T1d;
+on a pristine base D is 90.7 s and G-T1d fails). The --simulate check without -y let that deterministic failure be
+retried three times and reported as "rebuild later".
+Rule: When a number or a pass condition is left "to be rehearsed", state the mechanism it depends on (connections per
+try, the image's preinstalled versions) and give the case a marker that proves the fault was the cause (FAULT count
+> 0, a positive control with the same list and image); a fault case that can pass with zero injected faults is not a
+test.
+
+### 2026-11-10: FI-slow fixed with a marker the proxy cannot produce (#130, judge_design round 3, architecture)
+Revision 3 made FI-slow pass on "exactly one SLOW line (a cut and resume would be a second request)" and no
+Delaying line. `fault_proxy.py` logs SLOW only after the last chunk and its sleep: a request apt cuts raises
+BrokenPipe in `wfile.write` and leaves a traceback, not a SLOW line, so cut plus resume still shows one SLOW line.
+FI-hang already shows apt's first timeout in a try reconnects without a Delaying line (HANG at 0.1 and 30.1 s,
+first Delaying at 60 s), so one cut leaves no Delaying line either. The marker also goes red on a correct helper:
+ops r2 FI-slow5 (slow 0.5, completed in 95 s on attempt 1) has 0 SLOW lines because the min-profile proxy dies with
+the case container before it logs, and the red branch of FI-slow would then drop the Timeout options.
+Rule: Before using a harness log line as a pass marker, read where the harness prints it: on which path (start,
+completion, error) and whether it can be lost when the case ends; a marker printed only on success cannot count
+failed attempts.
+
+### 2026-11-11: Final-list FI cases prescribed on a fault proxy that buffers whole responses (#130, judge_design round 3, operations)
+Revision 3 moved FI-1f and FI-6r to the pristine base and kept `fault_proxy.py` as is. Its pass-through reads the
+whole upstream body before it sends the status line, so apt sees no byte until the file has arrived at the proxy.
+On 2026-11-11 the snapshot served the by-hash `noble/universe/binary-arm64` index (15.3 MB) in 54.8 s from the
+host (TTFB 2.2 s), so through the proxy every try hit `Acquire::http::Timeout=30`: FI-1f printed Delaying 1/2/4/8/16
+on that index and no helper line by 376 s; the same list on the FI image ended rc 124 at 330 s. With a streaming
+pass-through FI-1f was green (rc 0, attempt 1 after 307 s). The plan reads a red FI-1f as "the list or the base is
+wrong", and FI-6r would fail on update, not on the debs, so neither verdict means what the plan says.
+Rule: A fault proxy in front of apt must stream pass-through responses (headers on arrival, body in chunks), and a
+positive control's red-reading must first rule out the harness (Delaying or Ign on an index in a no-fault case).
+
+### 2026-11-12: `--error-on=any` on the live archive made a partial outage fatal (#130)
+D7 put the fetch stage through the same helper as the snapshot. The base's sources span several suites (on amd64
+two hosts: archive.ubuntu.com and security.ubuntu.com), and the fetch stage needs none of noble-security or
+noble-backports to resolve its five packages. Before, one unreachable suite was `W:` and rc 0, and the RUN was green
+(judge_code ops: old commands rc 0 in 14 s with noble-security refused); with `--error-on=any` the same fault is three
+failed attempts and the give-up line at 215 s. Section 6 did not list it, so the change turns a green case red.
+Rule: Before making a failure strict on a source, list every index the source config fetches, and for each one the
+build does not need, state what the old command did when only that index failed and whether the new one keeps it.

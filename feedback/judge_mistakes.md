@@ -315,3 +315,17 @@ so it could not show a difference. The issue is about build-cache growth, and th
 tester's M1/M2). The mount had to be restored in 1ac739d.
 Rule: When a change is judged "no effect", measure it with the metric the issue is about (here the new build-cache
 record of the step, matched by before/after ID diff), not with a proxy that prints the same value in both variants.
+
+### 2026-11-11: Operations' own fault proxy buffered whole responses, and two rounds did not notice (#130, operations)
+`fault_proxy.py` (ops r1) reads the whole upstream body before answering. That passed in rounds 1-2 because the
+snapshot was fast then; on 2026-11-11 its 54.8 s index transfer turned every apt try into a 30 s no-data timeout,
+so the harness the design reuses could fake a stall in a no-fault positive control. Found in round 3.
+Rule: A judge's harness that sits between a client with a timeout and a real upstream streams its pass-through,
+and its positive control is rerun whenever the measured case depends on upstream speed.
+
+### 2026-11-12: Four design rounds measured the fetch stage only under faults on the whole source (#130, operations)
+judge_design rounds 1-4 checked `--error-on=any` against the snapshot faults and the "unexpected size" case, but never
+against a fault on one suite of the live archive that the fetch stage does not need. That case was green before and
+gives up at 215 s now; it surfaced only in judge_code.
+Rule: For a change that makes a partial failure strict, run the old and new command with only one non-essential part
+failing (one suite, one host) in judge_design round 1, and compare the exit codes.
