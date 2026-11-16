@@ -42,7 +42,9 @@ decisions 1-7: `plans/21-pipeline-v2-research.md`; full design: `plans/21-pipeli
    the output of a vote or spawn-map CLI call that failed (stdout and stderr combined), capped at
    200 characters. It may contain absolute paths, never a command, file content or handback
    message.
-7. **Accepted residual risks** (deliberate bypass only; caught by review and by Stepan at merge):
+7. **Accepted residual risks** (deliberate bypass only; caught by review and by Stepan at merge; since #161
+   Stepan merges every process PR beyond `feedback/` and `learner/`, and product PRs are caught by the
+   code judges' diff review):
    - a worktree registered inside main's tree on an orphan branch: inert for resolution, and main's
      zones are checked as absolute paths first; `git worktree add` is not treated as a write verb;
    - shell evasion of bash-code-guard: `python3 -c`, variables, and relative paths. A relative `cd`
