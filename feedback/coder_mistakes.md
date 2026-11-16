@@ -304,3 +304,10 @@ leaves `TERMINAL_SCROLLBACK_LINES` in `CONFIG_DEFAULTS` (typed by a `ConfigVaria
 also keeps #32's comment about terminal specs that no longer exist.
 Rule: Guidance for resolving a revert lists the conflicting files and hunks from the simulation itself, every
 line of each hunk, and is checked by finishing the simulated resolution and running typecheck and tests.
+
+### 2026-11-16: Comment stated a step order that the cited ADR does not have (#148, judge_code, architecture)
+The I-out-7b holder comment says #34's per-check commit is "lock the progress row, write the result, commit".
+ADR-0007 rule 7 has the opposite order: the transaction writes the result first, then applyLessonOutcome takes
+FOR NO KEY UPDATE as its last step. The holder locks first only so the test knows when the lock is held; the comment
+presents that test convenience as #34's shape.
+Rule: When a comment says "the shape of X", check X's spec for the order of steps and say where the test departs from it.
