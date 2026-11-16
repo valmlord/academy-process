@@ -65,7 +65,14 @@ role can verify the previous one. Don't set `model=` unless deliberately needed.
    `pipeline-advance.sh pr <url>` (or `pr skip "no remote"` only before the GitHub repo exists).
    A task with a judge FAIL (a feedback entry) or a LEARN journal entry also changes the process
    repo: it ends with a process PR, and Stepan syncs `.claude/` after merging it (section 7).
-7. CI must be green before merge, in both repositories. Stepan merges (squash).
+7. CI must be green before merge, in both repositories. The orchestrator merges (squash) once the
+   last judge round is 3/3 PASS, CI is green on both PRs and both are mergeable: the process PR
+   first (`gh pr merge <n> --repo valmlord/academy-process --squash`), then the product PR, then it
+   checks main CI. A process PR that main made conflicting is resolved before its merge (feedback
+   files: keep both sides). `gh pr merge` may report a failure after GitHub merged: read the PR state
+   before any retry. Stepan merges himself: PIPELINE tasks, any process PR that changes more than
+   `feedback/` and `learner/`, and any PR he asked to see first. He can always merge or stop a PR
+   himself. The sync after a merge (section 7) stays his.
 
 ## 3. Tiers (source of truth: `.claude/pipeline.json`)
 
@@ -100,8 +107,9 @@ role can verify the previous one. Don't set `model=` unless deliberately needed.
 ### Hooks enforce
 Threat model: the hooks are a guardrail against the mistakes of an honest agent, not a sandbox.
 Deliberate bypasses (`python3 -c`, relative `cd`, forged transcripts) are accepted residual risks
-(ADR-0005, `.claude/pipeline/adr/0005-pipeline-v2.md`), caught by review of the process PR and by
-Stepan at merge.
+(ADR-0005, `.claude/pipeline/adr/0005-pipeline-v2.md`), caught by the code judges' diff review, by
+review of the process PR and by Stepan, who merges every process PR beyond `feedback/` and
+`learner/` (section 2 step 7).
 - Hooks, `pipeline.json` and agents always come from the **main checkout** (also in Desktop
   worktree sessions, section 7). The **state** belongs to the checkout the hook input `cwd` lies in:
   the main checkout or a registered worktree; a `cwd` outside them (another repo, a temp dir) uses
