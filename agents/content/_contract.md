@@ -19,7 +19,8 @@ Lesson `type`: theory | quiz | artifact | agent-eval | bug-hunt | project.
 
 Check `kind`:
 - `quiz` questions with options and the correct answer (`file: quiz.yaml`, `passScore`).
-- `command` shell command run in the workspace container, exit 0 = pass (`run`, `timeoutSec`).
+- `command` shell command run in the workspace container, exit 0 = pass, exit 3 = format error or
+  stage 0 (not counted), any other = counted failure (`run`, `timeoutSec`; see `docs/course-reference.md`).
 - `rubric` AI mentor grades artifacts against `checks/rubric.md` (`artifacts[]` globs, `passScore`).
 - `hidden-task` an agent runs headless in a fresh copy of the learner's workspace with a task the
   learner never saw; `verify` script decides (`task`, `verify`, `timeoutSec`, `budgetUsd`).
