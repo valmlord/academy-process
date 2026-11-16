@@ -602,3 +602,14 @@ The #107 tester brief named `isolated-stack.sh t32`; its web port 53081 was held
 stopped before any build and a second tester round was needed for T5 alone (t31 had both ports free).
 Rule: before a tester brief that runs isolated-stack.sh, check the run's two ports with `lsof -nP -iTCP:<port> -sTCP:LISTEN`
 and name a run whose ports are free.
+
+### 2026-11-16: Six design rounds, four of them on the tester procedure's prose, not the fix (#95)
+The #95 fix (about 70 product LOC) had its focus rule settled by round 2 and confirmed for the whole class. Rounds 3-6
+failed on text around the tester procedure: an incomplete hand-written list of what an isolated-stack run leaves
+behind (rounds 3 and 4, same class twice), then one sentence crediting the final check with an image check it does not
+do (round 5). I patched the list once before closing the class by measurement; the second FAIL of the same shape was
+the signal I should have acted on at the first. Rounds 4-6 needed grants from the main orchestrator.
+Rule: a design never states a side-effect inventory or what a check verifies without a line ref the judge can read; at
+the first FAIL on such a claim, replace it with a measurement (read-only before/after snapshots run once before the
+judges) instead of correcting the list. Size the tester procedure to the change: a 70-LOC UI fix does not need the
+design to narrate the stack harness's teardown.

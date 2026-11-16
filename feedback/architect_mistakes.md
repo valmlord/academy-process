@@ -1943,3 +1943,89 @@ a host with BSD sed.
 Rule: A stability check for a flaky fix runs the old code under the same load, interleaved, and requires it to go red.
 Every background load loop has an EXIT/INT/TERM trap, guarded `${L:?}` paths and a stated Bash timeout. Every
 throwaway clone has a scripted cleanup step and every mutation an exact command.
+
+### 2026-11-16: A catch-all flag taker that focuses on stale flags, with a comment claiming it never does (#95, judge_design round 1, architecture)
+Design 1.1 `FocusOnAnyRetry` focuses the not-found h1 whenever `takeAnyRetryFocus()` finds any flag. D1 says a pending
+flag is either from the retry this page replaced or "stale from an interrupted refresh; in both cases clearing it is
+right", but the code focuses in both cases, not only clears. Section 8 then accepts the stale case as "pre-existing for
+every FocusOnMount", which is false for this page: today not-found never moves focus, after #95 every stale flag of any
+id (a refresh superseded by a navigation; a lesson text retry that ended on the lesson course error, flag = panel id)
+moves focus to the h1 on the next ordinary not-found arrival, against AC9 "otherwise focus does not move". The dictated
+not-found header "The h1 takes focus only after a retry this page replaced" is therefore false, and no test or mutation
+row covers the case. A cheap fix exists: store the pathname with the flag in `retry()` and let the not-found taker
+clear always but focus only when the pathname still matches.
+Rule: When widening a one-id taker to "any id", enumerate every path that leaves the flag stale and decide focus and
+clear separately for each; an exclusivity claim in a dictated comment needs a test for the counter-example.
+
+### 2026-11-16: Scratch-clone procedure leaks its clone on an early guard and its cleanup guard passes a dot-dot path (#95, judge_design round 1, operations)
+Design 6.3 prints `CLONE $C` only after the per-file guards, so the dry-run's `GUARD FAILED missing ... not-found.test.tsx`
+left a full clone in the scratchpad with no path printed. 6.4 runs the cleanup only after `RED TREE READY`, never sets
+`C`, and its `case "$C" in "$S"/m95-clone-*)` guard accepted `$S/m95-clone-X/../../outside` (case `*` matches `/` and
+`..`), echoed its refusal with exit 0, and did nothing silently when `repo/apps/web` was missing.
+Rule: A scratch procedure prints its scratch path right after creating it, runs its cleanup on every exit path, rejects
+`..` and exits non-zero on refusal; dry-run the cleanup with a dot-dot path and an early guard failure.
+
+### 2026-11-16: Dictated comment states a URL-timing guarantee that back/forward breaks (#95, judge_design round 2, architecture)
+Design 1.1 dictates the comment over `isSetOnShownPage`: "Next writes the new URL in an insertion effect of the commit
+that shows the route (app-router.js HistoryUpdater), so the pathname here is the one of the view now mounted", and
+section 0 states the same as a fact. On a back/forward press the browser changes `window.location` before `popstate`
+fires; Next then dispatches ACTION_RESTORE in a transition (`app-router.js` handlePopState/traverse) and commits later,
+and HistoryUpdater can even skip its write (`hasMissedTraversal`). Between the two, the old view is mounted under the
+new pathname. The rule still fails closed there (a taker sees a foreign pathname and drops), but the comment would ship
+false, and 1.4 lists back/forward under E4 itself.
+Rule: Before dictating a comment that says when the browser URL changes, check every way the URL can change (Next
+navigation, refresh, history.replaceState from app code, popstate), and qualify the claim for the ones that do not go
+through the router's commit.
+
+### 2026-11-16: Listed what a stack run writes outside the scratchpad, but not all of it (#95, judge_design round 3, operations)
+Round 3 change 11 added to 6.4 (and the round-3 table) that `isolated-stack.sh t32` writes "Docker resources of
+project `academy-t32` (containers, network, volumes) and the image `academy-web:t32`, which its teardown removes".
+The script runs `up -d --build` (`isolated-stack.sh:335`), so it also builds `academy-workspace-service:t32`
+(`docker-compose.yml:71`, removed by teardown through `T31_IMAGES`, `isolated-stack.sh:58`), adds BuildKit build-cache
+records for both images that teardown never removes, and pulls `node:22.23.4-alpine` when it is absent
+(`isolated-stack.sh:48,328`), which also stays. A tester reading the list as complete reports a clean machine when it
+is not, and build-cache growth is exactly what #113 measured.
+Rule: When a design says what a command writes outside the scratchpad, derive the list from every create/build/pull
+in the script it runs, and say which items its teardown removes and which stay.
+
+### 2026-11-16: The round-4 "every create, build and pull" list still stopped at the script's own lines (#95, judge_design round 4, operations)
+Round 4 rebuilt the 6.4 table from the docker lines of `isolated-stack.sh` itself, not from what those lines run.
+Missing: the `docker/dockerfile:1` frontend that BuildKit pulls for `apps/web/Dockerfile:1` (`# syntax=` directive;
+a `frontend` build-cache record that stays, and a new one when the tag moves), the `pnpm` cache mounts of both
+Dockerfiles (`exec.cachemount` records, stay), and the one-off `docker compose run --rm --no-deps web` containers of
+`check-image-migrations.sh:40,63` (called at `isolated-stack.sh:340`). 6.2's list of git-ignored worktree files cited
+`.gitignore:12-20` but left out `apps/web/.next/` and `apps/web/next-env.d.ts`, which `next typegen` in
+`pnpm typecheck` (step 1) writes. Same class as the round-3 entry above, one level deeper.
+Rule: Derive a "what this writes" list by following every command the script runs into the files it reads
+(Dockerfiles incl. `# syntax=` and `--mount=type=cache`, called scripts, package scripts behind turbo tasks), not
+only the script's own lines.
+
+### 2026-11-16: "Every create, build and pull" list still misses the build's own registry fetch (#95, judge_design round 4, architecture)
+Round 4 change 1 says the 6.4 table is derived from every create, build and pull of `isolated-stack.sh t32`, and 6.2
+reuses it for t31. The web build reads `apps/web/Dockerfile:1` `# syntax=docker/dockerfile:1`, which makes BuildKit
+fetch the dockerfile frontend image from the registry; the repo says so itself (`services/workspace/Dockerfile:2-3`,
+"a directive would make every build fetch a frontend image from the registry"). The table names only
+`docker pull "$NODE_IMAGE"` as a pull, so the tester checks the node image and not the frontend, which stays after
+teardown. Lesser: `check-image-migrations.sh:40,63` (called at `isolated-stack.sh:340`) creates `docker compose run --rm`
+web containers, a creator the table does not name (they are removed by `--rm` and caught by the final check).
+Rule: Derive a "what stays" list from the Dockerfiles and the scripts the script calls too (syntax directives, FROM,
+cache mounts, `compose run`), not only from the script's own docker lines, before claiming it is complete.
+
+### 2026-11-16: Two judge rounds spent patching a hand-written inventory of a stack run's side effects (#95, judge_design rounds 3-4)
+The #95 tester procedure listed what `isolated-stack.sh t31|t32` leaves outside the scratchpad. Round 3 failed because
+the list missed a second image, the build cache and a base-image pull; the round-4 table claimed "every create, build
+and pull" and failed again on the dockerfile frontend fetch, the pnpm cache mounts, the `check-image-migrations.sh`
+run containers and the `next typegen` output. Each fix read one level deeper and still stopped short: side effects
+hide in what the script calls (Dockerfile directives, helper scripts, tool internals).
+Rule: never hand-write an inventory of side effects. State only what the code verifies (the script's own teardown and
+final check, with line refs), name known leftover categories as examples, and have the tester measure the rest with
+read-only before/after snapshots, each snapshot command run once before the judges see it.
+
+### 2026-11-16: "Verified by code" bullet implied the final check covers the built images (#95, judge_design round 5, architecture)
+Design 6.4 lists under "Verified by code" the line "Not checked by the final check: images other than `T31_IMAGES`".
+The final check (`isolated-stack.sh:236-244`) lists only containers, volumes and networks by label; it checks no image.
+`T31_IMAGES` are only removed in teardown (`:226-230`), and a failed `docker image ls` at `:227` yields an empty
+string, so the removal is skipped with no `TEARDOWN FAIL`. The sentence credits the code with a check it does not do,
+in the very section whose round-5 promise was "states only what the code verifies".
+Rule: in a "verified by code" list, every negative ("not checked: X other than Y") is also a positive claim about Y;
+check Y against the cited lines the same way as the positive bullets.
