@@ -304,3 +304,13 @@ leaves `TERMINAL_SCROLLBACK_LINES` in `CONFIG_DEFAULTS` (typed by a `ConfigVaria
 also keeps #32's comment about terminal specs that no longer exist.
 Rule: Guidance for resolving a revert lists the conflicting files and hunks from the simulation itself, every
 line of each hunk, and is checked by finishing the simulated resolution and running typecheck and tests.
+
+### 2026-11-16: A test header claimed more isolation than its test checks, and a doc line restated the config rule loosely (#115, judge_code round 1, architecture)
+terminal-exec.int.test.ts:13-14 says the file proves "the agent key reaches the shell and nothing else in the
+container". I-exec-agent-key checks only a sibling exec's environment and `/proc/1/environ`. ADR-0002 item 14, in the
+same commit set, says every uid-1000 process in the container can read the shell's `/proc/<pid>/environ`, and the
+shell's children inherit the key, so the header contradicts the ADR. Separately, `.env.example` gives the rule as
+"1-1024 printable characters without space", while config.ts accepts only 0x21-0x7E: a printable non-ASCII character
+is refused although the line allows it.
+Rule: A test file's header states what its assertions check (which process, which file), never a wider "nothing
+else"; a doc line that restates a config rule copies the rule's charset and range from the code.

@@ -589,3 +589,15 @@ took about as long as the time between merges to main.
 Rule: for a merge-of-main follow-up, `git fetch` right before the tester and right before the push, and write the merge
 design so it already covers "main moved by docs-only commits": a further merge commit with the same checks, judged at
 judge_code.
+
+### 2026-11-16: Comment rewrites dictated by the design passed judge_design and failed judge_code (#115)
+
+judge_design round 2 passed a 6.0 table of replacement comments the architect wrote. Two of them (spec.ts:79-80,
+:216-217) claimed more than the code: "nothing enters the create body" while Image, limits and labels come from the
+config; "the only value from the service's environment reaches the shell" while TERMINAL_SHELL goes into Cmd. The coder
+copied them verbatim, and judge_code round 1 failed on them plus two of the coder's own lines of the same class. The
+#33 rule (no ready sentences from me) covered my wording, not the architect's. What worked: running the design's
+/proc premises myself before judge_design (E0), so round 1 argued about text, not about unmeasured facts.
+Rule: when a design dictates comment or doc sentences, the architect brief asks for each one the list of cases it
+covers with the code line behind each case, and the coder brief asks the coder to re-check every dictated sentence
+against the code and grep the diff for the same class (only, nothing, never, exactly, every) before the first commit.
