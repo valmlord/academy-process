@@ -589,3 +589,9 @@ took about as long as the time between merges to main.
 Rule: for a merge-of-main follow-up, `git fetch` right before the tester and right before the push, and write the merge
 design so it already covers "main moved by docs-only commits": a further merge commit with the same checks, judged at
 judge_code.
+
+### 2026-11-16: Merged PRs without checking main CI, and a known flake waited (#43, #130)
+After merging I moved on without looking at the CI run on main. A green PR run does not cover the merge result, and
+the e2e job on main had been failing on an Ubuntu mirror outage for hours before I noticed it.
+Rule: after every merge, read the CI run of the new main commit to its end. A failure there is fixed or rerun at once,
+and a known flake gets its issue the same day.
