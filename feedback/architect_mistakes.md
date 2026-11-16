@@ -1944,6 +1944,52 @@ Rule: A stability check for a flaky fix runs the old code under the same load, i
 Every background load loop has an EXIT/INT/TERM trap, guarded `${L:?}` paths and a stated Bash timeout. Every
 throwaway clone has a scripted cleanup step and every mutation an exact command.
 
+### 2026-11-16: Mutation helper edits a relative path, so a reset cwd mutates the task worktree (#148, judge_design round 1, security)
+Design 3.1 `mutate()` runs `perl -0pi` on `"$file"`, and the 3.2 rows pass `apps/web/lib/progress/rules.ts` /
+`outcome-writer.ts` relative, with only "(from `$M`)" in prose and no `cd "$M" &&` in the step. Agent Bash calls start in
+the task worktree, the anchors exist there too (same base), and the active pipeline lets shell writes to product files
+through, so the mutant lands in the task worktree's product code. The helper's `git -C "$M" diff --stat` is printed,
+not asserted, so it shows nothing and the run continues; the between-runs restore is `git -C "$M"` and does not undo it.
+Rule: every mutation command takes an absolute `"$M/..."` path (or the helper prefixes `$M` itself and refuses a file
+whose real path is not under `$M`), and asserts the clone's diff is non-empty and the task worktree's diff is unchanged.
+
+### 2026-11-16: Expected red set for a mutant was taken from a grep of one field, not of every test reading the changed value (#148, judge_design round 1, architecture)
+Design 3.2 expects M1 (`isInNextRun: isCounted && !isClosed && !tally.hasPassed`) to turn exactly {P6, the example at
+rules.test.ts:263} red. The design's fact list grepped `spendsTokens`/`isInNextRun` and missed that `composeRun` reads
+`isInNextRun`: rules.test.ts:278 "composes a run of exactly the checks in the next run, with their kinds" expects the
+passed command check "done" in `includedChecks`, which M1 drops, so M1 is red in three tests. The tester is told a
+larger red set is reported, not dismissed, so the run would come back as a mismatch against the design.
+Rule: for each mutant, list every test that reads the mutated value directly or through a consumer (here composeRun,
+hasNextRun) and derive the expected red set from that list, not from a grep of the field name alone.
+
+### 2026-11-16: Between-runs restore check scoped to a directory that also holds the test patch (#148, judge_design round 1, operations)
+Design 3.2 says after each restore `git -C "$M" diff --stat -- apps/web/lib` "prints nothing (the test patch lives in
+other files and stays)". The patched rules.property.test.ts is itself under apps/web/lib, so in the dry run the line
+printed that file after every restore and can never be empty; a tester following it literally stops or learns to
+ignore it, and then a leftover mutant in rules.ts would be ignored too. The `mutate` helper's own `diff --stat` has the
+same scope. Separately, the Bash tool's shell is zsh, where `rm -f "$S"/148-*.json` aborts with "no matches found" when
+no JSON was written, and that whole rm (patch file included) is skipped.
+Rule: a "prints nothing" check is scoped to exactly the files the step restores (here rules.ts and outcome-writer.ts),
+and every scripted step is dry-run in the agent's real shell (zsh here), with globs that tolerate no match.
+
+### 2026-11-16: Dictated an exclusivity comment that ADR-0007 rule 7 contradicts (#148, judge_code, architecture)
+Design D9 prescribed the I-out-7b holder comment "this is the shape of #34's per-check commit, the one write that
+can land while the writer waits". ADR-0007 rule 7(a) runs applyLessonOutcome after every transaction that inserts
+check results or sets an attempt final (R34-3, R34-14, R34-15), and a finished attempt changes the facts through its
+missing results (rules.ts resultsWithMissing). So the result insert is not the one write; the same test's D15
+comment even names the attempt change as a possible concurrent write.
+Rule: Before dictating "the one"/"only" in a comment, read the ADR rule that lists the writers and grep for the others.
+
+### 2026-11-16: Claimed a test goes red for a new kind the generators never draw (#148, judge_code round 2, architecture)
+Design section 5 says "A new token-spending kind is added to CHECK_KIND_TRAITS without the test set: P6 (a) goes red
+at once", and the coder wrote it into the TOKEN_SPENDING_KINDS comment as "has to be added in both places, or P6 goes
+red". P6 sees only kinds that scenarioArb draws from the hand-written KINDS list (rules.property.test.ts:28, typed
+`readonly CheckKind[]`, not exhaustive) and tokenPassedScenarioArb's own `constantFrom("rubric", "hidden-task")`. A new
+kind added to the lesson schema and to CHECK_KIND_TRAITS (a Record, so it must be) but not to KINDS is never
+generated, and P6 stays green. Only a changed trait of an existing kind turns it red.
+Rule: Before writing "X goes red when Y", trace whether the test's generators can produce Y at all; a hand-written
+list of variants guards only the variants on it.
+
 ### 2026-11-16: Listed one stale comment of the changed path and missed the one beside the changed line; ADR said "not in process listings" (#115, judge_design round 1, architecture)
 Design 2.2 updates the errors.ts:123-125 comment because #115 makes it stale, but not the comment directly above the
 line it changes: spec.ts:197 "Added to the container's own `HOME`; nothing from the service's environment reaches the
