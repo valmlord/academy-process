@@ -601,3 +601,22 @@ copied them verbatim, and judge_code round 1 failed on them plus two of the code
 Rule: when a design dictates comment or doc sentences, the architect brief asks for each one the list of cases it
 covers with the code line behind each case, and the coder brief asks the coder to re-check every dictated sentence
 against the code and grep the diff for the same class (only, nothing, never, exactly, every) before the first commit.
+
+### 2026-11-16: Merged PRs without checking main CI, and a known flake waited (#43, #130)
+After merging I moved on without looking at the CI run on main. A green PR run does not cover the merge result, and
+the e2e job on main had been failing on an Ubuntu mirror outage for hours before I noticed it.
+Rule: after every merge, read the CI run of the new main commit to its end. A failure there is fixed or rerun at once,
+and a known flake gets its issue the same day.
+
+### 2026-11-16: Skipped the #110 rule and sent a no-shell architect's procedures straight to judges (#107)
+The #107 design prescribed two mutation rows and two lockfile gates written without a shell. I sent it to judge_design
+without anyone running them; the operations judge found a non-unique anchor (app.ts:8 and :52) and a placeholder age
+check, and the round failed on procedure text, not on the change.
+Rule: the #110 rule applies to every design with shell procedures, however small the change: before judge_design, have
+the procedures run (operations judge dry-run or my own scratch run) and pass the output with the design.
+
+### 2026-11-16: The briefed stack run's port was taken by a macOS service (#107)
+The #107 tester brief named `isolated-stack.sh t32`; its web port 53081 was held by `/usr/libexec/rapportd`, so the tester
+stopped before any build and a second tester round was needed for T5 alone (t31 had both ports free).
+Rule: before a tester brief that runs isolated-stack.sh, check the run's two ports with `lsof -nP -iTCP:<port> -sTCP:LISTEN`
+and name a run whose ports are free.

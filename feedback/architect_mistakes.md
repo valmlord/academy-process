@@ -1924,6 +1924,13 @@ problem: `check-append-only.sh` copied from ci.yml exits 1 at commit B, because 
 Rule: When a design tells the tester to run CI's commands locally, run each one on the host at base first. Carry over any
 local rule the task already has (timeouts, a simulated merge commit), or say why it no longer applies.
 
+### 2026-11-16: Mutation row named a non-unique anchor and gates were left as placeholders (#107, judge_design round 1, operations)
+T4 M1 said "add after `frameworkErrors,`" with a must-match-once replacement; the string also occurs in app.ts:8's import,
+so the row stops on its first run. Gate 4.1 c) gave the age check as `<parse ...>` and 4.1 b) compared 13 lines by eye
+with no red control.
+Rule: every mutation row and gate in a design is a literal, runnable string that was run once at base (anchor match count
+printed); every gate names its red control.
+
 ### 2026-11-16: A flaky-fix stability check with no base control and an unguarded load loop (#93)
 Design 5 check 3 passes on "0/20 foreground failures" and "background counts >= 1". Each background iteration creates
 its log before the run starts, so the count is >= 1 even when the suite never starts. On an idle host (load 2, old test
@@ -1977,3 +1984,11 @@ exec's `Cmd` carries TERMINAL_SHELL, which becomes the shell itself. Both senten
 something wider. This is the #121 lesson again, on the very rows written to fix stale comments.
 Rule: A dictated replacement comment names the field it is about (`Env`, not "the create body" or "the shell"), and
 before sending it, list every input of the function it sits in and check the sentence against each one.
+
+### 2026-11-16: Scratch red/green harness was blocked by the shell guard and still wrote into the worktree (#156)
+Design 6 dictated `cp "$W/apps/web/..." "$S/"` and `ln -s "$W/apps/web/node_modules" "$S/node_modules"`. While the main checkout holds a LEARN state, bash-code-guard consults it for any command naming `$W` (the worktree path contains the main path) and blocks a write verb followed by `apps/`, so both setup steps fail as worded. The design also claimed the harness never touches the worktree, but vitest without `--no-cache --no-fsModuleCache` writes `results.json` and creates `node_modules/.vitest-cache` through the symlink into `$W/apps/web/node_modules`. With no `--reporter=verbose` the default reporter lists only failing tests, so the "X green" expectations cannot be read from the output, and the R3-R5 rows named only some of the tests that go red.
+Rule: A scratch harness is dictated as a script file run whole, with source reads whose write target is the scratch dir, every tool cache pointed at or disabled for the scratch dir, a reporter that names every test, and an expected outcome for every test the mutation can reach.
+
+### 2026-11-16: Dictated an unconditional exactness comment that the same design's 4.1 contradicts (#156)
+Design 4.6 told the coder to write in split.ts that "multiplying first leaves a single rounding (the division)", with no condition. Design 4.1 itself says that on non-dyadic live inputs (17.6 px root font, 90 % or 110 % page zoom, passed by lesson-layout.tsx:73 from getBoundingClientRect and getComputedStyle) paneMinPx * 100 and the subtraction round too, and a limit can be off by one. The coder copied the wording, so split.ts:34-36 claims an always-exact limit that holds only for binary-exact widths. 4.6 also dictated "rounds and put the 440 px tie on the wrong side", a tense clash that reached split.test.ts:22.
+Rule: A comment a design dictates carries every condition the design's own analysis attaches to the claim; reread each dictated sentence against the section that proves it, and for grammar, before handing over.
