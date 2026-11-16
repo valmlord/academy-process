@@ -305,6 +305,17 @@ also keeps #32's comment about terminal specs that no longer exist.
 Rule: Guidance for resolving a revert lists the conflicting files and hunks from the simulation itself, every
 line of each hunk, and is checked by finishing the simulated resolution and running typecheck and tests.
 
+### 2026-11-16: A tracked comment cited the local design, and a commit body repeated an unchecked claim (#162, judge_code round 1, architecture)
+schema.int.test.ts (I15 accepted rows) says "node-pg returns the elements only (design 1.3)". `plans/` is ignored
+by git, so the reference points at nothing for any reader of the repository; #86 already spent a round removing
+"(design Dn)" comments from tracked files. The body of `fix(web): quote stored values in StoredFactError` says the
+old message printed a stored NULL as "null"; the old `checkKindOf` passed `value ?? "<missing>"`, so a stored NULL
+printed `holds "<missing>"`, the same as a missing kind. The claim came from research 5 and was not checked against
+the code being replaced, which was in the diff.
+Rule: Before handing back, grep the added lines for "design", "research", "plan", "round" and section or decision
+ids and keep the reason without the citation; check every "before" claim of a commit body against the old code in
+`git show main:<file>`.
+
 ### 2026-11-16: Comment stated a step order that the cited ADR does not have (#148, judge_code, architecture)
 The I-out-7b holder comment says #34's per-check commit is "lock the progress row, write the result, commit".
 ADR-0007 rule 7 has the opposite order: the transaction writes the result first, then applyLessonOutcome takes

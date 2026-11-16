@@ -1944,6 +1944,27 @@ Rule: A stability check for a flaky fix runs the old code under the same load, i
 Every background load loop has an EXIT/INT/TERM trap, guarded `${L:?}` paths and a stated Bash timeout. Every
 throwaway clone has a scripted cleanup step and every mutation an exact command.
 
+### 2026-11-16: Gate commands dry-run in a shell other than the one the tester runs, and a per-commit loop that ran zero times (#162)
+Design 4.4 and 5.14 were written for bash, but the tester's Bash tool runs zsh with `grep` wrapped by ugrep. There
+`$IT test/...` is one word (zsh does not split it: `command not found`, rc 127, which reads as "red" on every M row),
+and the M8 guard `grep -c 'holds ${storedValueText(value)}'` counts 0 (ugrep takes the `$` as an anchor; BSD
+`/usr/bin/grep` counts 1), so M8 stops at GUARD FAILED. Step 14 runs `git rev-list main..HEAD` "in the throwaway
+clone", which has no local `main` (the design says so itself in step 6): rev-list fails, the loop runs zero times,
+prints nothing and exits 0, so per-commit greenness is never checked.
+Rule: Dry-run every gate command in the shell the tester will use (the Bash tool, zsh), or put it in a file run with
+`bash <file>`; never pass a command through an unquoted variable; use `grep -F` for literal anchors; any loop over
+revisions in a clone uses `origin/main` and fails when the list is empty.
+
+### 2026-11-16: A red control that relied on a CHECK refusing NULL (#162, judge_design, architecture)
+Design 4.4 M6 strips `array_ndims(x) IS NULL OR` from `attempts_included_check_ids_dims_check` and predicts that `{}`
+is then refused (T9, T13 and every default-`{}` fixture red). `array_ndims('{}')` is NULL, `NULL = 1` is NULL, and a
+CHECK accepts NULL, so nothing goes red: the disjunct is a no-op inside a CHECK and the control was never run. The
+same blind spot sits in 1.2, where `ELSE false` is rejected only for the reported name, not because it would refuse
+`{}` (ndims NULL takes the ELSE branch).
+Rule: For every CHECK mutation, evaluate the mutated expression on each listed value to TRUE/FALSE/NULL (NULL passes)
+before predicting red, and dry-run every red control whose prediction is not obvious; a clause that only turns NULL
+into TRUE inside a CHECK is redundant and is described as such, not given a red control.
+
 ### 2026-11-16: Mutation helper edits a relative path, so a reset cwd mutates the task worktree (#148, judge_design round 1, security)
 Design 3.1 `mutate()` runs `perl -0pi` on `"$file"`, and the 3.2 rows pass `apps/web/lib/progress/rules.ts` /
 `outcome-writer.ts` relative, with only "(from `$M`)" in prose and no `cd "$M" &&` in the step. Agent Bash calls start in
