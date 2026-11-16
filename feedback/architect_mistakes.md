@@ -1964,3 +1964,52 @@ same blind spot sits in 1.2, where `ELSE false` is rejected only for the reporte
 Rule: For every CHECK mutation, evaluate the mutated expression on each listed value to TRUE/FALSE/NULL (NULL passes)
 before predicting red, and dry-run every red control whose prediction is not obvious; a clause that only turns NULL
 into TRUE inside a CHECK is redundant and is described as such, not given a red control.
+
+### 2026-11-16: Listed one stale comment of the changed path and missed the one beside the changed line; ADR said "not in process listings" (#115, judge_design round 1, architecture)
+Design 2.2 updates the errors.ts:123-125 comment because #115 makes it stale, but not the comment directly above the
+line it changes: spec.ts:197 "Added to the container's own `HOME`; nothing from the service's environment reaches the
+shell." Once `Env` carries `ANTHROPIC_API_KEY` from the service's config, that sentence is false, and a coder who
+follows the design's list leaves it. Separately, ADR item 14 and the 2.2 table say the key is "not shown by process
+listings" / "`ps` / `docker top`: no, they show arguments". procps `ps e` (the #33 image has procps, ADR-0002 item 13)
+prints each process's environment from `/proc/<pid>/environ` for any uid-1000 caller, and `docker top <id>` passes ps
+options to a root `ps`; the readers are the same as the uid-1000 and socket-holder rows, but the sentence is false.
+Rule: When a change makes a value flow where a comment or ADR said nothing flows, grep every comment and ADR sentence on
+that path (`rg -n 'service.s environment|reaches|never' <changed files>`) and list each one to rewrite; for every
+"not shown by tool X" claim, check the tool's options that read the same source (`ps e`), not only its default output.
+
+### 2026-11-16: "Who can read the key" table missed the service-API path, and the web/db guard checked names only (#115, judge_design round 1, security)
+Design 2.2 says "web, db, any other container: no". Web holds `WORKSPACE_SERVICE_SECRET` and reaches the service on
+`workspace-api`; `GET W/terminal` with that Bearer opens a uid-1000 shell whose env is the key (ADR-0011 items 1 and 4),
+so whoever controls web, or holds the secret and reaches the service, reads the key without the learner's involvement.
+The same path already reached the `/login` credential, and ADR-0002 item 10 never named it. Separately, U-compose-key
+asserts only that web/db environment KEYS do not match `/AGENT_API_KEY|ANTHROPIC/`: `FOO: ${WORKSPACE_AGENT_API_KEY:-}`
+or `env_file: .env` on web passes it, so "web gets nothing" is not proven.
+Rule: For a "who can read secret S" table, enumerate every capability that yields S (env, /proc, socket, and every API
+that runs code where S lives) and name each credential holder of that API as a reader. A "service X never gets S" guard
+checks values and `env_file` of every other service, not only variable names.
+
+### 2026-11-16: README append command glues the key onto the previous .env variable (#115, judge_design round 1, operations)
+Design 6.4 point 1 dictates `printf 'WORKSPACE_AGENT_API_KEY=%s\n' "$(pbpaste)" >> .env`. When `.env` does not end
+with a newline (editors such as VS Code do not add one by default), compose reads the key as part of the previous
+line's value: measured with fake values, `WORKSPACE_SERVICE_SECRET` became `<secret>WORKSPACE_AGENT_API_KEY=<key>`, so
+the key reached web's environment and the service's bearer secret, the service started with no key, and nothing failed.
+Rule: A prescribed command that appends to or edits an owner's file is run against that file's corner cases (no final
+newline, an existing line for the same name) before it goes into the design.
+
+### 2026-11-16: Dictated replacement comments said "nothing else from the service's environment" over bodies built from it (#115, judge_code round 1, architecture)
+Design 6.0 dictated the spec.ts:79 comment "nothing else from the service's environment enters the container create
+body" and the spec.ts:216 comment "The only value from the service's environment that reaches the shell is the agent
+key". The coder wrote both word for word. The create body's `Image` (WORKSPACE_IMAGE override), `NanoCpus`/`Memory`/
+`PidsLimit` (WORKSPACE_*_LIMIT) and labels (WORKSPACE_INSTANCE) all come from the service's environment, and the
+exec's `Cmd` carries TERMINAL_SHELL, which becomes the shell itself. Both sentences were meant about `Env` and say
+something wider. This is the #121 lesson again, on the very rows written to fix stale comments.
+Rule: A dictated replacement comment names the field it is about (`Env`, not "the create body" or "the shell"), and
+before sending it, list every input of the function it sits in and check the sentence against each one.
+
+### 2026-11-16: Scratch red/green harness was blocked by the shell guard and still wrote into the worktree (#156)
+Design 6 dictated `cp "$W/apps/web/..." "$S/"` and `ln -s "$W/apps/web/node_modules" "$S/node_modules"`. While the main checkout holds a LEARN state, bash-code-guard consults it for any command naming `$W` (the worktree path contains the main path) and blocks a write verb followed by `apps/`, so both setup steps fail as worded. The design also claimed the harness never touches the worktree, but vitest without `--no-cache --no-fsModuleCache` writes `results.json` and creates `node_modules/.vitest-cache` through the symlink into `$W/apps/web/node_modules`. With no `--reporter=verbose` the default reporter lists only failing tests, so the "X green" expectations cannot be read from the output, and the R3-R5 rows named only some of the tests that go red.
+Rule: A scratch harness is dictated as a script file run whole, with source reads whose write target is the scratch dir, every tool cache pointed at or disabled for the scratch dir, a reporter that names every test, and an expected outcome for every test the mutation can reach.
+
+### 2026-11-16: Dictated an unconditional exactness comment that the same design's 4.1 contradicts (#156)
+Design 4.6 told the coder to write in split.ts that "multiplying first leaves a single rounding (the division)", with no condition. Design 4.1 itself says that on non-dyadic live inputs (17.6 px root font, 90 % or 110 % page zoom, passed by lesson-layout.tsx:73 from getBoundingClientRect and getComputedStyle) paneMinPx * 100 and the subtraction round too, and a limit can be off by one. The coder copied the wording, so split.ts:34-36 claims an always-exact limit that holds only for binary-exact widths. 4.6 also dictated "rounds and put the 440 px tie on the wrong side", a tense clash that reached split.test.ts:22.
+Rule: A comment a design dictates carries every condition the design's own analysis attaches to the claim; reread each dictated sentence against the section that proves it, and for grammar, before handing over.

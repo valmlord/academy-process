@@ -506,3 +506,7 @@ reaches a log line"; all three design judges passed it. http/errors.ts:96, recon
 of our own error classes directly, so the coder shipped a false comment and judge_code had to FAIL it.
 Rule: In judge_design, treat every comment text a design dictates as code: for an exclusivity claim, grep the
 counter-examples before PASS.
+
+### 2026-11-16: Design rounds passed a dictated "single rounding" comment that the design's own 4.1 contradicts (#156, judge_design, architecture)
+Design 4.6 dictated an unconditional "multiplying first leaves a single rounding (the division)" for split.ts; both design rounds passed it although 4.1 of the same design says the product and subtraction round on non-dyadic live inputs. The #121 lesson again; the false comment reached judge_code.
+Rule: In judge_design, check every dictated comment against the design's own proof section and the live caller's inputs, and FAIL an absolute that the proof qualifies.
