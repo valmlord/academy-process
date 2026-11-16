@@ -637,3 +637,23 @@ issues found` instead of a bare `PASS`. The gate kept the round 1 architecture F
 was needed.
 Rule: right after sending a judge round, check `status` for each new agent id in `judge_spawns`; re-send any judge
 that is missing before waiting. Every judge brief ends with "the last line is exactly `PASS` or `FAIL`, alone".
+
+### 2026-11-16: A clone decision was added as prose next to code blocks that still prescribe the worktree (#148)
+The "Orchestrator decision" paragraph in 148-design 3.3 replaces `git worktree add` / `git worktree remove` with a
+`git clone --local` and a guarded `rm -rf "$M"`, but the literal blocks in 3.1 step 1 and 3.3 still run
+`git worktree add --detach "$M" HEAD` and `git worktree remove "$M"`, and the rm guard exists only as a sentence. A tester
+running the blocks verbatim registers a worktree in the shared repo and runs a verb that is Stepan's; the rm has no
+literal `${M:?}`/path check and is the form Claude Code's rm check refuses (architect_mistakes 2026-10-29).
+Rule: a procedure decision is applied to the design's code blocks themselves (old lines removed, the guard written as a
+runnable command) before judge_design, never as a paragraph saying which lines it replaces.
+
+### 2026-11-16: Two judge_code rounds spent on comments that claimed more than the code does (#148)
+The #148 test code passed every lane in round 1; architecture failed round 1 on the I-out-7b holder comment (it gave
+#34's step order backwards and called a result "the one write") and round 2 on the TOKEN_SPENDING_KINDS comment (it
+promised a new token-spending kind would turn P6 red, but P6 only draws kinds from KINDS). Both claims came from the
+design text, so neither the coder nor I checked them. Before round 3 I had the coder re-check every added comment
+against the line it describes, which found two more overclaims, and I caught a number that had lost its condition
+("3.3 s test run" for a whole-file measurement).
+Rule: the coder brief for any change with new comments asks, before tester, for a list of each added comment with the
+code line or document line that makes it true; I read that list against the #117 rule (numbers keep their condition)
+before sending judge_code.
