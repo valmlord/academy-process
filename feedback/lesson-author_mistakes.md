@@ -122,3 +122,14 @@ it from a race") is also false: the probes tell it from a race and accept it. th
 outcome still define the seam as "внутри той же атомарной секции".
 Rule: A sentence about what a check accepts is a factual claim about the check. When a task.md rule changes, grep
 theory.md, lesson.yaml outcomes and the quoted check messages for the old rule and fix them in the same edit.
+
+### 2026-11-16: Exit-code summary said "any other end is counted" and dropped the ADR's uncounted platform ends (#146, judge_content round 1, accuracy)
+
+docs/course-reference.md "Command check exit codes" says "Any other end is a counted failure: ... and a grader or
+platform fault after the grader has started (ADR-0007 decision D11)". ADR-0007 rule 3 (:307-310, :316-322) keeps two
+uncounted `error` ends outside 0 and 3: any failure before the grader started (`pre-start: <stage>`), and a stop the
+platform issued and recorded after the start (`platform-stop: service-stop`, `web-restart`); D11 (:323-324) covers
+only "a genuine platform fault ... that is not such a recorded stop". `classifyResult` maps `not-started` and
+`platform-stop` to `error`. The research's suggested wording (findings section 6) already left the exceptions out.
+Rule: When a summary of a rule says "any other" or "every", read the whole rule for its exceptions (here every bullet
+of rule 3 and every `case` of `classifyResult`) and either list them or narrow the sentence to the cases it covers.

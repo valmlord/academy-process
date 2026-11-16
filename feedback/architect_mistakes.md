@@ -1930,3 +1930,16 @@ so the row stops on its first run. Gate 4.1 c) gave the age check as `<parse ...
 with no red control.
 Rule: every mutation row and gate in a design is a literal, runnable string that was run once at base (anchor match count
 printed); every gate names its red control.
+
+### 2026-11-16: A flaky-fix stability check with no base control and an unguarded load loop (#93)
+Design 5 check 3 passes on "0/20 foreground failures" and "background counts >= 1". Each background iteration creates
+its log before the run starts, so the count is >= 1 even when the suite never starts. On an idle host (load 2, old test
+1084 ms) the old single test would also pass 20/20, so the check cannot tell the fix from no fix. In the judge's dry run
+the same harness gave the old test 16/20 timeouts at load 28-44 and the new file 0/20 at load 7-36. Only that pair is
+evidence. The loop also has no trap: after SIGTERM to the parent `bash -c`, the background loops kept running
+(verified). The run takes 180-209 s, longer than the 120 s default Bash timeout, and `rm "$L/run"` is denied by
+Claude Code's rm safety check. The plan also had no cleanup step for an 861 MB clone, and the mutations were prose on
+a host with BSD sed.
+Rule: A stability check for a flaky fix runs the old code under the same load, interleaved, and requires it to go red.
+Every background load loop has an EXIT/INT/TERM trap, guarded `${L:?}` paths and a stated Bash timeout. Every
+throwaway clone has a scripted cleanup step and every mutation an exact command.
