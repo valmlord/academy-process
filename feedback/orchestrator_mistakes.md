@@ -602,3 +602,20 @@ The #107 tester brief named `isolated-stack.sh t32`; its web port 53081 was held
 stopped before any build and a second tester round was needed for T5 alone (t31 had both ports free).
 Rule: before a tester brief that runs isolated-stack.sh, check the run's two ports with `lsof -nP -iTCP:<port> -sTCP:LISTEN`
 and name a run whose ports are free.
+
+### 2026-11-16: A worktree judge wrote its lesson into the main checkout's process repo (#162)
+In a Desktop worktree session the judge_design round 1 briefs said only "append the lesson to the responsible role's
+feedback file". The architecture judge appended to `<main checkout>/.claude/feedback/architect_mistakes.md`, which left
+an uncommitted change in main's process repo that this session cannot undo (the worktree hook blocks edits to main's
+`.claude/`). The entry had to be copied into the worktree's process repo by hand and main's copy left for Stepan.
+Rule: in a worktree session every judge and role brief names the absolute feedback path of the worktree's own
+`.claude/feedback/` and says "never the main checkout's `.claude/`".
+
+### 2026-11-16: Two judge votes of a round were never recorded (#162)
+judge_code round 2 sent three fresh judges in one message. Only the operations vote was recorded; the security and
+architecture spawns are missing from `judge_spawns` and their handbacks left no line in `.git/pipeline-hooks.log`
+(host load 70-300 at the time, cause not found). The architecture report also ended with `PASS - no architecture
+issues found` instead of a bare `PASS`. The gate kept the round 1 architecture FAIL, so a fresh architecture judge
+was needed.
+Rule: right after sending a judge round, check `status` for each new agent id in `judge_spawns`; re-send any judge
+that is missing before waiting. Every judge brief ends with "the last line is exactly `PASS` or `FAIL`, alone".
