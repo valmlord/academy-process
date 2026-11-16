@@ -595,3 +595,16 @@ After merging I moved on without looking at the CI run on main. A green PR run d
 the e2e job on main had been failing on an Ubuntu mirror outage for hours before I noticed it.
 Rule: after every merge, read the CI run of the new main commit to its end. A failure there is fixed or rerun at once,
 and a known flake gets its issue the same day.
+
+### 2026-11-16: Skipped the #110 rule and sent a no-shell architect's procedures straight to judges (#107)
+The #107 design prescribed two mutation rows and two lockfile gates written without a shell. I sent it to judge_design
+without anyone running them; the operations judge found a non-unique anchor (app.ts:8 and :52) and a placeholder age
+check, and the round failed on procedure text, not on the change.
+Rule: the #110 rule applies to every design with shell procedures, however small the change: before judge_design, have
+the procedures run (operations judge dry-run or my own scratch run) and pass the output with the design.
+
+### 2026-11-16: The briefed stack run's port was taken by a macOS service (#107)
+The #107 tester brief named `isolated-stack.sh t32`; its web port 53081 was held by `/usr/libexec/rapportd`, so the tester
+stopped before any build and a second tester round was needed for T5 alone (t31 had both ports free).
+Rule: before a tester brief that runs isolated-stack.sh, check the run's two ports with `lsof -nP -iTCP:<port> -sTCP:LISTEN`
+and name a run whose ports are free.

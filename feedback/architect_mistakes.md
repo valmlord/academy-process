@@ -1924,6 +1924,13 @@ problem: `check-append-only.sh` copied from ci.yml exits 1 at commit B, because 
 Rule: When a design tells the tester to run CI's commands locally, run each one on the host at base first. Carry over any
 local rule the task already has (timeouts, a simulated merge commit), or say why it no longer applies.
 
+### 2026-11-16: Mutation row named a non-unique anchor and gates were left as placeholders (#107, judge_design round 1, operations)
+T4 M1 said "add after `frameworkErrors,`" with a must-match-once replacement; the string also occurs in app.ts:8's import,
+so the row stops on its first run. Gate 4.1 c) gave the age check as `<parse ...>` and 4.1 b) compared 13 lines by eye
+with no red control.
+Rule: every mutation row and gate in a design is a literal, runnable string that was run once at base (anchor match count
+printed); every gate names its red control.
+
 ### 2026-11-16: A flaky-fix stability check with no base control and an unguarded load loop (#93)
 Design 5 check 3 passes on "0/20 foreground failures" and "background counts >= 1". Each background iteration creates
 its log before the run starts, so the count is >= 1 even when the suite never starts. On an idle host (load 2, old test
