@@ -2191,3 +2191,114 @@ Rule: A scratch harness is dictated as a script file run whole, with source read
 ### 2026-11-16: Dictated an unconditional exactness comment that the same design's 4.1 contradicts (#156)
 Design 4.6 told the coder to write in split.ts that "multiplying first leaves a single rounding (the division)", with no condition. Design 4.1 itself says that on non-dyadic live inputs (17.6 px root font, 90 % or 110 % page zoom, passed by lesson-layout.tsx:73 from getBoundingClientRect and getComputedStyle) paneMinPx * 100 and the subtraction round too, and a limit can be off by one. The coder copied the wording, so split.ts:34-36 claims an always-exact limit that holds only for binary-exact widths. 4.6 also dictated "rounds and put the 440 px tie on the wrong side", a tense clash that reached split.test.ts:22.
 Rule: A comment a design dictates carries every condition the design's own analysis attaches to the claim; reread each dictated sentence against the section that proves it, and for grammar, before handing over.
+
+### 2026-11-17: Read scripts anchored on Playwright summary lines that turbo prefixes (#180, judge_design round 1, operations)
+c180-read.sh R3/R4 grep `^ +[0-9]+ (failed|flaky|interrupted)$` and `-Fx '  1 failed'`, but the e2e stage of
+isolated-stack.sh runs `pnpm test:e2e` -> `turbo run test:e2e`, and turbo prefixes every line with
+`@academy/web:test:e2e: ` (real #95 t32 log: `@academy/web:test:e2e:   5 failed`). R3 reads `[]` on any real run, so
+the control can never print AS EXPECTED, and c180-read-t31.sh's summary guard can never fail for the e2e stage. The dry
+run used a hand-written log without the prefix, so it could not see it; a real log of the same harness was on disk.
+Rule: Before a read script anchors on tool output, run it against a real log of the same harness (an earlier run's
+log), never only a hand-made one, and make every guard go red on a real failing log.
+
+### 2026-11-17: Control hold caught the stylesheet too, and a dictated comment stated a "can" as an "is" (#180, judge_design round 1, architecture)
+The C1 hold routes `**/_next/static/chunks/**`, which in this Turbopack build also serves the CSS (`static/chunks/*.css`).
+`app/layout.tsx:16` puts an inline theme script in `<head>` after the hoisted stylesheet, and an inline script waits
+for a pending stylesheet, so the parser stalls in `<head>` for the whole hold: the user button is not in the DOM, the
+old variant's `focus()` auto-waits until the hold ends and its Enter races hydration instead of landing 2-3 s before
+it. The positive control counts CSS requests too, so it passes with no script held. Separately, the dictated comment
+says an Enter before the chunks run "reaches no React handler and is lost" (React's root listener does receive it, and
+a forced hydration that does not suspend on the menu's path dispatches it), and "the load event waits for the scripts
+the document loads" (an implicit "every"; the design's own table excludes scripts added after load).
+Rule: A route hold is scoped by resource type to the thing the claim is about (`resourceType() === "script"`), and the
+positive control counts only that type; check what else the pattern serves and whether it blocks the parser. Dictated
+comments say "can" where the evidence shows a possibility, and name the cases a universal-sounding noun covers.
+
+### 2026-11-17: Temp-file prefix shared with a script name, and an exit code read after a command substitution (#180, revision 2, own dry run)
+In revision 1 the read scripts made their stripped copy with `mktemp "$S/c180-read-XXXXXX"`, next to `c180-read.sh`
+and `c180-read-t31.sh`. While dry-running revision 2, a cleanup `rm -f c180-read-*` meant for the temp copies also
+deleted `c180-read-t31.sh`. In the same dry run, `echo "rc=$?"` placed after `$(basename ...)` in one echo printed
+rc=0 for every read, red or green, because the substitution reset `$?`.
+Rule: Temp files get a prefix no script or log shares (`c180-strip-XXXXXX`) and are removed by the script's own EXIT
+trap, never by a glob. Capture an exit code into a variable on the next statement (`r=$?`) before anything else runs.
+
+### 2026-11-17: Decision table titled "every outcome, every step" left the step wrappers' own guards out (#180, judge_design round 2, operations)
+Revision 2 closed round-1 operations blocker 2 with one table in 4.2 and covered every line isolated-stack.sh and
+c180-prep.sh print. The one-line wrappers of steps 1, 4, 6 and 7 print their own guards, and six of them have no row:
+`GUARD FAILED $F exists` (1, 7), `GUARD FAILED ..`, `not a c180 clone: $C`, `$L exists` (4, 6), and in step 6
+`worktree differs from $B beyond the spec` and `untracked files in the worktree`. The step-6 diff guard is where a
+moved and merged origin/main shows up before C2, which is the base-as-value case the revision was about; without a
+row the tester has to improvise (edit the base file, re-run step 0, revert the tree).
+Rule: When a design says a decision table covers every outcome, grep every `echo`/`GUARD`/`STOP` text of every script
+AND every inline command the procedure runs, and give each one a row, or add an explicit catch-all row for the rest.
+
+### 2026-11-17: A catch-all "any output a row does not name -> stop" turned the happy path into stops (#180, judge_design round 3, operations)
+Revision 2.2 of the #180 design added a catch-all row to the tester decision table (4.2) but no rows for the success
+output of steps 1, 2, 3, 7 and 8 (the disk record, lint/turbo output, step 3 `rc=0` and `PREP READY`, `CLEANUP OK`).
+Read literally, every clean run stops at step 1; worse, the step 7 disk record printed right after C1 maps to "stop",
+whose step 8 deletes the clone, and `c180-read.sh` needs `$C/n-old.txt` from that clone, so the C1 stack run could
+never be read and would be burned from the budget of 3.
+Rule: A decision table that claims every outcome names the success output of every step too, and a "stop" after a
+stack run always runs the read-only log read before any cleanup removes what the read needs.
+
+### 2026-11-17: Running the read after every stack run let an infrastructure failure read as "(a) unproven" (#180, judge_design round 4, architecture)
+Revision 2.3 of the #180 design made the read script part of a post-run sequence P that runs after every
+`isolated-stack.sh` invocation, then decides "on the run's own lines, P1 and P3" with no order between them. In 2.1/2.2
+step 5 was reached only from the expected step-4 pair, so `NOT R3`-`NOT R9` always described a control that ran. Now a
+run where the e2e stage did not run or ran on a broken stack (`STOP preflight ...`, `FAIL guard`, `STOP postgres...`,
+`FAIL seed`, a `set -e` abort giving `RESULT FAIL (run rc=1 ...)`, no RESULT line) makes the read print `NOT R3`-`NOT R9`
+too, and the step-5 row "NOT AS EXPECTED with NOT R3-NOT R9 -> architect (R7/R8: fixed variant red, (a) unproven)"
+matches it alongside the Stepan/orchestrator route of the run line. `FAIL seed` and the `rc=1` aborts have no run-line
+row at all, so the only specific route left is "-> architect, (a) unproven", which 1.2 turns into a switch to (b).
+Rule: When a read that judges the fix is run unconditionally (to keep its inputs alive), state that it only counts as
+evidence when the run's own lines were the expected ones; otherwise its output is reported, never routed, and the run
+line decides.
+
+### 2026-11-17: The general stop rule caught the C2 repeat path, and step 3 hid the CLONE line on its own failures (#180, judge_design round 4, operations)
+Revision 2.3 replaced the case list by R-stop with exceptions "the only ones". Step 4 got a carve-out for its expected
+`rc=1` and `T32 RESULT FAIL (run rc=0, check status=1, teardown failed=0)`; step 6 got none. A C2 run that the read
+calls `C180 REAL RUN REPEATABLE` has the wrapper print `rc=1` and `T31 RESULT FAIL (run rc=0, check status=1, teardown
+failed=0)` (checked on the t31-green log with the dry run's other-spec edit), so R-stop (1), (2) and (3) fire and the
+step-6 repeat row can never be reached; neither walk took that branch. Separately, 4.2 counts only printed lines as
+output and runs step 8 "if a CLONE line was printed", but step 3 prints only `tail -n 5` of the prep log: on a
+typecheck failure the tail is turbo output plus `GUARD FAILED typecheck (see <C>/typecheck.log)`, the CLONE line is
+log line 2 of 33, so a literal tester skips `c180-clean.sh` and leaves the clone with node_modules (du 859M measured).
+Rule: After writing a general stop rule, walk every row that routes somewhere other than "stop" (each repeat, each
+exception) with the real wrapper output of that branch, and for every later step that needs a value from an earlier
+one, check that the earlier step prints it on its failure paths too, not only on success.
+
+### 2026-11-17: The expected run line was taken as proof that the tests ran (#180, judge_design round 5, architecture)
+Revision 2.4 of the #180 design orders 4.2 so that the read decides only when P0 shows nothing but `T3x FAIL e2e` and
+a `RESULT` line with run rc=0. But `isolated-stack.sh:294` prints `FAIL e2e` for any non-zero `pnpm test:e2e`,
+and the run goes on to `RESULT FAIL (run rc=0, check status=1, teardown failed=0)`: exactly the expected C1 pair.
+An e2e stage that never produced a Playwright result (turbo `^build` dependency failure, a config-load throw in
+`playwright.config.ts`, a globalSetup or runner crash) therefore passes B1 and B2, and the read prints `NOT R3
+summary lines: []` ... `C180 CONTROL NOT AS EXPECTED` (C2: `NOT G4`, `C180 REAL RUN NOT GREEN`), which B3 routes
+to the architect, the same infra-as-evidence route round 4 closed for the other stages.
+Rule: Before a read counts as evidence, check that the stage it judges actually produced its own result (here the
+e2e stage's prefixed `<n> passed (` summary line), not only that the wrapper printed the expected failure line.
+
+### 2026-11-17: The cleanup that runs "after any stop" also runs under a stack run that is still alive (#180, judge_design round 5, operations)
+Revision 2.4 of the #180 design says in 4.0 that a run with no completion notification after 45 minutes gets one
+`tail`/`stat` and then rule B (no `RESULT` line: B2), and 4.2 C says step 8 runs after any stop. On that path the C1
+run is by definition still running, from the clone: `isolated-stack.sh` did `cd "$root"` into `$C/repo` and its
+EXIT trap runs `docker compose -p academy-t32 -f docker-compose.yml down` and the image removals from there. Step 8
+`rm -rf`s that clone, so when the run ends or is killed its teardown has no compose files and leaves the t32
+containers, volumes, network and images behind. P1 on a live run also prints `LEFTOVERS FOUND t32` (B1 -> Stepan),
+and C still deletes the clone before Stepan can act.
+Rule: A cleanup step that removes the files a background job runs from is gated on that job's exit, not on a stop
+decision; a timeout path stops and hands the live job to Stepan without cleanup.
+
+### 2026-11-17: The routing table was closed but the frozen sections kept their own routes to (a)/(b) (#180, judge_design round 6, architecture)
+Revision 2.5 of the #180 design says in 4.2 B3 that nothing in the procedure routes to the architect and that only the
+orchestrator, after reading the log, may send the task to (b). The frozen sections still route by name: 1.2 "If G1 or
+G2 fails, (a) is wrong for this page and the task comes back to the architect for (b)", 3.3 "R9 is red ... (decision
+table: architect)" (the decision table has no such row any more), 6 "(b) kept as the fallback if G1 or G2 fails". In
+1.2 G1/G2 are the control's marker and fixed-green gates (R7/R8 in 3.4), but `c180-read-t31.sh` prints `NOT G1` ...
+`NOT G5` for C2, and those NOT ids are exactly what the B3 stop report hands the orchestrator. A C2 `NOT G1 T31 FAIL
+lines: [T31 FAIL e2e]` from another spec's flake beyond the budget reads, by 1.2, as "(a) is wrong -> (b)": the
+round-5 class (a read's NOT id taken as a verdict on (a)) through the prose instead of the table. Freezing sections
+0-3 is what kept the old routes alive.
+Rule: When a routing rule is narrowed, grep the whole document (frozen sections included) for every route word and
+gate id it replaces (`architect`, `(b)`, `fallback`, `is wrong`, each gate name), and give every gate id one meaning
+across the design and the scripts' output.

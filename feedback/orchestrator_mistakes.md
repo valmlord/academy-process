@@ -679,3 +679,30 @@ against the line it describes, which found two more overclaims, and I caught a n
 Rule: the coder brief for any change with new comments asks, before tester, for a list of each added comment with the
 code line or document line that makes it true; I read that list against the #117 rule (numbers keep their condition)
 before sending judge_code.
+
+### 2026-11-17: Dry-ran log-reading scripts against logs I wrote by hand (#180)
+My judge_design dry run of the #180 read scripts fed them hand-made logs, so all checks passed, and I wrote down
+"reporter format" as the one open premise. The operations judge ran the same scripts against a real #95 isolated-stack
+log: turbo prefixes every e2e line with `@academy/web:test:e2e: `, so the anchored summary greps could never match, and
+the read scripts would have failed every real run (and the t31 guard could never go red).
+Rule: a dry run of any script that parses a tool's output uses a real captured log of that tool (a sibling task's run log,
+or a short real run), never a hand-written sample; the brief names the real log's path.
+
+### 2026-11-17: Asked for "a row for every line" and got a catch-all that stopped the happy path (#180)
+After the round-2 operations FAIL (wrapper guard lines without a row) my re-brief asked the architect to list every line
+and add a catch-all. The catch-all ("any output a row does not name -> stop") then covered the success output, and round 3
+failed on that, the same class one step later. The #70 and #106 rules (at the second FAIL of one shape, ask for one general
+rule over the class) applied already at round 2: the shape was "what does the tester do with this output".
+Rule: for a tester decision table, brief the rule first: each step passes on its Pass criterion and moves on; it stops only
+on named failure prefixes or a Pass not met; one fixed stop sequence after a stack run (leftovers, disk record, read, clean),
+another before one. Rows only for the exceptions to that rule.
+
+### 2026-11-17: Seven design rounds for a 5-line test fix, six of them on the tester procedure (#180)
+The fix (one `waitForLoadState("load")` plus a comment) passed every judge from round 1 on, and the control passed its
+first real run. Rounds 1-6 failed on the tester procedure: log format (hand-made dry-run logs), then the decision table
+three times in a row (missing rows, a catch-all that stopped success, no precedence between the run line and the read),
+then prose routes outside the table. The #95 rule ("size the tester procedure to the change") was in the file and I did
+not apply it at init: I let the architect write a full state machine for a tester who could have reported outputs.
+Rule: for a small fix with a stack-run control, brief the tester procedure from the start as "run these commands, report
+every output, move on only on the named success lines, everything else comes back to the orchestrator", and keep
+routing decisions out of the design. Dry-run log parsers against a real captured log before the first judge round.
