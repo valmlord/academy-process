@@ -2566,3 +2566,56 @@ order and the Tab lands elsewhere; `toBeFocused` at `:232` cannot recover. That 
 the F6 listener the design does wait for. Run A pass 1 shows it: `:223` fails at `:232` with `Received: inactive`.
 Rule: For every "no change" row, name what decides where the input lands (DOM attribute from SSR, or state set by an
 effect) and check it in the installed library source; a keyboard Tab through a roving-focus widget is not native.
+
+### 2026-11-17: Red/green isolation proved by the branch diff, while PR CI runs on a merge with a moving main (#201, judge_design round 1, architecture)
+Design 4 claims "`git diff c4 c5 --stat` shows only ci.yml, so A is the only difference between red and green". CI runs
+only on `pull_request` (ci.yml:3-6), which checks out `refs/pull/<n>/merge`, recomputed against main's head at each
+push. C-red (push 2) and C-green (push 3) are 20+ minutes apart, and parallel worktree sessions merge into main, so the
+two runs can test `merge(main, c4)` and `merge(main', c5)`: a main change to the e2e specs, the workspace service or
+ci.yml would then sit between red and green, and the evidence would credit it to A. Same design: the dictated step name
+and comment "Interfaces created from here on get no IPv6" are false for interfaces created in new container namespaces
+(every container's lo keeps ::1; `net.core.devconf_inherit_init_net=0` resets IPv6 settings in a new netns); `default`
+covers the runner's own namespace only.
+Rule: A red/green pair on PR CI is isolated only when both runs have the same base SHA; the tester reads it from each
+run (checkout log `Merge <head> into <base>`) and the design says what happens when they differ. A dictated comment
+about a sysctl names the namespace it applies to.
+
+### 2026-11-17: D-red success line matched reporter-coloured text in Playwright JSON (#201, judge_design round 1, operations)
+Design 5.1 decides D-red by "first error message contains `not hydrated (1 matching elements)`" in `e2e.json`. Playwright
+1.64.1 starts every worker with `FORCE_COLOR=1` (runner/index.js, WorkerHost), and the JSON reporter keeps the message
+as is (`formatError` strips ANSI only from the snippet). `toBe("hydrated")` highlights the changed parts of the received
+string, so the message holds `\u001b[7mnot \u001b[27mhydrated\u001b[7m (1 matching elements)...`: the substring never
+matches in `errors[].message` or `error.message` (scratch run: raw=false, stripped=true), and the success line can never
+print. Same design: "every printed line is fe80 on veth/br" and "timestamps inside the window" were left to reading,
+although 4 says every decision is a step conclusion or an exit code.
+Rule: Before a design decides on text inside a Playwright JSON report, run one failing scratch test through the same
+reporter and matcher and match the stripped message (`/\u001b\[[0-9;]*m/g`); every tester decision gets a command whose
+output is the success line.
+
+### 2026-11-17: Round-2 fix gave commands to the two named C-red decisions, not to the rest of the class (#201, judge_design round 2, operations)
+Round 1 found two C-red decisions left to reading; round 2 added commands for exactly those two, and section 4 again
+says every decision is a step conclusion, an exit code or a command with a success line. Three are still read by eye:
+"`head` is the commit pushed for that run" (base step 2, the check that a run tested what was pushed, which the BASE
+SAME pairing relies on), "`grep -c '^\['` >= 1 and equal to the N of the scan's first line" (C-red), and
+"`git diff c4 c5 --stat` shows only ci.yml" (C-green). Each needs one line of shell that prints a success line.
+Rule: When a finding names examples of a class (decisions without a command), fix the class: list every tester
+decision in the design and give each one its command and success line before claiming "every decision" in writing.
+
+### 2026-11-17: Dictated guard message says every address line flushes Chromium, against the design's own F3 and R2 (#201, judge_code round 1, architecture)
+Design 3.2 dictated the scan failure text "... Chromium flushes its socket pools on each", and the coder printed it
+(scripts/netlink-guard.sh:148). R2 says RTM_NEWADDR counts only when the address is new or its ifaddrmsg differs, and
+IPv6 temporary addresses are excepted; the design's own F3 row says a pure lifetime refresh "may not flush, deciding that
+needs evidence". The guard deliberately fails on a superset, so in exactly the F3 case (an eth0 refresh at 3 AM) the
+message tells the reader a flush happened when it may not have. The #121/#156 lesson again, this time in an error text.
+Rule: A dictated error message is a factual claim; when the check is a deliberate superset of the harm, the message says
+"may" and names the superset, and it is read against every failure-mode row of the same design before judge_design.
+
+### 2026-11-17: Red control by JavaScript off also stops the inline streaming scripts, so streamed boundaries never show (#201, judge_code round 1, architecture)
+Design 5.1 counted the three not-found F6 waits and the ordinary-arrival wait as driven red by D-red, on the premise that
+not-found reaches the wait through SSR-only asserts. With `javaScriptEnabled: false` the inline `$RC` swap scripts do not
+run either, so the not-found boundary stays in a hidden div: the three 404 tests failed at :41 before the wait, and the
+ordinary-arrival wait went red with 0 matches instead of 1. The real failure the waits guard (a chunk that fails while
+inline scripts run) does not have this effect.
+Rule: Before choosing "JavaScript off" as a hydration control, list which targets live inside a streamed boundary
+(notFound(), Suspense, async pages) and either pick a control that keeps inline scripts (abort `/_next/static/chunks/**`)
+or name those sites as not driven red in the design.

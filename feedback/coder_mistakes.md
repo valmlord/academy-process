@@ -342,3 +342,12 @@ would then land in that tmpfs, not in the writable layer. The safety conclusion 
 holds; the header's two claims are wider than the code.
 Rule: When the design narrows what a check covers, the comment on that check carries the narrowing (which source
 it reads, what it leaves out) and states the guarantee that actually holds, not the broader summary sentence.
+
+### 2026-11-17: Script header stated Chromium's address rule as an absolute the research qualifies (#201, judge_code round 1, architecture)
+scripts/netlink-guard.sh:3-4 says Chromium flushes "on every RTM_NEWADDR / RTM_DELADDR on any non-loopback interface,
+link-local included". R2 (the source the design cites): a NEWADDR counts only when the address is new or its ifaddrmsg
+differs, a DELADDR only for a known address, IPv6 temporary addresses are excepted, and Chromium filters no interface by
+type, loopback included; lo is exempt by the guard's scope (line 22 says so correctly). The header therefore wrongly
+implies Chromium ignores lo and that every line the guard counts caused a flush, the question design F3 leaves open.
+Rule: A header that explains why a guard fails states the vendor rule as the research gives it, conditions and
+exceptions included, and says separately where the guard is a deliberate superset of it.
