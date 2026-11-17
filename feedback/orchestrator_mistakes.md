@@ -892,6 +892,16 @@ separate file. A red control's premise about what each target page does under th
 (or listed as unverified per site) before judge_design. When a judge names an example of "decided by reading", ask
 the architect to sweep every decision of that class, not only the examples.
 
+### 2026-11-18: An "optional" item in a rework brief cost judge_ux a third round (#136)
+judge_ux round 1 failed on one gallery padding issue. My rework brief also passed on a judge's optional nit ("say the
+first tree fits with zero slack, or leave it"). The ui-designer measured it in Playwright's default Chromium, which
+hides scrollbars, and wrote a 9px margin as fact. Round 2 failed on that line in two judges, because AC75 and README
+measure with classic scrollbars, where the tree overflows. The class sweep in round 3 then found a page-width claim in
+acceptance.md that was false for 30 tall states in the same setup.
+Rule: a rework brief carries only blocking findings and items a judge made a condition; optional nits wait for the
+next real edit. Any brief that asks for a measured layout claim names the engines and scrollbar mode the page's
+acceptance notes use, and asks for that setup to be stated next to the number.
+
 ### 2026-11-18: Two design rounds patched test-plan Docker writes one by one instead of closing the class (#176)
 
 The #176 fix (one file, 12+/2-) passed all three judges in every design round. Rounds 1 and 2 failed on the test
