@@ -2998,3 +2998,41 @@ inline scripts run) does not have this effect.
 Rule: Before choosing "JavaScript off" as a hydration control, list which targets live inside a streamed boundary
 (notFound(), Suspense, async pages) and either pick a control that keeps inline scripts (abort `/_next/static/chunks/**`)
 or name those sites as not driven red in the design.
+
+### 2026-11-18: Test plan retagged a shared image name to fake a leftover the shim could fake (#176, judge_design round 1, security)
+Design 5 T2 ran `docker tag node:22.23.4-alpine academy-web:t31` and later `docker image rm academy-web:t31`, gated only
+by the T0.2 check run before pnpm install and T1. `docker tag` moves an existing tag without error, so a `:t31` image
+another session built in the meantime would lose its tag, and the step 4 "only Untagged" check cannot see that. The
+shim already refuses that `image rm`, so the real tag adds no coverage: the listing is the only thing it feeds.
+Rule: A test plan fakes a state in the shim it already has before it writes to Docker. A write that is still needed
+names an object the run created and checks right before the write that the name is free.
+
+### 2026-11-18: Test plan prescribed a counter reset the orchestrator's dry-run could not run (#176, judge_design round 1, operations)
+Design 5 T0.6 resets the shim counters with `rm -rf "$S/state" "$S/calls.log"; mkdir -p "$S/state"`. In the
+orchestrator's dry-run the Claude Code safety check refused that `rm -rf` on a variable path, and the run went on with
+per-run dirs plus `ln -sfn`, which the design does not describe. A tester who improvises the reset can leave a real
+`$S/state` directory, where `ln -sfn` puts the link inside it and old counters carry over, so T1a stops at
+`STOP preflight listing failed` before the trap and T2 loses its preflight bypass. Each run's `calls.log` is also
+overwritten by the next one, so the `image rm` count cannot be checked afterwards.
+Rule: Each step of a test plan is run once as written before the design goes out, and any state reset uses per-run
+directories (no `rm -rf` on a variable path) with a check that the reset worked before the run starts.
+
+### 2026-11-18: T3 recovery triggered by a later listing, not by the run's own evidence (#176, judge_design round 2, security)
+Revision 2 T3 step 5 runs `compose -p academy-t31 down --remove-orphans` and `image rm` of the `:t31` refs when "a
+`left behind` line, or the T0.2 listings print something". The second trigger fires on objects T3 never created: if
+another session (another worktree runs the same script with t31) starts between step 2 and T3's preflight, T3 prints
+`T31 STOP leftovers of academy-t31 exist`, creates nothing, and the recovery then tears down that session's stack and
+images. The same holds when such a session starts after T3's own `RESULT OK` and before the post-run listings. T3 also
+has no exit-point rule for the preflight STOP lines that T1/T2 have.
+Rule: A recovery step removes only what the run's own log proves the run created and left (here: teardown ran, no
+preflight STOP, a `left behind` line); objects a later listing shows without that evidence are reported, never removed.
+
+### 2026-11-18: Revision 2 named per-run dirs that already exist under the scratch root (#176, judge_design round 2, operations)
+Revision 2 T0.6 says each run gets "a name not used before (T1a, T1b, T1c, T1d, T2, T2b)", but `$S/T1b` and `$S/T1d`
+already exist with filled `state/` from the orchestrator's round-1 dry-run. At T1b the reset chain stops at `mkdir`,
+`$S/state` still points at T1a's counters, the emptiness check fails and the tester stops. Fail-closed, but the plan
+is not executable as written. The T3 recovery also re-checks only the four T0.2 listings, which omit the
+`academy.workspace.instance=t31` ps/volume/network listings the script's preflight (:64-73) checks, so a leftover probe
+workspace (`api ensure`, :373) survives `compose down` and the recovery reads clean while the next run STOPs.
+Rule: Before naming run directories, `ls` the scratch root and pick names that are absent; a recovery's closing check
+lists everything the script's own preflight lists.
