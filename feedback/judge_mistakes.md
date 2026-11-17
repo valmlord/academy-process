@@ -584,3 +584,7 @@ r5_singledispatch, r5_docstring_annotation). It cost a fifth round on the same c
 Rule: Before calling a string-token ban closed, scan every allowed module (to the depth the alias scan uses) for each
 function that turns a string into a name or code (eval, exec, compile, __import__, resolve_name). Then run one
 neighbour per evaluator found, not only for the resolver of the case at hand.
+
+### 2026-11-16: Design rounds passed a dictated "single rounding" comment that the design's own 4.1 contradicts (#156, judge_design, architecture)
+Design 4.6 dictated an unconditional "multiplying first leaves a single rounding (the division)" for split.ts; both design rounds passed it although 4.1 of the same design says the product and subtraction round on non-dyadic live inputs. The #121 lesson again; the false comment reached judge_code.
+Rule: In judge_design, check every dictated comment against the design's own proof section and the live caller's inputs, and FAIL an absolute that the proof qualifies.

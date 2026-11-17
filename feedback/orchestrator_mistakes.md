@@ -590,6 +590,24 @@ Rule: for a merge-of-main follow-up, `git fetch` right before the tester and rig
 design so it already covers "main moved by docs-only commits": a further merge commit with the same checks, judged at
 judge_code.
 
+### 2026-11-16: Comment rewrites dictated by the design passed judge_design and failed judge_code (#115)
+
+judge_design round 2 passed a 6.0 table of replacement comments the architect wrote. Two of them (spec.ts:79-80,
+:216-217) claimed more than the code: "nothing enters the create body" while Image, limits and labels come from the
+config; "the only value from the service's environment reaches the shell" while TERMINAL_SHELL goes into Cmd. The coder
+copied them verbatim, and judge_code round 1 failed on them plus two of the coder's own lines of the same class. The
+#33 rule (no ready sentences from me) covered my wording, not the architect's. What worked: running the design's
+/proc premises myself before judge_design (E0), so round 1 argued about text, not about unmeasured facts.
+Rule: when a design dictates comment or doc sentences, the architect brief asks for each one the list of cases it
+covers with the code line behind each case, and the coder brief asks the coder to re-check every dictated sentence
+against the code and grep the diff for the same class (only, nothing, never, exactly, every) before the first commit.
+
+### 2026-11-16: Merged PRs without checking main CI, and a known flake waited (#43, #130)
+After merging I moved on without looking at the CI run on main. A green PR run does not cover the merge result, and
+the e2e job on main had been failing on an Ubuntu mirror outage for hours before I noticed it.
+Rule: after every merge, read the CI run of the new main commit to its end. A failure there is fixed or rerun at once,
+and a known flake gets its issue the same day.
+
 ### 2026-11-16: Skipped the #110 rule and sent a no-shell architect's procedures straight to judges (#107)
 The #107 design prescribed two mutation rows and two lockfile gates written without a shell. I sent it to judge_design
 without anyone running them; the operations judge found a non-unique anchor (app.ts:8 and :52) and a placeholder age
@@ -645,3 +663,189 @@ backslash and n). content:validate has no fragment scan, and my offline scan ren
 Rule: an offline stand-in for the leak spec scans every learner text both raw and JSON-escaped with the spec's own
 forbiddenFragments and FragmentScanner (plans/45-runs/leak_repro.mts); a grader writes generated source with real
 newlines or one literal per line, never an escape followed by text. Follow-up: valmlord/academy#195.
+
+### 2026-11-16: A flaky-fix calibration loaded the shared host far past what it can carry (#160)
+For the #160 base control under load I ran, in my own pre-judge dry run, a Docker CPU hog of 48 busy loops (40 runs,
+17:09-17:25 UTC) and then 96 busy loops (40 runs, 17:25-17:46 UTC), plus short dry runs at 96 loops (18:06-18:10 UTC),
+on Stepan's 10-core MacBook Air whose Docker VM has 10 CPUs and also runs his `academy` stack and other sessions'
+integration suites. Host loadavg1 during those runs was 90-370 (VM loadavg1 up to 103); the same afternoon another
+session's 40 `yes` generators took the host to about 360 and an app crashed. The design (and I) bounded the hog by
+container lifetime and traps, but not by what the host can carry; the result was also weak: 0/40 old reds at 48 loops,
+3/40 at 96.
+Rule: synthetic load on this machine is at most 4 generator processes, each under an EXIT/INT/TERM trap, with a
+per-test-run timeout, a total budget well under 30 minutes, and an empty `pgrep` for the generator after each run,
+reported in the tester output. A flaky fix's base control is deterministic first (inject the delay that opens the
+race, e.g. a stubbed dependency that settles late); host load is at most a bounded regression check, never the proof.
+
+### 2026-11-16: Five design rounds on an evidence procedure the fix never needed (#160)
+The #160 product design (serialize exec resizes, hold input behind a pending resize for at most 2 s) passed every
+judge from round 1 to round 5 unchanged. All four FAILs (round 1 and 2 operations, round 4 security) were in the
+host-load base control: a pass rule a no-op fix could pass, a classifier mixing stale size with a slow shell, an
+orphaned vitest worker, an unbounded hog lifetime, a budget enforced only in prose. Round 3 passed 3/3, and only the
+shared-host load limit (40 `yes` generators crashed an app) and the main orchestrator's decision to delete the load
+run ended the loop. The deterministic control (the runtime's resize stubbed to settle 1000 ms late in a throwaway
+clone) had been in the design since round 1 and gave old 10/10 red, new 5/5 green on the real daemon.
+Rule: for a race fix, ask at the architect brief whether a deterministic injection of the race window exists; if it
+does, it is the base control and no load run is designed at all. When the same procedure class fails twice, delete
+the procedure instead of hardening it, and ask the main orchestrator before a third round on it.
+
+### 2026-11-16: Six judge_design rounds for a design-only accessibility fix (#99)
+judge_design took six rounds (3, 4, 5 and 6 granted by the parent orchestrator under Stepan's standing instruction).
+Round 1 FAILed on a silent quiz load while away; round 2 widened the quiz notice and missed its acceptance block;
+round 3 replaced that with a panel status container and missed the Safari minimum age; rounds 4 and 5 failed only
+on the author plan: stale counts, citations and copies of a DOM-order list that a grep would have caught. My briefs
+named the files to grep but did not run the greps myself before sending the judges.
+Rule: before every DESIGN judge round, run the mechanical pass myself and pass its output: print every plan
+citation next to the cited line, grep every copy of each changed list by its class names and section title across
+design/ (prototype.html, proto.css, proto.js, README.md, components.html, acceptance.md), and count state names
+from the files. When a judge asks for a status message on one path, ask the architect at once whether the same
+visible change on every other path is announced, so the fix is not found one path per round.
+
+### 2026-11-16: Briefed a load-based stability plan on a shared laptop and kept it through three stops (#157)
+My architect brief for #157 asked for base controls "under the same load" and named +40 `yes` as an example. Three
+judge_design rounds then refined a load harness, and the tester's full-suite and paired runs stopped three times on
+external spikes (other sessions, a Docker VM at up to 663 % CPU; host load up to ~360). The session that started this
+one halted the runs after another app on Stepan's machine crashed. The control that settled both tests needed no
+load: a forced-yield clock mock for AC6 and an injected 4 ms writeFile delay for starter-walk, both run in minutes.
+Rule: For a flaky-under-load fix, brief the architect to find a deterministic control first (mocked clock, fake timers,
+an injected per-call delay that makes the old code cross the timeout); synthetic load only when none exists, capped at
+4 generators. After a load run stops on host noise once, switch to a deterministic control rather than redesigning
+the load harness. Check sibling sessions' notes and `uptime` before any load run on this machine.
+
+### 2026-11-16: Six design rounds, four of them on the tester procedure's prose, not the fix (#95)
+The #95 fix (about 70 product LOC) had its focus rule settled by round 2 and confirmed for the whole class. Rounds 3-6
+failed on text around the tester procedure: an incomplete hand-written list of what an isolated-stack run leaves
+behind (rounds 3 and 4, same class twice), then one sentence crediting the final check with an image check it does not
+do (round 5). I patched the list once before closing the class by measurement; the second FAIL of the same shape was
+the signal I should have acted on at the first. Rounds 4-6 needed grants from the main orchestrator.
+Rule: a design never states a side-effect inventory or what a check verifies without a line ref the judge can read; at
+the first FAIL on such a claim, replace it with a measurement (read-only before/after snapshots run once before the
+judges) instead of correcting the list. Size the tester procedure to the change: a 70-LOC UI fix does not need the
+design to narrate the stack harness's teardown.
+
+### 2026-11-16: A worktree judge wrote its lesson into the main checkout's process repo (#162)
+In a Desktop worktree session the judge_design round 1 briefs said only "append the lesson to the responsible role's
+feedback file". The architecture judge appended to `<main checkout>/.claude/feedback/architect_mistakes.md`, which left
+an uncommitted change in main's process repo that this session cannot undo (the worktree hook blocks edits to main's
+`.claude/`). The entry had to be copied into the worktree's process repo by hand and main's copy left for Stepan.
+Rule: in a worktree session every judge and role brief names the absolute feedback path of the worktree's own
+`.claude/feedback/` and says "never the main checkout's `.claude/`".
+
+### 2026-11-16: Two judge votes of a round were never recorded (#162)
+judge_code round 2 sent three fresh judges in one message. Only the operations vote was recorded; the security and
+architecture spawns are missing from `judge_spawns` and their handbacks left no line in `.git/pipeline-hooks.log`
+(host load 70-300 at the time, cause not found). The architecture report also ended with `PASS - no architecture
+issues found` instead of a bare `PASS`. The gate kept the round 1 architecture FAIL, so a fresh architecture judge
+was needed.
+Rule: right after sending a judge round, check `status` for each new agent id in `judge_spawns`; re-send any judge
+that is missing before waiting. Every judge brief ends with "the last line is exactly `PASS` or `FAIL`, alone".
+
+### 2026-11-16: A clone decision was added as prose next to code blocks that still prescribe the worktree (#148)
+The "Orchestrator decision" paragraph in 148-design 3.3 replaces `git worktree add` / `git worktree remove` with a
+`git clone --local` and a guarded `rm -rf "$M"`, but the literal blocks in 3.1 step 1 and 3.3 still run
+`git worktree add --detach "$M" HEAD` and `git worktree remove "$M"`, and the rm guard exists only as a sentence. A tester
+running the blocks verbatim registers a worktree in the shared repo and runs a verb that is Stepan's; the rm has no
+literal `${M:?}`/path check and is the form Claude Code's rm check refuses (architect_mistakes 2026-10-29).
+Rule: a procedure decision is applied to the design's code blocks themselves (old lines removed, the guard written as a
+runnable command) before judge_design, never as a paragraph saying which lines it replaces.
+
+### 2026-11-16: Two judge_code rounds spent on comments that claimed more than the code does (#148)
+The #148 test code passed every lane in round 1; architecture failed round 1 on the I-out-7b holder comment (it gave
+#34's step order backwards and called a result "the one write") and round 2 on the TOKEN_SPENDING_KINDS comment (it
+promised a new token-spending kind would turn P6 red, but P6 only draws kinds from KINDS). Both claims came from the
+design text, so neither the coder nor I checked them. Before round 3 I had the coder re-check every added comment
+against the line it describes, which found two more overclaims, and I caught a number that had lost its condition
+("3.3 s test run" for a whole-file measurement).
+Rule: the coder brief for any change with new comments asks, before tester, for a list of each added comment with the
+code line or document line that makes it true; I read that list against the #117 rule (numbers keep their condition)
+before sending judge_code.
+
+### 2026-11-17: Dry-ran log-reading scripts against logs I wrote by hand (#180)
+My judge_design dry run of the #180 read scripts fed them hand-made logs, so all checks passed, and I wrote down
+"reporter format" as the one open premise. The operations judge ran the same scripts against a real #95 isolated-stack
+log: turbo prefixes every e2e line with `@academy/web:test:e2e: `, so the anchored summary greps could never match, and
+the read scripts would have failed every real run (and the t31 guard could never go red).
+Rule: a dry run of any script that parses a tool's output uses a real captured log of that tool (a sibling task's run log,
+or a short real run), never a hand-written sample; the brief names the real log's path.
+
+### 2026-11-17: Asked for "a row for every line" and got a catch-all that stopped the happy path (#180)
+After the round-2 operations FAIL (wrapper guard lines without a row) my re-brief asked the architect to list every line
+and add a catch-all. The catch-all ("any output a row does not name -> stop") then covered the success output, and round 3
+failed on that, the same class one step later. The #70 and #106 rules (at the second FAIL of one shape, ask for one general
+rule over the class) applied already at round 2: the shape was "what does the tester do with this output".
+Rule: for a tester decision table, brief the rule first: each step passes on its Pass criterion and moves on; it stops only
+on named failure prefixes or a Pass not met; one fixed stop sequence after a stack run (leftovers, disk record, read, clean),
+another before one. Rows only for the exceptions to that rule.
+
+### 2026-11-17: Seven design rounds for a 5-line test fix, six of them on the tester procedure (#180)
+The fix (one `waitForLoadState("load")` plus a comment) passed every judge from round 1 on, and the control passed its
+first real run. Rounds 1-6 failed on the tester procedure: log format (hand-made dry-run logs), then the decision table
+three times in a row (missing rows, a catch-all that stopped success, no precedence between the run line and the read),
+then prose routes outside the table. The #95 rule ("size the tester procedure to the change") was in the file and I did
+not apply it at init: I let the architect write a full state machine for a tester who could have reported outputs.
+Rule: for a small fix with a stack-run control, brief the tester procedure from the start as "run these commands, report
+every output, move on only on the named success lines, everything else comes back to the orchestrator", and keep
+routing decisions out of the design. Dry-run log parsers against a real captured log before the first judge round.
+
+### 2026-11-17: Three design rounds, two on how the tester counts, and a CI YAML line nobody parsed (#96)
+judge_design round 1 failed on the mechanism (the container lookup accepted any non-owner web container) and on two
+claims about hook and turbo behaviour; round 2 failed only on the tester procedure counting tests by grepping the list
+reporter's log (its code frames reprint source lines) and on a count that left out the setup dependency. My own E9
+dry run had already printed the wrong grep counts in round 2; I recorded them as an extraction defect instead of
+sending them back to the architect before the judges saw them. In round 3 all three judges passed a CI step whose
+`run:` line does not parse as YAML (a ": " inside a plain scalar); the security judge noted it as non-blocking and I
+confirmed it with the yaml package. It went to the coder as plan constraint C1, not as a fourth design round.
+Rule: when a dry run of a design block prints anything other than the design's pass line, it goes back to the
+architect before judge_design, even when the cause looks like counting. Every criterion that counts tests or reasons
+reads the Playwright/Vitest JSON report. Every YAML snippet a design adds to a workflow is parsed with the yaml package
+before judge_design.
+
+### 2026-11-17: init refused because the worktree's process repo was still on a merged task's branch (#96)
+This Desktop worktree had run #162 before; its `.claude/` stayed on `fix/162-attempt-arrays` after process PR #32
+merged, so `init` refused. I checked the PR was merged at the branch's head sha (`gh pr view`, `rev-parse`,
+`merge-base --is-ancestor`), that `worktrees "<path>"` exited 0 and that the process tree was clean, then cut the new
+process branch with `switch -c <branch> origin/main` and `branch --unset-upstream` (init then refuses a branch that
+tracks main). The old local branch `fix/162-attempt-arrays` is left for Stepan's sync.
+Rule: a reused worktree session checks `git -C .claude branch --show-current` before `init`; if it names a finished
+task, prove the merge as in section 7 steps 3-5 before cutting the new branch, and name the left branch in the report.
+
+### 2026-11-17: A docs-only design took three rounds on claims about what a scanner detects (#148)
+
+judge_design for a 13-line comment and ADR fix ran three rounds (the third under Stepan's standing instruction). Both
+FAILs were security findings of one class: a sentence about what the e2e leak scan does or does not detect, written as a
+case (first at the title instead of every scanned body, then a "part of a run" absolute and a run length without the
+trim). Round 3 passed once the architect wrote the detection rule once from the code (D1-D5) and derived every claim
+from it per listed fragment. Separately, `init` refused because this worktree's process worktree still sat on a merged
+task's branch; `git -C .claude switch --no-track -c <task branch> origin/main` (allowed verbs, clean tree, merged PR)
+let init proceed.
+Rule: when a design's deliverable is prose about the behaviour of a matcher, filter or gate, the first architect brief
+asks for the mechanism written once with file:line and every claim derived from it, before any judge round. Before
+init in a reused worktree, check `git -C .claude branch --show-current` and the PR state of that branch.
+
+### 2026-11-17: A step moved out of the task took the evidence an AC still needed (#150)
+In judge_design round 4 the orchestrator decided to drop the E-reset destructive-colour capture (a race-prone step the
+architect had added in round 3) and to move it, together with the diff-scoped raw-colour grep, to follow-up #192.
+The grep was evidence for AC16 "tokens only (no raw colour)" and ADR-0006 item 5 in #150's own diff; only #150's tree
+can show its added lines carry no raw colour. Round 4 failed 1/3 on exactly that gap. Earlier in the same task,
+recording decision C/A only as a new section 17 left option B live in steps 6, 7b and 10, and round 2 failed on it.
+Rule: when moving a step out of a task, move only what it does, not the evidence an acceptance item still needs, and
+re-check each AC that cited that step before the next judge round. A decision is applied by having the architect
+rewrite every section it touches, never by appending a decision section.
+
+### 2026-11-17: A fix round added an unasked step and the next round failed on it (#150)
+The round-3 architect brief listed the round-2 findings to fix; the architect also added, unasked, an in-app capture
+of the destructive button colours for tester.md item 7. Round 3 failed on that step alone (a theme read that races the
+matchMedia listener and a 150 ms transition). judge_design took five rounds for a design whose mechanism passed from
+round 1.
+Rule: every architect fix-round brief says "fix only the listed findings; anything else you think is needed comes back
+to me as a question, not as design text", and the orchestrator diffs the round against the previous copy before the
+judges see it and sends back any change no finding asked for.
+
+### 2026-11-17: A blanket sed of the follow-up placeholder broke the design's own guard check (#118)
+The #118 design used `#<F>` for a follow-up number the orchestrator was to file. After filing #188 I ran
+`sed 's/#<F>/#188/g'` over the whole design, which also rewrote the coder's "must print nothing" check
+`rg '#<F>|until #118|...'` into a pattern that matches the three `#188` references the design requires. Two judges
+failed judge_design round 1 on it. My dry-run extractor also wrote the wrong block to dry/tools/mutate.py.
+Rule: never fill a placeholder in a design with a blind global replace; hand the number to the architect, or edit
+each occurrence and grep the result for every check that names the placeholder. Diff any tool file extracted
+from a design against the design block before using it.

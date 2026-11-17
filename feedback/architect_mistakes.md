@@ -1943,3 +1943,588 @@ a host with BSD sed.
 Rule: A stability check for a flaky fix runs the old code under the same load, interleaved, and requires it to go red.
 Every background load loop has an EXIT/INT/TERM trap, guarded `${L:?}` paths and a stated Bash timeout. Every
 throwaway clone has a scripted cleanup step and every mutation an exact command.
+
+### 2026-11-16: Load control with a pass rule that no-fix passes 25 % of the time, and a TERM trap that orphans vitest's worker (#160, judge_design round 1, operations)
+6.5 passed on "old red-resize >= 1, new 0" over 40 pairs. If the fix did nothing, both sides share one p, and
+(1-(1-p)^40)(1-p)^40 peaks at 0.25 (p about 1/58), so the rule cannot tell the fix from no fix; only old >= 5 vs new 0
+(Fisher one-sided 0.027) is evidence, and p = 1/12 gives 3.3 old reds expected. The classifier counted any 15000 ms
+waitFor timeout as the stale-size defect, so a slow shell or a 2 s hold release under load would both send the coder
+back. The INT/TERM trap killed only the vitest main process: vitest 5.0.5 exits on SIGTERM without the global teardown
+and its fork worker is reparented to PID 1 and runs the test body to the end (verified with a 20 s test). 6.6 did not
+list test-run volumes or networks, so the run's sentinel volume stays unreported.
+Rule: A load control's pass rule is a stated significance threshold on old vs new counts, with N chosen from p to
+reach it. Each red class the tester can see gets its own label and owner. A trap that stops a test runner kills its
+whole process group and waits for it; the leftover check lists every object kind the harness labels.
+
+### 2026-11-16: Hog lifetime justified by a run length the calibration contradicts, and no time budget on a shared VM (#160, judge_design round 2, operations)
+6.5 says `sleep 10800` "caps the hog at 3 h, above the longest allowed run (N <= 100 pairs)". The calibration at
+HOG_LOOPS=96 measured 11-67 s per run, mean 28.2 s but 55.8 s over runs 1-13 while other sessions loaded the host.
+At that rate 94 pairs take about 2.9 h and 100 pairs at the 67 s maximum about 3.7 h, so the hog can expire near the
+end, `LOAD LOST` voids the batch, and the rule says "rerun": several hours of a 96-loop hog on a VM that also runs
+the owner's `academy` stack and other sessions' suites, with nothing bounding the total.
+Rule: Size every lifetime cap and duration claim from the measured maximum, not the mean, and give a long load run a
+wall-clock budget that stops cleanly and keeps the completed interleaved pairs instead of voiding them.
+
+### 2026-11-16: Hard load limit enforced in code for the loop count only, not for the time budget or the host-load gate (#160, judge_design round 4, security)
+The round-4 hard limit has two parts: at most 4 generators, and a total budget well under 30 minutes. r160-load.sh
+refuses HOG_LOOPS outside 1-4 before it creates anything. It takes any digits for BUDGET_S, and the hog's lifetime is
+BUDGET_S + 120. So `BUDGET_S=7200`, the round-3 default and still in that round's run lines, starts a 2 h hog with no
+refusal. HOST_LOAD_MAX is the same: "never with a raised HOST_LOAD_MAX" is only in the prose of 6.7.2 step 7, and
+`HOST_LOAD_MAX=999` turns off the host gate that exists because of the incident. The limit held only for as long as
+everyone typed the documented values.
+Rule: When a hard limit comes from an incident, every knob that can exceed it (count, duration, gate threshold) gets a
+refusal in the script before anything is created, and the dry run includes one refusal per knob.
+
+### 2026-11-16: A "strong proof" rule with 3 runs per side that a non-fix passes 11-30% of the time (#157, judge_design round 1, architecture)
+Design 5.4 calls starter-walk "fixed, base red and new green" when the old file times out in >= 1 of 3 full-suite runs
+and the new file in 0 of 3. #106 saw this timeout in about 1 of 3 base runs. At a base rate of 1/3 a change that does
+not touch the cause passes that rule with P = (1 - (2/3)^3) * (2/3)^3 = 0.21, at 1/2 with 0.11. The design's own
+failure-mode row ("the 5000 ms timeout has a cause batching does not touch") is exactly that change: 5.9 would show the
+duration drop and 5.4 would then print "fixed" by chance. The same design did the power math for L-AC6 (P(old = 0)
+about 4e-5) but not here. fullsuite.sh also runs old before new in every round, while interleave.sh alternates.
+Rule: A red-base/green-new rule states the chance that a non-fix passes it at the observed base rate (one-sided
+Fisher: C(n_old, k)/C(n_old + n_new, k) when new is 0/n_new) and claims "fixed" only at <= 0.05, extending rounds up to
+a stated cap first; old and new alternate order across rounds.
+
+### 2026-11-16: Harness steps never run once: zsh modifier, no build, wrong calibration count, blocked poll (#157, judge_design round 1, operations)
+The operations judge ran section 5 in a throwaway clone. 5.3 step 2 stops at once in the tester's zsh:
+`"$BASE:apps/..."` and `"$BASE:services/..."` are read as zsh `:a`/`:s` modifiers (`git show` gets
+`<W>/3c5ef63pps/web/...`). 5.3.3 runs the walk calibration in a fresh clone before anything is built, so the file
+fails to import `@academy/lesson-schema/schema` and detect prints 0, a STOP. After a deps build (2.5 s) the
+calibration prints `failed=2 timedOut=2`, not the `timedOut=1` the step requires, because a timed-out walk test gets
+a second FAIL block from its afterEach (ENOTEMPTY, the write loop keeps going) and the 10-line window runs into the
+next block. That is a second STOP. The 5.0 poll `sleep 60; ls` is blocked by Claude Code. Each walk timeout also leaves
+a `$TMPDIR/wks-walk-*` dir that no cleanup step removes.
+Rule: A design that hands the tester scripts has each command run once as written, in the tester's shell (zsh:
+`${VAR}:path`), from a fresh clone (install and build), with each calibration's printed value copied from that run.
+Waits use run_in_background notifications, not foreground sleep.
+
+### 2026-11-16: The stop red control finishes before the tester can send the stop, and the stall rule has no trigger (#157, judge_design round 2, operations)
+Dry run of round 2 in a fresh clone. 5.3 step 5 starts `interleave.sh stopcheck 3 4` on starter-walk.test.ts: 10 s warm-up
+plus six runs of 1-2 s, so the harness exited on its own about 18 s after start (uptime 3.9-4.4). The kill sent right after
+the GROUP line printed `kill -<pgid> failed: no such process`, and both pass conditions (`pgrep -x yes` = 0, output ends with
+`HARNESS_EXIT`) still held, because a natural exit satisfies them. So the check that decides group stop vs fallback for every
+later run can pass without stopping anything. With 100 rounds the same kill stopped yes, pnpm and vitest within 0.5 s.
+Separately, 5.0 and 5.2 tell the tester to wait for the completion notification and to stop a run with no new line for
+15 minutes, but give no command that waits: a hung run sends no notification, and nothing makes the tester look at the clock.
+Rule: A stop red control runs long enough that the stop lands mid-run (rounds sized from a measured per-run time), and its
+pass condition must be false on a natural exit (kill rc 0, `rc=143`, no `.done`, fewer run lines than planned). Every wait on
+a background run is a literal bounded command that also checks the stall rule.
+
+### 2026-11-16: A load-based stability plan for a shared host, sized as if the machine were idle (#157)
+Every #157 design round prescribed +40 `yes` (and full-suite loops) as the load for base controls, on a 10-core
+laptop shared with up to eight other sessions. Host load reached about 360 and another app crashed; the runs
+measured other sessions' spikes rather than the change, and the plan stopped three times on host noise. The one
+control that gave a clean answer, the forced-yield `performance.now` mock for AC6, needed no load at all.
+Rule: A stability plan prefers deterministic controls (fake timers, a mocked clock, an injected per-call delay that
+makes the old code exceed the timeout and leaves the new code under it). Synthetic load is a last resort: at most 4
+generators, trapped, a per-run timeout, `pgrep -x yes` empty after each run, and the plan states why no
+deterministic control exists.
+
+### 2026-11-16: A catch-all flag taker that focuses on stale flags, with a comment claiming it never does (#95, judge_design round 1, architecture)
+Design 1.1 `FocusOnAnyRetry` focuses the not-found h1 whenever `takeAnyRetryFocus()` finds any flag. D1 says a pending
+flag is either from the retry this page replaced or "stale from an interrupted refresh; in both cases clearing it is
+right", but the code focuses in both cases, not only clears. Section 8 then accepts the stale case as "pre-existing for
+every FocusOnMount", which is false for this page: today not-found never moves focus, after #95 every stale flag of any
+id (a refresh superseded by a navigation; a lesson text retry that ended on the lesson course error, flag = panel id)
+moves focus to the h1 on the next ordinary not-found arrival, against AC9 "otherwise focus does not move". The dictated
+not-found header "The h1 takes focus only after a retry this page replaced" is therefore false, and no test or mutation
+row covers the case. A cheap fix exists: store the pathname with the flag in `retry()` and let the not-found taker
+clear always but focus only when the pathname still matches.
+Rule: When widening a one-id taker to "any id", enumerate every path that leaves the flag stale and decide focus and
+clear separately for each; an exclusivity claim in a dictated comment needs a test for the counter-example.
+
+### 2026-11-16: Scratch-clone procedure leaks its clone on an early guard and its cleanup guard passes a dot-dot path (#95, judge_design round 1, operations)
+Design 6.3 prints `CLONE $C` only after the per-file guards, so the dry-run's `GUARD FAILED missing ... not-found.test.tsx`
+left a full clone in the scratchpad with no path printed. 6.4 runs the cleanup only after `RED TREE READY`, never sets
+`C`, and its `case "$C" in "$S"/m95-clone-*)` guard accepted `$S/m95-clone-X/../../outside` (case `*` matches `/` and
+`..`), echoed its refusal with exit 0, and did nothing silently when `repo/apps/web` was missing.
+Rule: A scratch procedure prints its scratch path right after creating it, runs its cleanup on every exit path, rejects
+`..` and exits non-zero on refusal; dry-run the cleanup with a dot-dot path and an early guard failure.
+
+### 2026-11-16: Dictated comment states a URL-timing guarantee that back/forward breaks (#95, judge_design round 2, architecture)
+Design 1.1 dictates the comment over `isSetOnShownPage`: "Next writes the new URL in an insertion effect of the commit
+that shows the route (app-router.js HistoryUpdater), so the pathname here is the one of the view now mounted", and
+section 0 states the same as a fact. On a back/forward press the browser changes `window.location` before `popstate`
+fires; Next then dispatches ACTION_RESTORE in a transition (`app-router.js` handlePopState/traverse) and commits later,
+and HistoryUpdater can even skip its write (`hasMissedTraversal`). Between the two, the old view is mounted under the
+new pathname. The rule still fails closed there (a taker sees a foreign pathname and drops), but the comment would ship
+false, and 1.4 lists back/forward under E4 itself.
+Rule: Before dictating a comment that says when the browser URL changes, check every way the URL can change (Next
+navigation, refresh, history.replaceState from app code, popstate), and qualify the claim for the ones that do not go
+through the router's commit.
+
+### 2026-11-16: Listed what a stack run writes outside the scratchpad, but not all of it (#95, judge_design round 3, operations)
+Round 3 change 11 added to 6.4 (and the round-3 table) that `isolated-stack.sh t32` writes "Docker resources of
+project `academy-t32` (containers, network, volumes) and the image `academy-web:t32`, which its teardown removes".
+The script runs `up -d --build` (`isolated-stack.sh:335`), so it also builds `academy-workspace-service:t32`
+(`docker-compose.yml:71`, removed by teardown through `T31_IMAGES`, `isolated-stack.sh:58`), adds BuildKit build-cache
+records for both images that teardown never removes, and pulls `node:22.23.4-alpine` when it is absent
+(`isolated-stack.sh:48,328`), which also stays. A tester reading the list as complete reports a clean machine when it
+is not, and build-cache growth is exactly what #113 measured.
+Rule: When a design says what a command writes outside the scratchpad, derive the list from every create/build/pull
+in the script it runs, and say which items its teardown removes and which stay.
+
+### 2026-11-16: The round-4 "every create, build and pull" list still stopped at the script's own lines (#95, judge_design round 4, operations)
+Round 4 rebuilt the 6.4 table from the docker lines of `isolated-stack.sh` itself, not from what those lines run.
+Missing: the `docker/dockerfile:1` frontend that BuildKit pulls for `apps/web/Dockerfile:1` (`# syntax=` directive;
+a `frontend` build-cache record that stays, and a new one when the tag moves), the `pnpm` cache mounts of both
+Dockerfiles (`exec.cachemount` records, stay), and the one-off `docker compose run --rm --no-deps web` containers of
+`check-image-migrations.sh:40,63` (called at `isolated-stack.sh:340`). 6.2's list of git-ignored worktree files cited
+`.gitignore:12-20` but left out `apps/web/.next/` and `apps/web/next-env.d.ts`, which `next typegen` in
+`pnpm typecheck` (step 1) writes. Same class as the round-3 entry above, one level deeper.
+Rule: Derive a "what this writes" list by following every command the script runs into the files it reads
+(Dockerfiles incl. `# syntax=` and `--mount=type=cache`, called scripts, package scripts behind turbo tasks), not
+only the script's own lines.
+
+### 2026-11-16: "Every create, build and pull" list still misses the build's own registry fetch (#95, judge_design round 4, architecture)
+Round 4 change 1 says the 6.4 table is derived from every create, build and pull of `isolated-stack.sh t32`, and 6.2
+reuses it for t31. The web build reads `apps/web/Dockerfile:1` `# syntax=docker/dockerfile:1`, which makes BuildKit
+fetch the dockerfile frontend image from the registry; the repo says so itself (`services/workspace/Dockerfile:2-3`,
+"a directive would make every build fetch a frontend image from the registry"). The table names only
+`docker pull "$NODE_IMAGE"` as a pull, so the tester checks the node image and not the frontend, which stays after
+teardown. Lesser: `check-image-migrations.sh:40,63` (called at `isolated-stack.sh:340`) creates `docker compose run --rm`
+web containers, a creator the table does not name (they are removed by `--rm` and caught by the final check).
+Rule: Derive a "what stays" list from the Dockerfiles and the scripts the script calls too (syntax directives, FROM,
+cache mounts, `compose run`), not only from the script's own docker lines, before claiming it is complete.
+
+### 2026-11-16: Two judge rounds spent patching a hand-written inventory of a stack run's side effects (#95, judge_design rounds 3-4)
+The #95 tester procedure listed what `isolated-stack.sh t31|t32` leaves outside the scratchpad. Round 3 failed because
+the list missed a second image, the build cache and a base-image pull; the round-4 table claimed "every create, build
+and pull" and failed again on the dockerfile frontend fetch, the pnpm cache mounts, the `check-image-migrations.sh`
+run containers and the `next typegen` output. Each fix read one level deeper and still stopped short: side effects
+hide in what the script calls (Dockerfile directives, helper scripts, tool internals).
+Rule: never hand-write an inventory of side effects. State only what the code verifies (the script's own teardown and
+final check, with line refs), name known leftover categories as examples, and have the tester measure the rest with
+read-only before/after snapshots, each snapshot command run once before the judges see it.
+
+### 2026-11-16: "Verified by code" bullet implied the final check covers the built images (#95, judge_design round 5, architecture)
+Design 6.4 lists under "Verified by code" the line "Not checked by the final check: images other than `T31_IMAGES`".
+The final check (`isolated-stack.sh:236-244`) lists only containers, volumes and networks by label; it checks no image.
+`T31_IMAGES` are only removed in teardown (`:226-230`), and a failed `docker image ls` at `:227` yields an empty
+string, so the removal is skipped with no `TEARDOWN FAIL`. The sentence credits the code with a check it does not do,
+in the very section whose round-5 promise was "states only what the code verifies".
+Rule: in a "verified by code" list, every negative ("not checked: X other than Y") is also a positive claim about Y;
+check Y against the cited lines the same way as the positive bullets.
+
+### 2026-11-16: Gate commands dry-run in a shell other than the one the tester runs, and a per-commit loop that ran zero times (#162)
+Design 4.4 and 5.14 were written for bash, but the tester's Bash tool runs zsh with `grep` wrapped by ugrep. There
+`$IT test/...` is one word (zsh does not split it: `command not found`, rc 127, which reads as "red" on every M row),
+and the M8 guard `grep -c 'holds ${storedValueText(value)}'` counts 0 (ugrep takes the `$` as an anchor; BSD
+`/usr/bin/grep` counts 1), so M8 stops at GUARD FAILED. Step 14 runs `git rev-list main..HEAD` "in the throwaway
+clone", which has no local `main` (the design says so itself in step 6): rev-list fails, the loop runs zero times,
+prints nothing and exits 0, so per-commit greenness is never checked.
+Rule: Dry-run every gate command in the shell the tester will use (the Bash tool, zsh), or put it in a file run with
+`bash <file>`; never pass a command through an unquoted variable; use `grep -F` for literal anchors; any loop over
+revisions in a clone uses `origin/main` and fails when the list is empty.
+
+### 2026-11-16: A red control that relied on a CHECK refusing NULL (#162, judge_design, architecture)
+Design 4.4 M6 strips `array_ndims(x) IS NULL OR` from `attempts_included_check_ids_dims_check` and predicts that `{}`
+is then refused (T9, T13 and every default-`{}` fixture red). `array_ndims('{}')` is NULL, `NULL = 1` is NULL, and a
+CHECK accepts NULL, so nothing goes red: the disjunct is a no-op inside a CHECK and the control was never run. The
+same blind spot sits in 1.2, where `ELSE false` is rejected only for the reported name, not because it would refuse
+`{}` (ndims NULL takes the ELSE branch).
+Rule: For every CHECK mutation, evaluate the mutated expression on each listed value to TRUE/FALSE/NULL (NULL passes)
+before predicting red, and dry-run every red control whose prediction is not obvious; a clause that only turns NULL
+into TRUE inside a CHECK is redundant and is described as such, not given a red control.
+
+### 2026-11-16: Mutation helper edits a relative path, so a reset cwd mutates the task worktree (#148, judge_design round 1, security)
+Design 3.1 `mutate()` runs `perl -0pi` on `"$file"`, and the 3.2 rows pass `apps/web/lib/progress/rules.ts` /
+`outcome-writer.ts` relative, with only "(from `$M`)" in prose and no `cd "$M" &&` in the step. Agent Bash calls start in
+the task worktree, the anchors exist there too (same base), and the active pipeline lets shell writes to product files
+through, so the mutant lands in the task worktree's product code. The helper's `git -C "$M" diff --stat` is printed,
+not asserted, so it shows nothing and the run continues; the between-runs restore is `git -C "$M"` and does not undo it.
+Rule: every mutation command takes an absolute `"$M/..."` path (or the helper prefixes `$M` itself and refuses a file
+whose real path is not under `$M`), and asserts the clone's diff is non-empty and the task worktree's diff is unchanged.
+
+### 2026-11-16: Expected red set for a mutant was taken from a grep of one field, not of every test reading the changed value (#148, judge_design round 1, architecture)
+Design 3.2 expects M1 (`isInNextRun: isCounted && !isClosed && !tally.hasPassed`) to turn exactly {P6, the example at
+rules.test.ts:263} red. The design's fact list grepped `spendsTokens`/`isInNextRun` and missed that `composeRun` reads
+`isInNextRun`: rules.test.ts:278 "composes a run of exactly the checks in the next run, with their kinds" expects the
+passed command check "done" in `includedChecks`, which M1 drops, so M1 is red in three tests. The tester is told a
+larger red set is reported, not dismissed, so the run would come back as a mismatch against the design.
+Rule: for each mutant, list every test that reads the mutated value directly or through a consumer (here composeRun,
+hasNextRun) and derive the expected red set from that list, not from a grep of the field name alone.
+
+### 2026-11-16: Between-runs restore check scoped to a directory that also holds the test patch (#148, judge_design round 1, operations)
+Design 3.2 says after each restore `git -C "$M" diff --stat -- apps/web/lib` "prints nothing (the test patch lives in
+other files and stays)". The patched rules.property.test.ts is itself under apps/web/lib, so in the dry run the line
+printed that file after every restore and can never be empty; a tester following it literally stops or learns to
+ignore it, and then a leftover mutant in rules.ts would be ignored too. The `mutate` helper's own `diff --stat` has the
+same scope. Separately, the Bash tool's shell is zsh, where `rm -f "$S"/148-*.json` aborts with "no matches found" when
+no JSON was written, and that whole rm (patch file included) is skipped.
+Rule: a "prints nothing" check is scoped to exactly the files the step restores (here rules.ts and outcome-writer.ts),
+and every scripted step is dry-run in the agent's real shell (zsh here), with globs that tolerate no match.
+
+### 2026-11-16: Dictated an exclusivity comment that ADR-0007 rule 7 contradicts (#148, judge_code, architecture)
+Design D9 prescribed the I-out-7b holder comment "this is the shape of #34's per-check commit, the one write that
+can land while the writer waits". ADR-0007 rule 7(a) runs applyLessonOutcome after every transaction that inserts
+check results or sets an attempt final (R34-3, R34-14, R34-15), and a finished attempt changes the facts through its
+missing results (rules.ts resultsWithMissing). So the result insert is not the one write; the same test's D15
+comment even names the attempt change as a possible concurrent write.
+Rule: Before dictating "the one"/"only" in a comment, read the ADR rule that lists the writers and grep for the others.
+
+### 2026-11-16: Claimed a test goes red for a new kind the generators never draw (#148, judge_code round 2, architecture)
+Design section 5 says "A new token-spending kind is added to CHECK_KIND_TRAITS without the test set: P6 (a) goes red
+at once", and the coder wrote it into the TOKEN_SPENDING_KINDS comment as "has to be added in both places, or P6 goes
+red". P6 sees only kinds that scenarioArb draws from the hand-written KINDS list (rules.property.test.ts:28, typed
+`readonly CheckKind[]`, not exhaustive) and tokenPassedScenarioArb's own `constantFrom("rubric", "hidden-task")`. A new
+kind added to the lesson schema and to CHECK_KIND_TRAITS (a Record, so it must be) but not to KINDS is never
+generated, and P6 stays green. Only a changed trait of an existing kind turns it red.
+Rule: Before writing "X goes red when Y", trace whether the test's generators can produce Y at all; a hand-written
+list of variants guards only the variants on it.
+
+### 2026-11-16: Listed one stale comment of the changed path and missed the one beside the changed line; ADR said "not in process listings" (#115, judge_design round 1, architecture)
+Design 2.2 updates the errors.ts:123-125 comment because #115 makes it stale, but not the comment directly above the
+line it changes: spec.ts:197 "Added to the container's own `HOME`; nothing from the service's environment reaches the
+shell." Once `Env` carries `ANTHROPIC_API_KEY` from the service's config, that sentence is false, and a coder who
+follows the design's list leaves it. Separately, ADR item 14 and the 2.2 table say the key is "not shown by process
+listings" / "`ps` / `docker top`: no, they show arguments". procps `ps e` (the #33 image has procps, ADR-0002 item 13)
+prints each process's environment from `/proc/<pid>/environ` for any uid-1000 caller, and `docker top <id>` passes ps
+options to a root `ps`; the readers are the same as the uid-1000 and socket-holder rows, but the sentence is false.
+Rule: When a change makes a value flow where a comment or ADR said nothing flows, grep every comment and ADR sentence on
+that path (`rg -n 'service.s environment|reaches|never' <changed files>`) and list each one to rewrite; for every
+"not shown by tool X" claim, check the tool's options that read the same source (`ps e`), not only its default output.
+
+### 2026-11-16: "Who can read the key" table missed the service-API path, and the web/db guard checked names only (#115, judge_design round 1, security)
+Design 2.2 says "web, db, any other container: no". Web holds `WORKSPACE_SERVICE_SECRET` and reaches the service on
+`workspace-api`; `GET W/terminal` with that Bearer opens a uid-1000 shell whose env is the key (ADR-0011 items 1 and 4),
+so whoever controls web, or holds the secret and reaches the service, reads the key without the learner's involvement.
+The same path already reached the `/login` credential, and ADR-0002 item 10 never named it. Separately, U-compose-key
+asserts only that web/db environment KEYS do not match `/AGENT_API_KEY|ANTHROPIC/`: `FOO: ${WORKSPACE_AGENT_API_KEY:-}`
+or `env_file: .env` on web passes it, so "web gets nothing" is not proven.
+Rule: For a "who can read secret S" table, enumerate every capability that yields S (env, /proc, socket, and every API
+that runs code where S lives) and name each credential holder of that API as a reader. A "service X never gets S" guard
+checks values and `env_file` of every other service, not only variable names.
+
+### 2026-11-16: README append command glues the key onto the previous .env variable (#115, judge_design round 1, operations)
+Design 6.4 point 1 dictates `printf 'WORKSPACE_AGENT_API_KEY=%s\n' "$(pbpaste)" >> .env`. When `.env` does not end
+with a newline (editors such as VS Code do not add one by default), compose reads the key as part of the previous
+line's value: measured with fake values, `WORKSPACE_SERVICE_SECRET` became `<secret>WORKSPACE_AGENT_API_KEY=<key>`, so
+the key reached web's environment and the service's bearer secret, the service started with no key, and nothing failed.
+Rule: A prescribed command that appends to or edits an owner's file is run against that file's corner cases (no final
+newline, an existing line for the same name) before it goes into the design.
+
+### 2026-11-16: Dictated replacement comments said "nothing else from the service's environment" over bodies built from it (#115, judge_code round 1, architecture)
+Design 6.0 dictated the spec.ts:79 comment "nothing else from the service's environment enters the container create
+body" and the spec.ts:216 comment "The only value from the service's environment that reaches the shell is the agent
+key". The coder wrote both word for word. The create body's `Image` (WORKSPACE_IMAGE override), `NanoCpus`/`Memory`/
+`PidsLimit` (WORKSPACE_*_LIMIT) and labels (WORKSPACE_INSTANCE) all come from the service's environment, and the
+exec's `Cmd` carries TERMINAL_SHELL, which becomes the shell itself. Both sentences were meant about `Env` and say
+something wider. This is the #121 lesson again, on the very rows written to fix stale comments.
+Rule: A dictated replacement comment names the field it is about (`Env`, not "the create body" or "the shell"), and
+before sending it, list every input of the function it sits in and check the sentence against each one.
+
+### 2026-11-16: Scratch red/green harness was blocked by the shell guard and still wrote into the worktree (#156)
+Design 6 dictated `cp "$W/apps/web/..." "$S/"` and `ln -s "$W/apps/web/node_modules" "$S/node_modules"`. While the main checkout holds a LEARN state, bash-code-guard consults it for any command naming `$W` (the worktree path contains the main path) and blocks a write verb followed by `apps/`, so both setup steps fail as worded. The design also claimed the harness never touches the worktree, but vitest without `--no-cache --no-fsModuleCache` writes `results.json` and creates `node_modules/.vitest-cache` through the symlink into `$W/apps/web/node_modules`. With no `--reporter=verbose` the default reporter lists only failing tests, so the "X green" expectations cannot be read from the output, and the R3-R5 rows named only some of the tests that go red.
+Rule: A scratch harness is dictated as a script file run whole, with source reads whose write target is the scratch dir, every tool cache pointed at or disabled for the scratch dir, a reporter that names every test, and an expected outcome for every test the mutation can reach.
+
+### 2026-11-16: Dictated an unconditional exactness comment that the same design's 4.1 contradicts (#156)
+Design 4.6 told the coder to write in split.ts that "multiplying first leaves a single rounding (the division)", with no condition. Design 4.1 itself says that on non-dyadic live inputs (17.6 px root font, 90 % or 110 % page zoom, passed by lesson-layout.tsx:73 from getBoundingClientRect and getComputedStyle) paneMinPx * 100 and the subtraction round too, and a limit can be off by one. The coder copied the wording, so split.ts:34-36 claims an always-exact limit that holds only for binary-exact widths. 4.6 also dictated "rounds and put the 440 px tie on the wrong side", a tense clash that reached split.test.ts:22.
+Rule: A comment a design dictates carries every condition the design's own analysis attaches to the claim; reread each dictated sentence against the section that proves it, and for grammar, before handing over.
+
+### 2026-11-17: Read scripts anchored on Playwright summary lines that turbo prefixes (#180, judge_design round 1, operations)
+c180-read.sh R3/R4 grep `^ +[0-9]+ (failed|flaky|interrupted)$` and `-Fx '  1 failed'`, but the e2e stage of
+isolated-stack.sh runs `pnpm test:e2e` -> `turbo run test:e2e`, and turbo prefixes every line with
+`@academy/web:test:e2e: ` (real #95 t32 log: `@academy/web:test:e2e:   5 failed`). R3 reads `[]` on any real run, so
+the control can never print AS EXPECTED, and c180-read-t31.sh's summary guard can never fail for the e2e stage. The dry
+run used a hand-written log without the prefix, so it could not see it; a real log of the same harness was on disk.
+Rule: Before a read script anchors on tool output, run it against a real log of the same harness (an earlier run's
+log), never only a hand-made one, and make every guard go red on a real failing log.
+
+### 2026-11-17: Control hold caught the stylesheet too, and a dictated comment stated a "can" as an "is" (#180, judge_design round 1, architecture)
+The C1 hold routes `**/_next/static/chunks/**`, which in this Turbopack build also serves the CSS (`static/chunks/*.css`).
+`app/layout.tsx:16` puts an inline theme script in `<head>` after the hoisted stylesheet, and an inline script waits
+for a pending stylesheet, so the parser stalls in `<head>` for the whole hold: the user button is not in the DOM, the
+old variant's `focus()` auto-waits until the hold ends and its Enter races hydration instead of landing 2-3 s before
+it. The positive control counts CSS requests too, so it passes with no script held. Separately, the dictated comment
+says an Enter before the chunks run "reaches no React handler and is lost" (React's root listener does receive it, and
+a forced hydration that does not suspend on the menu's path dispatches it), and "the load event waits for the scripts
+the document loads" (an implicit "every"; the design's own table excludes scripts added after load).
+Rule: A route hold is scoped by resource type to the thing the claim is about (`resourceType() === "script"`), and the
+positive control counts only that type; check what else the pattern serves and whether it blocks the parser. Dictated
+comments say "can" where the evidence shows a possibility, and name the cases a universal-sounding noun covers.
+
+### 2026-11-17: Temp-file prefix shared with a script name, and an exit code read after a command substitution (#180, revision 2, own dry run)
+In revision 1 the read scripts made their stripped copy with `mktemp "$S/c180-read-XXXXXX"`, next to `c180-read.sh`
+and `c180-read-t31.sh`. While dry-running revision 2, a cleanup `rm -f c180-read-*` meant for the temp copies also
+deleted `c180-read-t31.sh`. In the same dry run, `echo "rc=$?"` placed after `$(basename ...)` in one echo printed
+rc=0 for every read, red or green, because the substitution reset `$?`.
+Rule: Temp files get a prefix no script or log shares (`c180-strip-XXXXXX`) and are removed by the script's own EXIT
+trap, never by a glob. Capture an exit code into a variable on the next statement (`r=$?`) before anything else runs.
+
+### 2026-11-17: Decision table titled "every outcome, every step" left the step wrappers' own guards out (#180, judge_design round 2, operations)
+Revision 2 closed round-1 operations blocker 2 with one table in 4.2 and covered every line isolated-stack.sh and
+c180-prep.sh print. The one-line wrappers of steps 1, 4, 6 and 7 print their own guards, and six of them have no row:
+`GUARD FAILED $F exists` (1, 7), `GUARD FAILED ..`, `not a c180 clone: $C`, `$L exists` (4, 6), and in step 6
+`worktree differs from $B beyond the spec` and `untracked files in the worktree`. The step-6 diff guard is where a
+moved and merged origin/main shows up before C2, which is the base-as-value case the revision was about; without a
+row the tester has to improvise (edit the base file, re-run step 0, revert the tree).
+Rule: When a design says a decision table covers every outcome, grep every `echo`/`GUARD`/`STOP` text of every script
+AND every inline command the procedure runs, and give each one a row, or add an explicit catch-all row for the rest.
+
+### 2026-11-17: A catch-all "any output a row does not name -> stop" turned the happy path into stops (#180, judge_design round 3, operations)
+Revision 2.2 of the #180 design added a catch-all row to the tester decision table (4.2) but no rows for the success
+output of steps 1, 2, 3, 7 and 8 (the disk record, lint/turbo output, step 3 `rc=0` and `PREP READY`, `CLEANUP OK`).
+Read literally, every clean run stops at step 1; worse, the step 7 disk record printed right after C1 maps to "stop",
+whose step 8 deletes the clone, and `c180-read.sh` needs `$C/n-old.txt` from that clone, so the C1 stack run could
+never be read and would be burned from the budget of 3.
+Rule: A decision table that claims every outcome names the success output of every step too, and a "stop" after a
+stack run always runs the read-only log read before any cleanup removes what the read needs.
+
+### 2026-11-17: Running the read after every stack run let an infrastructure failure read as "(a) unproven" (#180, judge_design round 4, architecture)
+Revision 2.3 of the #180 design made the read script part of a post-run sequence P that runs after every
+`isolated-stack.sh` invocation, then decides "on the run's own lines, P1 and P3" with no order between them. In 2.1/2.2
+step 5 was reached only from the expected step-4 pair, so `NOT R3`-`NOT R9` always described a control that ran. Now a
+run where the e2e stage did not run or ran on a broken stack (`STOP preflight ...`, `FAIL guard`, `STOP postgres...`,
+`FAIL seed`, a `set -e` abort giving `RESULT FAIL (run rc=1 ...)`, no RESULT line) makes the read print `NOT R3`-`NOT R9`
+too, and the step-5 row "NOT AS EXPECTED with NOT R3-NOT R9 -> architect (R7/R8: fixed variant red, (a) unproven)"
+matches it alongside the Stepan/orchestrator route of the run line. `FAIL seed` and the `rc=1` aborts have no run-line
+row at all, so the only specific route left is "-> architect, (a) unproven", which 1.2 turns into a switch to (b).
+Rule: When a read that judges the fix is run unconditionally (to keep its inputs alive), state that it only counts as
+evidence when the run's own lines were the expected ones; otherwise its output is reported, never routed, and the run
+line decides.
+
+### 2026-11-17: The general stop rule caught the C2 repeat path, and step 3 hid the CLONE line on its own failures (#180, judge_design round 4, operations)
+Revision 2.3 replaced the case list by R-stop with exceptions "the only ones". Step 4 got a carve-out for its expected
+`rc=1` and `T32 RESULT FAIL (run rc=0, check status=1, teardown failed=0)`; step 6 got none. A C2 run that the read
+calls `C180 REAL RUN REPEATABLE` has the wrapper print `rc=1` and `T31 RESULT FAIL (run rc=0, check status=1, teardown
+failed=0)` (checked on the t31-green log with the dry run's other-spec edit), so R-stop (1), (2) and (3) fire and the
+step-6 repeat row can never be reached; neither walk took that branch. Separately, 4.2 counts only printed lines as
+output and runs step 8 "if a CLONE line was printed", but step 3 prints only `tail -n 5` of the prep log: on a
+typecheck failure the tail is turbo output plus `GUARD FAILED typecheck (see <C>/typecheck.log)`, the CLONE line is
+log line 2 of 33, so a literal tester skips `c180-clean.sh` and leaves the clone with node_modules (du 859M measured).
+Rule: After writing a general stop rule, walk every row that routes somewhere other than "stop" (each repeat, each
+exception) with the real wrapper output of that branch, and for every later step that needs a value from an earlier
+one, check that the earlier step prints it on its failure paths too, not only on success.
+
+### 2026-11-17: The expected run line was taken as proof that the tests ran (#180, judge_design round 5, architecture)
+Revision 2.4 of the #180 design orders 4.2 so that the read decides only when P0 shows nothing but `T3x FAIL e2e` and
+a `RESULT` line with run rc=0. But `isolated-stack.sh:294` prints `FAIL e2e` for any non-zero `pnpm test:e2e`,
+and the run goes on to `RESULT FAIL (run rc=0, check status=1, teardown failed=0)`: exactly the expected C1 pair.
+An e2e stage that never produced a Playwright result (turbo `^build` dependency failure, a config-load throw in
+`playwright.config.ts`, a globalSetup or runner crash) therefore passes B1 and B2, and the read prints `NOT R3
+summary lines: []` ... `C180 CONTROL NOT AS EXPECTED` (C2: `NOT G4`, `C180 REAL RUN NOT GREEN`), which B3 routes
+to the architect, the same infra-as-evidence route round 4 closed for the other stages.
+Rule: Before a read counts as evidence, check that the stage it judges actually produced its own result (here the
+e2e stage's prefixed `<n> passed (` summary line), not only that the wrapper printed the expected failure line.
+
+### 2026-11-17: The cleanup that runs "after any stop" also runs under a stack run that is still alive (#180, judge_design round 5, operations)
+Revision 2.4 of the #180 design says in 4.0 that a run with no completion notification after 45 minutes gets one
+`tail`/`stat` and then rule B (no `RESULT` line: B2), and 4.2 C says step 8 runs after any stop. On that path the C1
+run is by definition still running, from the clone: `isolated-stack.sh` did `cd "$root"` into `$C/repo` and its
+EXIT trap runs `docker compose -p academy-t32 -f docker-compose.yml down` and the image removals from there. Step 8
+`rm -rf`s that clone, so when the run ends or is killed its teardown has no compose files and leaves the t32
+containers, volumes, network and images behind. P1 on a live run also prints `LEFTOVERS FOUND t32` (B1 -> Stepan),
+and C still deletes the clone before Stepan can act.
+Rule: A cleanup step that removes the files a background job runs from is gated on that job's exit, not on a stop
+decision; a timeout path stops and hands the live job to Stepan without cleanup.
+
+### 2026-11-17: The routing table was closed but the frozen sections kept their own routes to (a)/(b) (#180, judge_design round 6, architecture)
+Revision 2.5 of the #180 design says in 4.2 B3 that nothing in the procedure routes to the architect and that only the
+orchestrator, after reading the log, may send the task to (b). The frozen sections still route by name: 1.2 "If G1 or
+G2 fails, (a) is wrong for this page and the task comes back to the architect for (b)", 3.3 "R9 is red ... (decision
+table: architect)" (the decision table has no such row any more), 6 "(b) kept as the fallback if G1 or G2 fails". In
+1.2 G1/G2 are the control's marker and fixed-green gates (R7/R8 in 3.4), but `c180-read-t31.sh` prints `NOT G1` ...
+`NOT G5` for C2, and those NOT ids are exactly what the B3 stop report hands the orchestrator. A C2 `NOT G1 T31 FAIL
+lines: [T31 FAIL e2e]` from another spec's flake beyond the budget reads, by 1.2, as "(a) is wrong -> (b)": the
+round-5 class (a read's NOT id taken as a verdict on (a)) through the prose instead of the table. Freezing sections
+0-3 is what kept the old routes alive.
+Rule: When a routing rule is narrowed, grep the whole document (frozen sections included) for every route word and
+gate id it replaces (`architect`, `(b)`, `fallback`, `is wrong`, each gate name), and give every gate id one meaning
+across the design and the scripts' output.
+
+### 2026-11-17: Container lookup protected only the owner's project, not "every container this run did not create" (#96)
+Design D2 made the destructive chmod target any running compose `web` service on 127.0.0.1:<port> whose project is non-empty and not `academy`. So a local run with the switch on and a base URL that points at another session's isolated stack (`academy-t32`, same image, the glob `/app/course/*/course.yaml` matches) or at another project's web container passes the lookup, and `docker exec -u 0 ... chmod a-r` runs there. D3's "the chmod never reaches a host file" was derived from academy's compose file, but the lookup never checks the mounts of the container it accepts. This repeats the #31 judge lesson (protected set as the owner's objects instead of the complement).
+Rule: A destructive action on a shared host targets only objects the run itself names: the stage passes its own compose project and the lookup requires equality with it (and refuses `academy`); every safety claim about the target (no host mount) is checked on the accepted object, not inferred from one compose file.
+
+### 2026-11-17: Pass criteria and a guard claim stated from assumed tool behaviour, not measured (#96, judge_design round 1, operations)
+T4 required "every test is listed failed, none skipped" for a spec whose gate throws in `beforeAll`. Playwright 1.64.1
+(measured in a scratch spec) reports only the first test failed and the rest "did not run" (`skipped` in the JSON
+stats), exit 1, so the tester could never meet the criterion. D7 claimed a copied `WEB_PORT=3080` line would also
+throw in CI's main suite, but `pnpm test:e2e` runs through turbo, whose strict env (`turbo.json:3,16-25`) drops the
+job's `WEB_PORT` (measured with turbo 2.11.10): the file value 3080 then differs from the base URL port and the
+decision allows. Only the direct Playwright stage would refuse.
+Rule: Every pass criterion and every "this goes red in X" claim names how it was measured; for a step that runs
+through turbo, check its passThroughEnv before reasoning about which variables the process sees.
+
+### 2026-11-17: "Fails, never skips" promised for a gate whose hook semantics were not read (#96, judge_design round 1, architecture)
+D1 and section 1 promise that with the switch on the spec "fails (never skips)", and the failure-mode table says "tests fail", for a gate in `beforeAll`. Playwright 1.64.1 source: a failing beforeAll records `_skipRemainingTestsInSuite` (`lib/worker/workerProcessEntry.js:1787-1788`), and the runner reports those tests with status `skipped` (`lib/runner/index.js:6059,6094`). Only the first test fails; the run still exits 1. The sentence would have become a spec comment that lies, and T4 could not pass. Same round: D7's "red in two places" ignored that `pnpm test:e2e` goes through turbo's strict env, which drops the job's `WEB_PORT`.
+Rule: Before promising how a test runner reports a hook failure, read it in the installed runner's source or a scratch spec, and pick the hook (beforeAll vs beforeEach) from the reporting the design needs.
+
+### 2026-11-17: Pass criteria counted by grepping the list reporter's log, which repeats source text (#96, judge_design round 2, operations)
+r2's E9 counts `E9 afterEach ran` and `E9 gate refused` with `grep -c` on the list log and requires `afterEach=3`. The
+list reporter prints a code frame around each throw, so source lines appear again: the orchestrator's dry run got
+`afterEach=6`, and by the block's own rule the tester must stop before T4. T4 then says "every failure carries the
+reason" without saying where to read it; T4c's reason is a literal at the throw site, and a scratch spec
+(Playwright 1.64.1, helper module throwing that literal) gave 6 grep hits for 3 failed tests, so a log count of 11 would
+pass with only half the failures carrying it. The JSON per-result `error.message` gave the right answer (3/3).
+Rule: Count tests, statuses and messages from the JSON reporter's per-result fields, never with grep on a human
+reporter's log, and dry-run each criterion's counting command once before handing it to the tester.
+
+### 2026-11-17: Pass count for a file-filtered run ignored the project's dependency (#96, judge_design round 2, architecture)
+E8 requires the PR's course-unreadable step to list "11 passed" and T3 "the 11 tests passed", for
+`playwright test e2e/course-unreadable.spec.ts --project=chromium` without `--no-deps`. The chromium project has
+`dependencies: ["setup"]` (`apps/web/playwright.config.ts:95`), and Playwright 1.64.1 gives a dependency project
+all its files regardless of the file filter (`lib/runner/index.js:2517-2522`, `allFilesForProject`), so
+`auth.setup.ts`'s one test runs too and the summary reads 12 passed. Only T4 (with `--no-deps`) gets 11.
+Rule: For every expected test count, list the projects the command actually runs, dependencies included, and
+count from the JSON stats of that whole run.
+
+### 2026-11-17: ADR residual scoped the scan's blind spot to the title, though the code drops the fragment everywhere (#148, judge_design, security)
+Design 3.1 R2 states the residual as "the e2e scan cannot detect grader material quoted inside a title". The code
+removes such a fragment from the forbidden list itself (`apps/web/e2e/leak-fragments.ts:111-114`), and the
+FragmentScanner (:119-139) then scans every served body without it. So the fragment goes undetected in any response,
+including a leak of the grader file it came from; a grader file whose fragments are all contained in titles can
+reach the browser whole without the scan noticing. The residual as written understates the leak-defence gap.
+Rule: When stating what a filter exempts, state where the exemption applies (every scanned body, not only the
+place the exempting text appears), and check it against the consumer of the filtered list, not only the filter.
+
+### 2026-11-17: Revision stated the scan's second blind spot as an absolute the matcher contradicts (#148, judge_design round 2, security)
+The round-2 R2 (design 3, line 111) adds: "a body that carries only part of a run, or grader text in shorter runs, is
+not detected either". The scanner tests every listed fragment at every body index (`leak-fragments.ts:131-138`), so a
+part of one grader run that contains another source's whole fragment is detected: a scratch run with run A =
+"assert result equals <starter line> exactly here" and B = the starter line alone reported B for a body holding only
+B. Shared text between `starter/` and `checks/` makes this realistic. The run description also drops the trim
+(`:33-34`: a 24-character regex match with edge spaces yields no fragment). Writing a gap too wide is still a false
+claim in an ADR about a security control.
+Rule: When a design states what a matcher misses, phrase it per fragment ("a body is reported only when it holds a
+whole listed fragment") and test the absolute against overlapping fragments from two sources before sending.
+
+### 2026-11-17: Claimed an e2e "first visit" guard without checking what earlier specs did to the same workspace (#150, judge_design round 1, operations)
+Design 8.2 adds a no-note assertion to E-echo and says it "goes red for a server that shows the note on any
+`created`". E-echo's lesson is the last visible lesson, and `leak.spec.ts:174` opens every visible lesson in the
+`chromium` project, which the `terminal` project depends on (`playwright.config.ts`). The page open starts the
+workspace there, so at E-echo the peek finds it running and the page attaches with no `PUT` at all (a t31 log of
+2026-11-17: leak opens `final-deploy-and-change` at line 598, E-echo passes in 1.1 s at line 610). The assertion
+cannot see `created`, on CI or on the isolated stack. The same step 6 also asked the tester to find `T31 OK e2e` in
+`tail -n 40`, while that line sits about 200 lines before the end of the log.
+Rule: Before claiming an e2e assertion distinguishes a server-side outcome, list every spec that opens the same
+lesson earlier in the project chain and confirm the outcome the assertion needs actually happens in that run; and
+check every success line of a tester step against an earlier real log of the same script.
+
+### 2026-11-17: Dictated comment and ADR texts carried absolutes the code and the design's own sections contradict (#150, judge_design round 1, architecture)
+Design 2.4 dictates the `lesson-started.ts` header "The one writer and the one reader of" the started flag, while
+`lib/progress/check-state.ts:224-239` (`storedStatus`, null without a row) and `lib/progress/outcome-writer.ts:65-82`
+(`lockStoredStatus`) read the same `lesson_progress` row. The ADR-0010 bullet (7.2) says `created` plus the row
+"mean the working folder was lost", while 3 and the ADR-0007 bullet (7.1) accept an interrupted reset and a start
+between another tab's `DELETE` and `PUT`, where the folder was removed on purpose. The ADR-0007 bullet says a failed
+read is logged "by name and code only", while 2.2 and `describeDbError` print the constraint too.
+Rule: Grep every "the one", "only", "mean" in a dictated comment or ADR text against the code and against the
+design's own accepted cases before sending the design.
+
+### 2026-11-17: Design conformance plan had no app screenshots at all (#150, judge_design round 1, architecture)
+Design 5.1 says the app side of the Design conformance section uses reset-done screenshots, but tester step 7 takes
+only prototype screenshots, and no step produces any app screenshot. ADR-0006 item 5 requires prototype and app
+at 375 and 1280, light and dark, every AC marked, and judge-architecture fails the change without them; leaving it
+to Stepan "at the PR" (O1) guarantees a judge_code FAIL.
+Rule: For a page with design/pages/<slug>/, the tester procedure has a command that produces every ADR-0006 item 5
+artifact, or the gap goes to Stepan as a decision before the coder starts, not at the PR.
+
+### 2026-11-17: A rejected destructive option was voided by one later section, its branches left in the procedure (#150, judge_design round 2, security)
+Section 17 declared option B (a tester spec that runs `docker rm -f` and `docker volume rm` during a t31 run) void,
+but named only section 15 and step 7b's branch. Section 9 step 6 still opened with "If Stepan chose option B, the
+tester writes its scratch spec first", step 7b kept the B branch and a "Neither answered yet" stop that no longer
+matches how the decision was taken, and section 10 "What NOT to build" still said option B's scratch spec "is the
+tester's". A tester handed section 9 alone reads a live, conditional instruction to write a removing spec.
+Rule: When a decision rejects an option with a destructive step, delete every branch, condition and permission of
+that option from the procedure and file-list sections in the same round, then grep the option's name and its
+destructive verbs (`rm`, `volume rm`, the spec's file name) and leave hits only in a history section.
+
+### 2026-11-17: Decision applied as an appended section, procedure still conditional on it (#150, judge_design round 2, operations)
+Same root as the security entry above, seen from the run: besides the option-B opener of step 6 (:377-378) and
+section 10's "What NOT to build" (:452), step 6's closing sentence (:402-403) and section 10's test LOC (:440)
+still read "unless/if Stepan picks option A", and 7b still opens "as Stepan decides". With A decided, the coder
+reading section 10 is told the E-reset spec change is optional, and the tester reading section 9 sees three
+branches where one applies.
+Rule: After a decision, rewrite the procedure and file-list sections in the decided form (no "if X picks"), and
+grep `option [AB]|picks|chose|decides|answered` across them before sending.
+
+### 2026-11-17: Round-2 fix of an exclusive comment wrote a new exclusive claim into the ADR (#150, judge_design round 2, architecture)
+Round 1 FAILed "the one writer and the one reader". The fix removed it from the code comment, then wrote into the
+ADR-0007 amendment (7.1) and section 1 that `recordLessonStarted` is "the only code that inserts the row".
+`test/integration/progress-seed.ts:46` inserts it too, and ADR-0007 item 5 itself says the row is upserted "at the
+latest together with the first attempt", which #34's attempt writer will do, so the ADR sentence is false today for
+test code and will be false for production after #34. Section 5.1 also left AC16 (both themes, tokens only) out of
+the marked ACs and never said whether the reset-done stand-in is a "Design deviation" (ADR-0006 item 5 needs a
+DESIGN follow-up for one; #192 is a dev issue), so judge_code has no settled rule to check the PR body against.
+Rule: When fixing an exclusivity finding, grep every new "only/one/sole/never" in the ADR text you add against tests,
+seeds and the ADR's own future obligations; and when a decision changes the evidence, state in the design whether it
+is a Design deviation and which ACs it answers, all of them by number.
+
+### 2026-11-17: Dictated an e2e colour read and a tester grep that were never run (#150, judge_design round 3, operations)
+Design 5.1 had E-reset read the destructive button's computed colours right after `page.emulateMedia({ colorScheme })`.
+The app switches theme with a `matchMedia` change listener (lib/theme-script.ts) and the button has a 150 ms
+`background-color` transition, so in Chromium (Playwright 1.64.1) the read straight after the switch returns the
+previous theme's values, and 50 ms later an interpolated `oklab(...)`. The "dark" slot would carry light values and
+`design_tokens.py pair` would print a plausible 5.160:1 for the wrong theme. Step 7c also required the full-tree raw
+colour grep of tester.md item 7 to be empty with `rg rc=1`; at base it prints 72 lines with rc=0 (issue references like
+`#106` and colour literals in tests), so the step fails before any change.
+Rule: Before dictating an e2e read of computed style after a theme or media change, read how the app applies the
+theme and the element's transition classes, and wait for both; run every pass criterion of the tester procedure at
+base before sending.
+
+### 2026-11-17: Dictated a computed-colour read right after emulateMedia, which returns the old theme (#150, judge_design round 3, architecture)
+Round 3 added to E-reset: for light then dark, `page.emulateMedia({ colorScheme })`, then read `getComputedStyle`
+of the destructive button into `app-destructive-colours.json`. The app's dark class is toggled by a
+`matchMedia` change listener (lib/theme-script.ts), which runs on the next rendering frame, not when `emulateMedia`
+resolves, and the button has `transition-[background-color] duration-150` (button.tsx:14). On a replica with the same
+script and transition, the immediate read gave the light values for "dark" (class still empty), which `pair` accepts,
+so the dark contrast would be reported as 5.160:1, the light pair; after waiting for the class only, the background
+read `oklab(...)` mid-transition while the text was already dark. Nothing in 7c could tell the first case apart.
+Rule: Before dictating a read of computed styles after a theme or media switch, find how the app applies the switch
+(listener, class, transition) and wait for the applied state (class on `<html>`, transitions off via
+`reducedMotion: "reduce"` or a settled value); give the tester a check that the two theme records differ.
+
+### 2026-11-17: Removed two tester.md item 7 steps from the procedure without saying so in the step (#150, judge_design round 4, operations)
+Round 4 dropped the destructive contrast and the raw colour grep from step 7c, which still opens "The rest of
+tester.md item 7:". tester.md:132-134 makes both mandatory, so a tester following his role file runs the repo-wide
+grep (72 hits at a981bf4) and fails the run, the same failure round 3 named. The deferral to #192 was written only in
+5.1 and the AC16 row, not in the step the tester executes.
+Rule: When a design drops or replaces a step a role file mandates, the procedure step itself names the role-file line, says it is not run and where it went.
+
+### 2026-11-17: Removed the raw colour grep without a replacement, leaving an ADR-0006 item 5 clause unanswered (#150, judge_design round 4, architecture)
+Round 3 failed the repo-wide raw colour grep because it has 72 hits at base. Round 4 (orchestrator decision, applied
+as given) dropped every colour check from #150 and "moved" the diff-scoped one to #192, although only #150's tree can
+show that #150's lines add no raw colour. 5.1 still quotes ADR-0006 item 5's "an empty raw colour grep" and AC16's
+"tokens only" stays in scope with no evidence for it. The contrast clause was answered with "unchanged" and no
+number, while `design_tokens.py pair` over the globals.css token values gives both ratios without any capture.
+Rule: When a check is removed because it cannot pass as written, replace it with the narrowest form that answers the
+same clause on this diff (here a grep over the diff's added lines) and state the residual; never hand a check of this
+diff to another issue.
+
+### 2026-11-17: Dictated alias comments state a universal the same design's conversion doc contradicts (#118, judge_design round 1, security)
+Design 1.1 dictates over ALIAS_REASON "toJS() throws a ReferenceError ... for an alias with no anchor before it", and
+on the `"alias"` member "a ReferenceError, which the library throws for an alias it cannot resolve: no anchor before
+it, or past its default alias limit". A few lines further down, the `"conversion"` doc, test Y11 and ADR-0009's
+Consequences all say that an unresolved alias used as a YAML 1.1 merge source (`<<: *nope`) throws a plain Error. In
+yaml 2.9.1, `merge.js:65-66` calls `Alias.resolve()`, which returns undefined there (`Alias.js:41-71`), and
+`merge.js:43-44` then throws `Error('Merge sources must be maps or map aliases')`. Only `Alias.toJSON` (`:77-79`)
+throws the ReferenceError. The validator comment the design deletes ("the only shape the library uses for an alias it
+cannot resolve") was false for the same reason, and the replacement softens it without making it true. This is the
+#121/#156 lesson again.
+Rule: Before dictating a comment of the form "the library throws X for Y", grep every code path that reaches Y (here
+both callers of `Alias.resolve`) and scope the sentence to the path that throws X, naming the exception.
+
+### 2026-11-17: A "prints nothing" check that greps for the required issue number, and doc absolutes the same doc qualifies (#118, judge_design round 1, architecture)
+Design 10 step 4 says `rg -n '#188|until #118|three copies|the fs-free entry point' docs packages apps services` must
+print nothing, while 1.3 and 6.2 require "#188" in validate.ts's readYaml doc and twice in ADR-0009 Consequences. The
+check can never pass on a faithful build; a coder who trusts it deletes the follow-up references. The pattern was
+written for a placeholder, and the placeholder was later replaced by the real number everywhere, the check included.
+The same design dictates readYaml's doc "Neither the system error's message ... nor the library's message nor any
+file text is printed" and ends that doc with "A conversion failure ... propagates ... as the library's own error",
+which content:validate prints (`Error: Merge sources must be maps or map aliases`, pinned by B6/A5). The `"alias"`
+member doc says "Carries nothing: the library's message names the alias", but the alias-limit message the same doc
+names (`Alias.js:66`) does not.
+Rule: After replacing a placeholder, grep every check pattern for it; and read each dictated doc against its own last
+sentence and every case it lists before sending.
+
+### 2026-11-17: A "worktree unchanged" guard that cannot see the files the mutations target (#118, judge_design round 1, operations)
+Design 7.4's mutate.py proves "WORKTREE UNCHANGED" by hashing `git status --porcelain` plus `git diff HEAD` of the task
+worktree. In the tester phase `packages/lesson-schema/src/yaml.ts` and `test/yaml.test.ts` are untracked (A0 expects
+`??`), so their content is in neither output: an edit appended to an untracked yaml.ts left the hash identical, while
+the same edit to tracked validate.ts changed it. Eight of the nine rows mutate yaml.ts, and the script never refuses
+`repo == worktree`. The guard passes exactly where it is needed.
+Rule: A no-write guard hashes the bytes of every file the change touches, untracked ones included
+(`git ls-files -o --exclude-standard`), refuses a target equal to or inside the protected tree, and is tested once by
+planting an edit in an untracked file.
