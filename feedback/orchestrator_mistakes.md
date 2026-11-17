@@ -621,6 +621,43 @@ stopped before any build and a second tester round was needed for T5 alone (t31 
 Rule: before a tester brief that runs isolated-stack.sh, check the run's two ports with `lsof -nP -iTCP:<port> -sTCP:LISTEN`
 and name a run whose ports are free.
 
+### 2026-11-16: A flaky-fix calibration loaded the shared host far past what it can carry (#160)
+For the #160 base control under load I ran, in my own pre-judge dry run, a Docker CPU hog of 48 busy loops (40 runs,
+17:09-17:25 UTC) and then 96 busy loops (40 runs, 17:25-17:46 UTC), plus short dry runs at 96 loops (18:06-18:10 UTC),
+on Stepan's 10-core MacBook Air whose Docker VM has 10 CPUs and also runs his `academy` stack and other sessions'
+integration suites. Host loadavg1 during those runs was 90-370 (VM loadavg1 up to 103); the same afternoon another
+session's 40 `yes` generators took the host to about 360 and an app crashed. The design (and I) bounded the hog by
+container lifetime and traps, but not by what the host can carry; the result was also weak: 0/40 old reds at 48 loops,
+3/40 at 96.
+Rule: synthetic load on this machine is at most 4 generator processes, each under an EXIT/INT/TERM trap, with a
+per-test-run timeout, a total budget well under 30 minutes, and an empty `pgrep` for the generator after each run,
+reported in the tester output. A flaky fix's base control is deterministic first (inject the delay that opens the
+race, e.g. a stubbed dependency that settles late); host load is at most a bounded regression check, never the proof.
+
+### 2026-11-16: Five design rounds on an evidence procedure the fix never needed (#160)
+The #160 product design (serialize exec resizes, hold input behind a pending resize for at most 2 s) passed every
+judge from round 1 to round 5 unchanged. All four FAILs (round 1 and 2 operations, round 4 security) were in the
+host-load base control: a pass rule a no-op fix could pass, a classifier mixing stale size with a slow shell, an
+orphaned vitest worker, an unbounded hog lifetime, a budget enforced only in prose. Round 3 passed 3/3, and only the
+shared-host load limit (40 `yes` generators crashed an app) and the main orchestrator's decision to delete the load
+run ended the loop. The deterministic control (the runtime's resize stubbed to settle 1000 ms late in a throwaway
+clone) had been in the design since round 1 and gave old 10/10 red, new 5/5 green on the real daemon.
+Rule: for a race fix, ask at the architect brief whether a deterministic injection of the race window exists; if it
+does, it is the base control and no load run is designed at all. When the same procedure class fails twice, delete
+the procedure instead of hardening it, and ask the main orchestrator before a third round on it.
+
+### 2026-11-16: Six judge_design rounds for a design-only accessibility fix (#99)
+judge_design took six rounds (3, 4, 5 and 6 granted by the parent orchestrator under Stepan's standing instruction).
+Round 1 FAILed on a silent quiz load while away; round 2 widened the quiz notice and missed its acceptance block;
+round 3 replaced that with a panel status container and missed the Safari minimum age; rounds 4 and 5 failed only
+on the author plan: stale counts, citations and copies of a DOM-order list that a grep would have caught. My briefs
+named the files to grep but did not run the greps myself before sending the judges.
+Rule: before every DESIGN judge round, run the mechanical pass myself and pass its output: print every plan
+citation next to the cited line, grep every copy of each changed list by its class names and section title across
+design/ (prototype.html, proto.css, proto.js, README.md, components.html, acceptance.md), and count state names
+from the files. When a judge asks for a status message on one path, ask the architect at once whether the same
+visible change on every other path is announced, so the fix is not found one path per round.
+
 ### 2026-11-16: Briefed a load-based stability plan on a shared laptop and kept it through three stops (#157)
 My architect brief for #157 asked for base controls "under the same load" and named +40 `yes` as an example. Three
 judge_design rounds then refined a load harness, and the tester's full-suite and paired runs stopped three times on
@@ -701,3 +738,16 @@ process branch with `switch -c <branch> origin/main` and `branch --unset-upstrea
 tracks main). The old local branch `fix/162-attempt-arrays` is left for Stepan's sync.
 Rule: a reused worktree session checks `git -C .claude branch --show-current` before `init`; if it names a finished
 task, prove the merge as in section 7 steps 3-5 before cutting the new branch, and name the left branch in the report.
+
+### 2026-11-17: A docs-only design took three rounds on claims about what a scanner detects (#148)
+
+judge_design for a 13-line comment and ADR fix ran three rounds (the third under Stepan's standing instruction). Both
+FAILs were security findings of one class: a sentence about what the e2e leak scan does or does not detect, written as a
+case (first at the title instead of every scanned body, then a "part of a run" absolute and a run length without the
+trim). Round 3 passed once the architect wrote the detection rule once from the code (D1-D5) and derived every claim
+from it per listed fragment. Separately, `init` refused because this worktree's process worktree still sat on a merged
+task's branch; `git -C .claude switch --no-track -c <task branch> origin/main` (allowed verbs, clean tree, merged PR)
+let init proceed.
+Rule: when a design's deliverable is prose about the behaviour of a matcher, filter or gate, the first architect brief
+asks for the mechanism written once with file:line and every claim derived from it, before any judge round. Before
+init in a reused worktree, check `git -C .claude branch --show-current` and the PR state of that branch.

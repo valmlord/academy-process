@@ -1944,6 +1944,37 @@ Rule: A stability check for a flaky fix runs the old code under the same load, i
 Every background load loop has an EXIT/INT/TERM trap, guarded `${L:?}` paths and a stated Bash timeout. Every
 throwaway clone has a scripted cleanup step and every mutation an exact command.
 
+### 2026-11-16: Load control with a pass rule that no-fix passes 25 % of the time, and a TERM trap that orphans vitest's worker (#160, judge_design round 1, operations)
+6.5 passed on "old red-resize >= 1, new 0" over 40 pairs. If the fix did nothing, both sides share one p, and
+(1-(1-p)^40)(1-p)^40 peaks at 0.25 (p about 1/58), so the rule cannot tell the fix from no fix; only old >= 5 vs new 0
+(Fisher one-sided 0.027) is evidence, and p = 1/12 gives 3.3 old reds expected. The classifier counted any 15000 ms
+waitFor timeout as the stale-size defect, so a slow shell or a 2 s hold release under load would both send the coder
+back. The INT/TERM trap killed only the vitest main process: vitest 5.0.5 exits on SIGTERM without the global teardown
+and its fork worker is reparented to PID 1 and runs the test body to the end (verified with a 20 s test). 6.6 did not
+list test-run volumes or networks, so the run's sentinel volume stays unreported.
+Rule: A load control's pass rule is a stated significance threshold on old vs new counts, with N chosen from p to
+reach it. Each red class the tester can see gets its own label and owner. A trap that stops a test runner kills its
+whole process group and waits for it; the leftover check lists every object kind the harness labels.
+
+### 2026-11-16: Hog lifetime justified by a run length the calibration contradicts, and no time budget on a shared VM (#160, judge_design round 2, operations)
+6.5 says `sleep 10800` "caps the hog at 3 h, above the longest allowed run (N <= 100 pairs)". The calibration at
+HOG_LOOPS=96 measured 11-67 s per run, mean 28.2 s but 55.8 s over runs 1-13 while other sessions loaded the host.
+At that rate 94 pairs take about 2.9 h and 100 pairs at the 67 s maximum about 3.7 h, so the hog can expire near the
+end, `LOAD LOST` voids the batch, and the rule says "rerun": several hours of a 96-loop hog on a VM that also runs
+the owner's `academy` stack and other sessions' suites, with nothing bounding the total.
+Rule: Size every lifetime cap and duration claim from the measured maximum, not the mean, and give a long load run a
+wall-clock budget that stops cleanly and keeps the completed interleaved pairs instead of voiding them.
+
+### 2026-11-16: Hard load limit enforced in code for the loop count only, not for the time budget or the host-load gate (#160, judge_design round 4, security)
+The round-4 hard limit has two parts: at most 4 generators, and a total budget well under 30 minutes. r160-load.sh
+refuses HOG_LOOPS outside 1-4 before it creates anything. It takes any digits for BUDGET_S, and the hog's lifetime is
+BUDGET_S + 120. So `BUDGET_S=7200`, the round-3 default and still in that round's run lines, starts a 2 h hog with no
+refusal. HOST_LOAD_MAX is the same: "never with a raised HOST_LOAD_MAX" is only in the prose of 6.7.2 step 7, and
+`HOST_LOAD_MAX=999` turns off the host gate that exists because of the incident. The limit held only for as long as
+everyone typed the documented values.
+Rule: When a hard limit comes from an incident, every knob that can exceed it (count, duration, gate threshold) gets a
+refusal in the script before anything is created, and the dry run includes one refusal per knob.
+
 ### 2026-11-16: A "strong proof" rule with 3 runs per side that a non-fix passes 11-30% of the time (#157, judge_design round 1, architecture)
 Design 5.4 calls starter-walk "fixed, base red and new green" when the old file times out in >= 1 of 3 full-suite runs
 and the new file in 0 of 3. #106 saw this timeout in about 1 of 3 base runs. At a base rate of 1/3 a change that does
@@ -2228,3 +2259,23 @@ all its files regardless of the file filter (`lib/runner/index.js:2517-2522`, `a
 `auth.setup.ts`'s one test runs too and the summary reads 12 passed. Only T4 (with `--no-deps`) gets 11.
 Rule: For every expected test count, list the projects the command actually runs, dependencies included, and
 count from the JSON stats of that whole run.
+
+### 2026-11-17: ADR residual scoped the scan's blind spot to the title, though the code drops the fragment everywhere (#148, judge_design, security)
+Design 3.1 R2 states the residual as "the e2e scan cannot detect grader material quoted inside a title". The code
+removes such a fragment from the forbidden list itself (`apps/web/e2e/leak-fragments.ts:111-114`), and the
+FragmentScanner (:119-139) then scans every served body without it. So the fragment goes undetected in any response,
+including a leak of the grader file it came from; a grader file whose fragments are all contained in titles can
+reach the browser whole without the scan noticing. The residual as written understates the leak-defence gap.
+Rule: When stating what a filter exempts, state where the exemption applies (every scanned body, not only the
+place the exempting text appears), and check it against the consumer of the filtered list, not only the filter.
+
+### 2026-11-17: Revision stated the scan's second blind spot as an absolute the matcher contradicts (#148, judge_design round 2, security)
+The round-2 R2 (design 3, line 111) adds: "a body that carries only part of a run, or grader text in shorter runs, is
+not detected either". The scanner tests every listed fragment at every body index (`leak-fragments.ts:131-138`), so a
+part of one grader run that contains another source's whole fragment is detected: a scratch run with run A =
+"assert result equals <starter line> exactly here" and B = the starter line alone reported B for a body holding only
+B. Shared text between `starter/` and `checks/` makes this realistic. The run description also drops the trim
+(`:33-34`: a 24-character regex match with edge spaces yields no fragment). Writing a gap too wide is still a false
+claim in an ADR about a security control.
+Rule: When a design states what a matcher misses, phrase it per fragment ("a body is reported only when it holds a
+whole listed fragment") and test the absolute against overlapping fragments from two sources before sending.
