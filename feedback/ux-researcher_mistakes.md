@@ -803,3 +803,121 @@ reads "no attempts yet" under a closed quiz. Two senses of "попытка" (`ia
 which `ia.md:40` rules out for "Вопрос".
 Rule: When a flow adds a check kind, re-read every empty and "before any run" rule of `checks.md` against that
 kind's states, and say in the flow whether each one still holds.
+
+### 2026-11-16: Kept a visible load error silent for an away learner with the panel shown (#99, judge_design round 1, accessibility)
+`quiz.md:413-418` keeps a quiz load "Повторить" that fails while the learner is away silent, and justifies it by
+cost ("a load spends and changes nothing"). The away set includes places where the Квиз panel stays shown (two
+panes with focus in "Окружение", on the split handle, in "Уведомления", in an open menu or modal dialog,
+`quiz.md` away table). There the Skeletons are replaced by the visible text "Не удалось загрузить квиз" with no
+focus move and an Alert with no role: a status message (result of an action, existence of an error) that is not
+programmatically determinable, WCAG 4.1.3. Cost to the learner is not an exemption in 4.1.3.
+Rule: When a flow keeps an outcome silent, split it by whether its text becomes visible without a focus move; if
+it does, give it a live container (or the existing notice) or show in the flow why it is not a status message.
+
+### 2026-11-16: Parked the most common silent quiz load error as "open for #36" after calling the same change a status message (#99, judge_design round 2, accessibility)
+The round-1 rework split the away case by visibility and wrote (`quiz.md:422-424`) that a load error replacing the
+Skeletons in view with no focus move is "a status message (the existence of an error)". The same visible change
+with the learner not away (focus on the Квиз tab after activating it, on `body` after a Safari click on the tab,
+on the panel h2 after "Пройти квиз") stays silent, and `quiz.md:986-991` calls it "open for #36", a dev issue
+that implements only designed pages (ADR-0006). That is the common path of a failed first load, so the flow
+announces the rare away case and leaves the usual one failing WCAG 4.1.3, against the round-1 rule just above.
+Rule: Apply the visibility split to every learner position, not only the one the finding named; a status message
+the flow itself identifies is designed in the same task, never deferred to a dev issue as an open question.
+
+### 2026-11-16: Added a closed-set row in the flows but not to the author work list for the page copy of that set (#99, judge_design round 2, consistency)
+The round-1 rework added quiz notice row 12 "Не удалось загрузить квиз." to `quiz.md` and `ia.md:79` ("rows
+1-12") and listed lesson acceptance AC44, AC47-AC49 and the copy row `:988` for the author. It left out the P9
+block of `design/pages/lesson/acceptance.md:725-766`, which restates the flow: `:730-731` "A load or retry
+answered while away announces nothing", `:733` "never ... or for a load", the notice text table `:741-751`
+("exact; no other text exists", rows 1-11 only), the "Drawn:" list, the Removal list (no "Повторить"
+starting a load) and "Открыть квиз" focusing only the result block or the send error. The author follows the
+list, so the page acceptance would ship a closed set that contradicts `ia.md:79`. Also `ia.md:207` still says
+the notice container is "used only for a send" before naming its second use.
+Rule: When a flow changes a closed set or a "never" rule, grep every page acceptance and the system README for
+the set's members and the rule's wording (`rg -n 'for a load|announces nothing|no other text'`), and list each
+hit in the author work items or say why it stays.
+
+### 2026-11-16: Live container mounted with its tab panel and written a frame after a fast load (#99, judge_design round 3, accessibility)
+The quiz load status container is "present and empty whenever the panel is rendered, from the moment a load
+starts" and written "after `aria-busy` is removed, at least one rendered frame later" (`quiz.md:295-299`,
+`ia.md:227-233`). Radix unmounts an inactive tab panel (`quiz.md:733`, `lesson-tabs.tsx` has no `forceMount`),
+so on a first load from the Квиз tab the container enters the accessibility tree at the same moment the load
+starts, and a local server that fails in a few milliseconds gets its text set tens of milliseconds later. That
+satisfies "never inserted together with its text" only literally: React Aria's live announcer waits 100 ms after
+creating its regions because "less than 100ms were not consistent when announcing with Safari"
+(`react-aria/src/live-announcer/LiveAnnouncer.tsx:32-34`). The case round 2 failed on (first load, not away)
+stays silent in Safari/VoiceOver whenever the failure is fast.
+Rule: For a live container that mounts with its panel and can be written by that same mount's request, state a
+minimum age before the first write (a named constant with its source), counted from when the container entered
+the accessibility tree, not from the last frame.
+
+### 2026-11-16: New panel element added to R2 but not to the panel's DOM-order list (#99, judge_design round 3, consistency)
+Round 3 placed the quiz load status container "inside the Квиз tab panel right after its heading (outside the
+Skeletons and the load error)" (`quiz.md:293-294`, `ia.md:225-226`), but `quiz.md` "Quiz panel, in DOM order"
+(`:231-252`) still lists items 1-7 without it, and "Loading" (`:256-257`) still says that after the heading
+"everything after it is replaced by Skeleton blocks", which the container contradicts. The F19 counterpart names
+its container in its structure (`progress.md:333`). The same round left the lesson acceptance count "a sixth live
+container" (`acceptance.md:1671`) out of the plan's work items, although the new container makes it wrong.
+Rule: When an element joins a component, grep every structural list of that component ("in DOM order",
+"everything after", composition paragraphs) and every count of its kind ("sixth", "four ... five"), and update
+or list each one.
+
+### 2026-11-16: Minimum age for a live container that mounts with its panel (#99, judge_design round 3, accessibility, architect fix)
+Round 3 wrote the quiz load status container "one rendered frame after `aria-busy` is removed". Radix unmounts
+an inactive tab panel (`lesson-tabs.tsx` has no `forceMount`), so a first load from the Квиз tab mounts the
+container in the same moment the load starts, and a fast local failure writes it tens of milliseconds later,
+which Safari with VoiceOver can miss. The fix is `QUIZ_LOAD_STATUS_MIN_AGE_MS` = 100 ms, counted from when the
+container entered the accessibility tree, the write waiting for the latest of the frame, the text gap and the
+age. Source: React Aria's live announcer waits 100 ms after creating its regions, "less than 100ms were not
+consistent when announcing with Safari" (adobe/react-spectrum
+`packages/react-aria/src/live-announcer/LiveAnnouncer.tsx:32-34`). The F19 history status container has the
+same mount, recorded as `ia.md` FU15.
+Rule: A live container that mounts together with its panel waits a minimum age (100 ms, the React Aria
+source above) before its first write, counted from its entry into the accessibility tree; check every other
+container that lives inside a tab panel for the same mount and either apply the rule or record a follow-up.
+
+### 2026-11-16: A flow fix not carried into the acceptance copies, and "all N lists" counted the state label (#99, judge_design round 4, consistency)
+Round 4 fixed `quiz.md` "Loading" (the heading and the quiz load status container stay, items 3-8 become
+Skeletons), but the plan left lesson `acceptance.md:431` ("everything after it is six Skeleton blocks") and AC44
+`:1484` ("the heading stays, the rest is Skeleton") as they are, so both now contradict the flow. The re-derived
+prototype counts were right, but "the new name joins all 18" (text-error) and "which all take the new name" (23
+quiz-load-error lists) include the state label templates `prototype.html:42` and `:147`; proto.js labels a state
+from the first `[data-state-label][data-state~=name]`, so the new state would be listed with the old label. The
+dashboard item excluded its label span correctly. Also: the container placed "right after `#quiz-heading`
+(`:2079`)" lands before `#quiz-code-heading` (`:2080`), the shown heading in `#state-quiz-code`; `proto.css:853-854`
+is a third copy of the quiz DOM order left without the container while the plan says no proto.css change; AC44's
+"rows 10-12" (stale since base) is to be "renumbered" with no target (the load rows are 14-19).
+Rule: When a flow sentence is reworded, grep every copy of the old claim (acceptance rows, ACs, README, proto.css
+comments) and list each in the plan; when a plan says "all N lists take the name", say which lines are excluded
+(state label templates or spans) and give every renumbered reference its new number.
+
+### 2026-11-16: Four of six round-4 findings were stale citations or counts a grep would have caught (#99, judge_design round 4, consistency)
+Round 4 failed on acceptance lines still saying "everything after the heading is Skeleton" against the new DOM
+item 2, state counts that included the label templates (`prototype.html:42`, `:147`; proto.js:210 labels a
+state from the first matching template), a container placed before `#quiz-code-heading`, a third copy of the
+quiz panel DOM order in a proto.css comment, an AC row reference to the wrong rows, and `proto.css:294` for
+`:295`. Each was a fact the plan stated without printing its source.
+Rule: before handing over a plan, run a mechanical pass: print every cited line next to its citation (a script
+over the plan), grep every copy of each list you change across design/ (prototype.html, proto.css, proto.js,
+README.md, acceptance.md), and count state names from the files with a whole-token grep, saying which matches
+are lists and which are templates or ids. Never count by hand.
+
+### 2026-11-16: Copies of a composition searched by its heading phrase only (#99, judge_design round 5, consistency)
+The round-4 fix grepped "DOM order" to find every copy of the quiz panel order, so the lesson acceptance
+composition paragraph (`design/pages/lesson/acceptance.md:288-289`, "`.quiz` (`.quiz-intro` with the `h2` and
+`.quiz-header`)") got no work item, although the plan puts the quiz load status container inside `.quiz-intro`
+and the paragraph right above it (`:275`) lists the history status container in the F19 composition. After the
+author phase that paragraph would say `.quiz-intro` holds two things when the page and README hold three.
+Rule: find the copies of a list by the class or element names it contains (`rg 'quiz-intro'`), not only by the
+title phrase of the source section, and give each hit a work item or a stated reason to leave it.
+
+### 2026-11-16: Added a notice row without listing the acceptance block that defines the notice (#99, judge_design round 2, usability; moved from architect_mistakes.md, the DESIGN architect role is the UX researcher)
+Round 1 rework added quiz notice row 12 and listed lesson acceptance AC44, AC47-AC49, the copy table and the state
+rows as author work items, but not the Interactions block that is the acceptance notes' own definition of the
+notice (`design/pages/lesson/acceptance.md:730-731` "A load or retry answered while away announces nothing",
+`:732-733` "never ... for a load", the notice table `:740-752` "exact; no other text exists", the "Drawn" line
+`:754`, the Removal list `:755-759` and the "Открыть квиз" target `:762-763`). AC47 checks the notice title
+against that table, so an author who follows the list ships acceptance notes that forbid row 12 in one place and
+require it in another.
+Rule: When a design changes a rule, grep every page acceptance file for each sentence the old rule produced
+(here `rg -n 'for a load|notice|Открыть квиз' design/pages/`) and list each hit as a work item or say why it stays.
