@@ -1974,6 +1974,7 @@ refusal. HOST_LOAD_MAX is the same: "never with a raised HOST_LOAD_MAX" is only 
 everyone typed the documented values.
 Rule: When a hard limit comes from an incident, every knob that can exceed it (count, duration, gate threshold) gets a
 refusal in the script before anything is created, and the dry run includes one refusal per knob.
+
 ### 2026-11-16: A "strong proof" rule with 3 runs per side that a non-fix passes 11-30% of the time (#157, judge_design round 1, architecture)
 Design 5.4 calls starter-walk "fixed, base red and new green" when the old file times out in >= 1 of 3 full-suite runs
 and the new file in 0 of 3. #106 saw this timeout in about 1 of 3 base runs. At a base rate of 1/3 a change that does
@@ -2221,6 +2222,43 @@ Rule: A scratch harness is dictated as a script file run whole, with source read
 ### 2026-11-16: Dictated an unconditional exactness comment that the same design's 4.1 contradicts (#156)
 Design 4.6 told the coder to write in split.ts that "multiplying first leaves a single rounding (the division)", with no condition. Design 4.1 itself says that on non-dyadic live inputs (17.6 px root font, 90 % or 110 % page zoom, passed by lesson-layout.tsx:73 from getBoundingClientRect and getComputedStyle) paneMinPx * 100 and the subtraction round too, and a limit can be off by one. The coder copied the wording, so split.ts:34-36 claims an always-exact limit that holds only for binary-exact widths. 4.6 also dictated "rounds and put the 440 px tie on the wrong side", a tense clash that reached split.test.ts:22.
 Rule: A comment a design dictates carries every condition the design's own analysis attaches to the claim; reread each dictated sentence against the section that proves it, and for grammar, before handing over.
+
+### 2026-11-17: Container lookup protected only the owner's project, not "every container this run did not create" (#96)
+Design D2 made the destructive chmod target any running compose `web` service on 127.0.0.1:<port> whose project is non-empty and not `academy`. So a local run with the switch on and a base URL that points at another session's isolated stack (`academy-t32`, same image, the glob `/app/course/*/course.yaml` matches) or at another project's web container passes the lookup, and `docker exec -u 0 ... chmod a-r` runs there. D3's "the chmod never reaches a host file" was derived from academy's compose file, but the lookup never checks the mounts of the container it accepts. This repeats the #31 judge lesson (protected set as the owner's objects instead of the complement).
+Rule: A destructive action on a shared host targets only objects the run itself names: the stage passes its own compose project and the lookup requires equality with it (and refuses `academy`); every safety claim about the target (no host mount) is checked on the accepted object, not inferred from one compose file.
+
+### 2026-11-17: Pass criteria and a guard claim stated from assumed tool behaviour, not measured (#96, judge_design round 1, operations)
+T4 required "every test is listed failed, none skipped" for a spec whose gate throws in `beforeAll`. Playwright 1.64.1
+(measured in a scratch spec) reports only the first test failed and the rest "did not run" (`skipped` in the JSON
+stats), exit 1, so the tester could never meet the criterion. D7 claimed a copied `WEB_PORT=3080` line would also
+throw in CI's main suite, but `pnpm test:e2e` runs through turbo, whose strict env (`turbo.json:3,16-25`) drops the
+job's `WEB_PORT` (measured with turbo 2.11.10): the file value 3080 then differs from the base URL port and the
+decision allows. Only the direct Playwright stage would refuse.
+Rule: Every pass criterion and every "this goes red in X" claim names how it was measured; for a step that runs
+through turbo, check its passThroughEnv before reasoning about which variables the process sees.
+
+### 2026-11-17: "Fails, never skips" promised for a gate whose hook semantics were not read (#96, judge_design round 1, architecture)
+D1 and section 1 promise that with the switch on the spec "fails (never skips)", and the failure-mode table says "tests fail", for a gate in `beforeAll`. Playwright 1.64.1 source: a failing beforeAll records `_skipRemainingTestsInSuite` (`lib/worker/workerProcessEntry.js:1787-1788`), and the runner reports those tests with status `skipped` (`lib/runner/index.js:6059,6094`). Only the first test fails; the run still exits 1. The sentence would have become a spec comment that lies, and T4 could not pass. Same round: D7's "red in two places" ignored that `pnpm test:e2e` goes through turbo's strict env, which drops the job's `WEB_PORT`.
+Rule: Before promising how a test runner reports a hook failure, read it in the installed runner's source or a scratch spec, and pick the hook (beforeAll vs beforeEach) from the reporting the design needs.
+
+### 2026-11-17: Pass criteria counted by grepping the list reporter's log, which repeats source text (#96, judge_design round 2, operations)
+r2's E9 counts `E9 afterEach ran` and `E9 gate refused` with `grep -c` on the list log and requires `afterEach=3`. The
+list reporter prints a code frame around each throw, so source lines appear again: the orchestrator's dry run got
+`afterEach=6`, and by the block's own rule the tester must stop before T4. T4 then says "every failure carries the
+reason" without saying where to read it; T4c's reason is a literal at the throw site, and a scratch spec
+(Playwright 1.64.1, helper module throwing that literal) gave 6 grep hits for 3 failed tests, so a log count of 11 would
+pass with only half the failures carrying it. The JSON per-result `error.message` gave the right answer (3/3).
+Rule: Count tests, statuses and messages from the JSON reporter's per-result fields, never with grep on a human
+reporter's log, and dry-run each criterion's counting command once before handing it to the tester.
+
+### 2026-11-17: Pass count for a file-filtered run ignored the project's dependency (#96, judge_design round 2, architecture)
+E8 requires the PR's course-unreadable step to list "11 passed" and T3 "the 11 tests passed", for
+`playwright test e2e/course-unreadable.spec.ts --project=chromium` without `--no-deps`. The chromium project has
+`dependencies: ["setup"]` (`apps/web/playwright.config.ts:95`), and Playwright 1.64.1 gives a dependency project
+all its files regardless of the file filter (`lib/runner/index.js:2517-2522`, `allFilesForProject`), so
+`auth.setup.ts`'s one test runs too and the summary reads 12 passed. Only T4 (with `--no-deps`) gets 11.
+Rule: For every expected test count, list the projects the command actually runs, dependencies included, and
+count from the JSON stats of that whole run.
 
 ### 2026-11-17: ADR residual scoped the scan's blind spot to the title, though the code drops the fragment everywhere (#148, judge_design, security)
 Design 3.1 R2 states the residual as "the e2e scan cannot detect grader material quoted inside a title". The code

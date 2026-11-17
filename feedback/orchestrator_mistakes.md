@@ -717,6 +717,28 @@ Rule: the coder brief for any change with new comments asks, before tester, for 
 code line or document line that makes it true; I read that list against the #117 rule (numbers keep their condition)
 before sending judge_code.
 
+### 2026-11-17: Three design rounds, two on how the tester counts, and a CI YAML line nobody parsed (#96)
+judge_design round 1 failed on the mechanism (the container lookup accepted any non-owner web container) and on two
+claims about hook and turbo behaviour; round 2 failed only on the tester procedure counting tests by grepping the list
+reporter's log (its code frames reprint source lines) and on a count that left out the setup dependency. My own E9
+dry run had already printed the wrong grep counts in round 2; I recorded them as an extraction defect instead of
+sending them back to the architect before the judges saw them. In round 3 all three judges passed a CI step whose
+`run:` line does not parse as YAML (a ": " inside a plain scalar); the security judge noted it as non-blocking and I
+confirmed it with the yaml package. It went to the coder as plan constraint C1, not as a fourth design round.
+Rule: when a dry run of a design block prints anything other than the design's pass line, it goes back to the
+architect before judge_design, even when the cause looks like counting. Every criterion that counts tests or reasons
+reads the Playwright/Vitest JSON report. Every YAML snippet a design adds to a workflow is parsed with the yaml package
+before judge_design.
+
+### 2026-11-17: init refused because the worktree's process repo was still on a merged task's branch (#96)
+This Desktop worktree had run #162 before; its `.claude/` stayed on `fix/162-attempt-arrays` after process PR #32
+merged, so `init` refused. I checked the PR was merged at the branch's head sha (`gh pr view`, `rev-parse`,
+`merge-base --is-ancestor`), that `worktrees "<path>"` exited 0 and that the process tree was clean, then cut the new
+process branch with `switch -c <branch> origin/main` and `branch --unset-upstream` (init then refuses a branch that
+tracks main). The old local branch `fix/162-attempt-arrays` is left for Stepan's sync.
+Rule: a reused worktree session checks `git -C .claude branch --show-current` before `init`; if it names a finished
+task, prove the merge as in section 7 steps 3-5 before cutting the new branch, and name the left branch in the report.
+
 ### 2026-11-17: A docs-only design took three rounds on claims about what a scanner detects (#148)
 
 judge_design for a 13-line comment and ADR fix ran three rounds (the third under Stepan's standing instruction). Both

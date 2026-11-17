@@ -332,3 +332,13 @@ shell's children inherit the key, so the header contradicts the ADR. Separately,
 is refused although the line allows it.
 Rule: A test file's header states what its assertions check (which process, which file), never a wider "nothing
 else"; a doc line that restates a config rule copies the rule's charset and range from the code.
+
+### 2026-11-17: A module header dropped the narrowing the design made for the mounts check (#96, judge_code round 1, architecture)
+stack-web-container.ts:1-4 says the lookup accepts a container "with no mount at, under or above the course
+directory" and that "a chmod there changes only that container's writable layer". The code checks only the entries
+of `docker inspect .Mounts` (binds, volumes, `--mount type=tmpfs`). Design D2 step 4 and r3 N5 state that a
+`--tmpfs` mount lives in `HostConfig.Tmpfs`, is not listed there and is not checked; over `/app/course` the chmod
+would then land in that tmpfs, not in the writable layer. The safety conclusion (no host file, no other container)
+holds; the header's two claims are wider than the code.
+Rule: When the design narrows what a check covers, the comment on that check carries the narrowing (which source
+it reads, what it leaves out) and states the guarantee that actually holds, not the broader summary sentence.
