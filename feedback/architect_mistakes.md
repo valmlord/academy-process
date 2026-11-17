@@ -2528,3 +2528,41 @@ the same edit to tracked validate.ts changed it. Eight of the nine rows mutate y
 Rule: A no-write guard hashes the bytes of every file the change touches, untracked ones included
 (`git ls-files -o --exclude-standard`), refuses a target equal to or inside the protected tree, and is tested once by
 planting an edit in an untracked file.
+
+### 2026-11-17: Control procedure expectations not walked against the spec's own lines and the printed format (#197, judge_design, operations)
+Design 7.2 for #197 has four defects a line-by-line walk finds. P1 greps the literal `C197 E-layout sizing C197 mount
+delayed`, but armControl prints the full title ("E-layout sizing: the terminal fits its frame ..."), so the literal
+never matches. P1 also needs `C197 mounted` in run A, where E-layout sizing throws at its first poll about 50 ms
+after load and the page closes before the 1500 ms timer. Run B expects a red for the `:97-119` row, but the one-shot
+abort is spent on the `:102` document and the `:105` navigations load every chunk, so that test passes. "Plus its
+import" in fixtures.ts is unplaced: next to line 1 it fails `git apply --check` on clone B, where the task rewrites
+line 1 (checked on a simulated B).
+Rule: For every expected line of a control run, write the exact string the code under test prints, walk each judged
+test's navigations against the control's trigger (which document it hits), and give every patch hunk an anchor that
+both trees share.
+
+### 2026-11-17: Control scope and coverage claimed without reading the runner, and a hedge the design did not apply (#197, judge_design, architecture)
+Design 7.2 says "Only lesson.spec runs there" after scoping `test:e2e`, but `isolated-stack.sh:298-321` also runs
+`course-unreadable.spec.ts` and `service-down.spec.ts` by `playwright test <file>`, and both call `useOwnBucket`, so the
+abort and the 1500 ms mount delay hit them too. It says the control route is registered after the bucket route, but
+the anchor (after `bucket += 1;`) puts it before `page.route` at fixtures.ts:32. The note on what the controls cannot
+show names only the F6 idle period: the one-shot abort is spent on each test's first document, so no wait after a
+later navigation (E-split's six reloads, the F6 test's reload wait, E-live's Actions wait, E-layout sizing's switch
+waits) is ever shown red. Section 3 hedges that Next may put a boundary between layout and page, yet E-f6-one-pane
+waits only on the brand link while its second F6 needs the page's SHOW_PANE listener (lesson-layout.tsx:108). The
+hedge was checkable: Next 16.4.3 adds Suspense only for loading.tsx (layout-router.js:322-345) and Activity only with
+cacheComponents (:518), neither used here, so the root hydrates in one commit.
+Rule: Before stating what a control run executes, read every stage of the runner script; list for each new guard
+whether a control drives it red, and name the ones none does; settle a checkable premise from the installed source
+instead of hedging, and apply any hedge you keep to every row it governs.
+
+### 2026-11-17: E-ring left as "native Tab", but the Tab target is set by Radix passive effects (#197, judge_design round 2, architecture)
+Design section 4 keeps `lesson.spec.ts:223-262` (E-ring) unchanged as "native hrefs and Tab". Its Tab from the
+breadcrumb reaches the theory tab only through Radix RovingFocusGroup: the group root has
+`tabIndex: focusableItemsCount === 0 ? -1 : 0` and every item `tabIndex: -1` until `currentTabStopId` is set
+(`@radix-ui/react-roving-focus` 1.2.1 `dist/index.mjs:68-100, 147-175`), and items register in a `useEffect` while
+`useIsHydrated()` is false (`:151-164`). So between `load` and the passive effects the SSR tab list is out of the tab
+order and the Tab lands elsewhere; `toBeFocused` at `:232` cannot recover. That is the same passive-effect window as
+the F6 listener the design does wait for. Run A pass 1 shows it: `:223` fails at `:232` with `Received: inactive`.
+Rule: For every "no change" row, name what decides where the input lands (DOM attribute from SSR, or state set by an
+effect) and check it in the installed library source; a keyboard Tab through a roving-focus widget is not native.

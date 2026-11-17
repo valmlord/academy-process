@@ -849,3 +849,14 @@ failed judge_design round 1 on it. My dry-run extractor also wrote the wrong blo
 Rule: never fill a placeholder in a design with a blind global replace; hand the number to the architect, or edit
 each occurrence and grep the result for every check that names the placeholder. Diff any tool file extracted
 from a design against the design block before using it.
+
+### 2026-11-17: Design round 1 sent a red/green procedure to judges unrun (#197)
+judge_design round 1 failed 1/3 on the control procedure only (a grep literal that could never match the printed
+title, a one-shot abort spent before the judged wait, an unplaced import, stages the control also hit). My dry-run
+checked anchors, not outcomes. Round 2 passed operations after I ran control run A for real in a scratch clone and
+handed the judges its log; round 3 (approved ahead by the orchestrator session under Stepan's standing instruction)
+fixed one misclassified "no change" row that run A's own log had already shown failing.
+Rule: before judge_design, run the "red without the fix" half of any control procedure for real in a throwaway
+clone and pass the log; read every failure in it, including tests the design marks "safe", before the judges do.
+Also: a reused worktree may carry a stale process branch; init refuses it. If that branch is clean and has no
+commits past process origin/main, `git -C .claude switch --no-track -c <task branch> origin/main` lets init proceed.
