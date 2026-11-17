@@ -602,3 +602,38 @@ The #107 tester brief named `isolated-stack.sh t32`; its web port 53081 was held
 stopped before any build and a second tester round was needed for T5 alone (t31 had both ports free).
 Rule: before a tester brief that runs isolated-stack.sh, check the run's two ports with `lsof -nP -iTCP:<port> -sTCP:LISTEN`
 and name a run whose ports are free.
+
+### 2026-11-17: Eight design rounds on one memory model, closed only by narrowing what the check reads (#45)
+judge_design for module 05 took eight rounds. Rounds 1-5 each failed on the L2 memory check: every round found one more
+memory source, setting or wording the model had to cover (AGENTS.md, CLAUDE.local.md, settings keys Claude Code writes
+itself, note texts read literally). The lead's D9 ended the class: the check reads only the course's accepted places and
+ignores everything else. Rounds 6-8 were wording only.
+Rule: when a check models a vendor behaviour with an open-ended set of inputs (memory sources, settings, env), decide at
+the first FAIL what the check reads and grade only that; never refuse or model "everything else".
+
+### 2026-11-17: Student-phase anti-cheat loops in three lessons, each closed by one general rule found late (#45)
+After the design passed, students found passing cheats in four rounds: L4 given-net weakening (static N1 forms, then
+process isolation), L5 static gate classifiers (more twins, then a factorial probe set), L3/L4 oracle rewriting (OUT), L2
+runner tricks (OUT). Each general rule (isolation, factorial twins, scope by effect) closed its class in one round; the
+case-by-case rounds before it did not.
+Rule: at the first student cheat in a check, ask which general rule closes the class by construction (separate
+processes, balanced twins, scope cut) and brief the designer for that, not for the reported form.
+
+### 2026-11-17: A transcript bug-hunt was measured blind only after two rewrites (#45)
+The L1 bug-hunt was rewritten twice from sighted students' "tells" reports; a blind student who read only the transcript
+and theory then passed on attempt 1, twice. The structural cause (a false claim must be visible in a transcript) was in
+the design from the start.
+Rule: for a bug-hunt over a transcript, run a blind reader (no code, no design) right after the first draft, before any
+other student round, and treat its first-attempt result as the measure.
+
+### 2026-11-17: An author without a shell estimated word counts, and a judge round failed on them (#45)
+judge_content round 2 failed because the L3/L4 reading times came from estimated word counts; the author role has no
+shell. Measuring with wc -w took one command.
+Rule: when lesson text states measured numbers (word counts, line counts, file sizes), the orchestrator measures them and
+passes the figures in the brief.
+
+### 2026-11-17: Promised that a lower check weight changes completion without reading the progress ADR (#45)
+D13's fallback asked to lower legacy-hunt's weight so passing could not rest on it; ADR-0007 counts every counted check
+regardless of weight, and bug-hunt is not a counted kind yet. Caught before shipping and reported to the lead.
+Rule: before acting on a lever (weight, limit, status) to change a learner outcome, read the rule that computes the
+outcome (ADR-0007, progress flows) and state its real effect.

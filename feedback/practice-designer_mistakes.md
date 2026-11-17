@@ -293,3 +293,13 @@ final stage runs as root (buildkit master `frontend/dockerfile/parser/parser.go`
 Rule: A static reader that stands in for a vendor parser either reproduces the parser's tokenisation from its source
 (directive trimming, continuation regex, per-word heredoc match, empty continuation lines) or refuses every input
 where the two could disagree. Put each disagreement into the attack corpus with a form that flips the effective USER.
+
+### 2026-11-17: Checks closed one reported cheat per round until a general rule closed the class (#45)
+In module 05 the student rounds found passing cheats in L4 (net weakening from tests/: AST comparison of given files,
+then rebinding, vars(), package shadowing, json patching) and L5 (static gate classifiers: word bans, shape rules,
+AST rules, lookups across runs). Each round's fix covered the reported forms; the next round found a neighbour. Process
+isolation of the given net (L4) and a factorial set of twin probes that differ only in behaviour (L5) closed each class
+in one round.
+Rule: when a check must tell honest work from a cheat, first look for a construction that makes the cheat impossible
+(separate process, balanced twins, values drawn per run) and attack it with a corpus of neighbours before the student
+does; list-based rules are the fallback, not the design.

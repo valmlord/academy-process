@@ -2,6 +2,16 @@
 
 Lessons appended by judges when this role caused a FAIL. Load before working. Let it grow.
 
+### 2026-11-17: Reading times re-derived from guessed word counts, printed to the learner as facts (#45)
+
+Round 1 asked to re-time the L3 and L4 reading lines on one basis. The author stated 200 words a minute but took
+the inputs from a judge's rough estimate and an older student count: L3 "около 4 300 слов" (actual about 3,370),
+L4 "около 6 000, из них около 3 000 блок урока 3" (actual about 6,440 and 2,450). The minutes followed the wrong
+inputs (L3 22 instead of 17, L4 15 after L3 instead of 20), so the inversion the fix was meant to remove stayed.
+Rule: A word count or minute figure printed in task.md is counted on the file as it now stands (with `wc -w`, or
+Grep `\S+` offsets when there is no shell), never copied from a review or an older run; if you cannot count,
+say so and do not print the number.
+
 Format:
 ### YYYY-MM-DD: Short description (#issue)
 
@@ -133,3 +143,31 @@ only "a genuine platform fault ... that is not such a recorded stop". `classifyR
 `platform-stop` to `error`. The research's suggested wording (findings section 6) already left the exceptions out.
 Rule: When a summary of a rule says "any other" or "every", read the whole rule for its exceptions (here every bullet
 of rule 3 and every `case` of `classifyResult`) and either list them or narrow the sentence to the cases it covers.
+
+### 2026-11-17: L4 re-prints L3's rule block silently, reading timed on two bases, one student item dropped (#45, judge_content round 1, pedagogy)
+
+L4 task.md:174-311 repeats L3's T1-T9, T4, course rules and honest forms nearly verbatim (about 3,000 words). Nothing
+tells an L3 graduate that the block is unchanged, so the 28-minute reading line (raised by word count at 150-200 words a
+minute) is half a re-read. L3, where the same block is met first, keeps 14 minutes from an agent-student estimate. L4
+also refers to a stage-0 header ("Под заголовком этапа 0") that only L3 prints. Student-c's unclear items 1 (R2 accepts all
+of `shipping/` while K2 limits a stage's scope to proven nets) and 2 (the plan's language) were never fixed or accepted.
+L3 step 1 promises that the labels/manifest functions change in later lessons, and no later lesson changes them.
+Rule: When a lesson repeats an earlier lesson's rule text, say so where the repeat starts and list the differences. Time
+every reading line in a module on one basis. Before hand-back, mark every student unclear item fixed (file:line) or
+accepted (where recorded), including items from early reports that later reruns did not repeat.
+
+### 2026-11-17: Book quote backed by a source without it; a scope qualifier dropped from a doc fact (#45, judge_content round 1, accuracy)
+
+L3 theory.md:11 quotes Feathers as "legacy code is simply code without tests", and lesson.yaml:11 names Nicolas Carlo's
+page as the source "(legacy code is simply code without tests; ... алгоритм изменения legacy-кода)". That page has
+"Legacy Code is code without tests" (no "simply"), and its recipe is "Identify change points (Seams), Break dependencies,
+Write the tests, Make your changes, Refactor", without the "find test points" step L3 theory.md:15-19 and L4
+theory.md:20-25 list and L3/L4 task.md build steps 1-2 on. The research had said the book was not read. L5 theory.md:36
+(and lesson.yaml:26) says the GitHub Action in automation mode has no shell or GitHub API without `--allowedTools` or
+`permissions.allow`. The page says that for "a plain-text prompt" only; a skill prompt gets the tools its `allowed-tools`
+grants, and the page's own review example, the case the sentence sits in, is a skill. The research note kept "plain
+prompt"; the lesson dropped it.
+Rule: A direct quote and a source title are claims about the cited page: open the page and find the exact words before
+writing either; if the words come from a book nobody read, cite a page that has them or quote the page you cite. When
+condensing a doc fact, keep the condition the doc states it under ("for a plain-text prompt") and check it against the
+example the lesson places next to it.

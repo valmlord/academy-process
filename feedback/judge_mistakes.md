@@ -3,6 +3,13 @@
 Methodology lessons for reviewing. Seeded with review-discipline lessons; append new
 project-specific ones as they are found.
 
+### 2026-11-17: A judge's rough word-count estimate became the author's printed figure (#45)
+
+Pedagogy round 1 estimated L3's "Как проверяется" at "3,500-4,000 words by line density"; the whole L3 task.md
+is about 3,370. The author used the estimate as input and printed "около 4 300 слов", which cost a round.
+Rule: A number a judge puts in a fix target is measured, not estimated (Grep `\S+` with `offset` counts words
+without a shell); if it is only an estimate, the fix target says "count it" instead of giving the figure.
+
 ### Rubber-stamp PASS without reading the code
 
 Returned PASS without actually reading the changed files; a resource leak shipped.
@@ -500,9 +507,80 @@ The round-2 consistency report proposed ""run" in these docs is only the row abo
 `:358`, `dashboard.md:47`, `auth.md:44`). The judge had grepped only the attempt vocabulary, not the word itself.
 Rule: Grep every word a suggested fix makes a claim about before proposing the wording.
 
+### 2026-11-16: Round-1 accuracy checked the Explore facts but not the outcome sentence that used them (#45, judge_design round 2, accuracy)
+In round 1 I confirmed the sub-agents page ("Explore and Plan start without your CLAUDE.md files") and the quiz topics.
+I did not read O2, which said each fact, F4 and F5 included, reaches Explore with the files of that fact, while the key
+puts F4 and F5 at launch. The pedagogy and accuracy judges both found it in round 2. Round-1 issue 3 also prescribed
+the superset by the sources it listed, so the architect left out root `.claude/AGENTS.md` and the load-changing
+settings.
+Rule: For every vendor fact a judge confirms, grep the design's outcome texts and keys for the feature's name and check
+each sentence against the fact. A prescribed "superset" comes with the full table from the vendor page, files and
+settings, counted, not with an example list.
+
 ### 2026-11-10: Design round passed a prescribed "the only way" header comment without a counter-example grep (#121, judge_design, architecture)
 Design 1.1 dictated the log-fields.ts header "these four functions are the only way a field taken from a thrown value
 reaches a log line"; all three design judges passed it. http/errors.ts:96, reconcile.ts:109 and main.ts:30 log fields
 of our own error classes directly, so the coder shipped a false comment and judge_code had to FAIL it.
 Rule: In judge_design, treat every comment text a design dictates as code: for an exclusivity claim, grep the
 counter-examples before PASS.
+
+### 2026-11-16: Pedagogy rounds 1-2 checked L2's overlap against 00 L5 only and missed 02 L1's placement ladder (#45, judge_design round 3, pedagogy)
+In rounds 1 and 2 I checked L2 against 00 L5 and the research overlap table. I never ran the five team facts through
+02 L1's ladder, which puts a "never run X" rule in a hook or `permissions.deny` and takes it out of memory. L2's key
+requires F5 ("never run `make reset-spool`") in launch memory. So a learner who applies 02 L1 fails C2, and the hook
+form is refused at stage 0. Round 3 found it, a round later than it could have.
+Rule: For a lesson that keys where a rule or fact goes, run every keyed item through each earlier module's placement
+or decision rule, not only the module the overlap table names, and read each earlier lesson's graded forms against
+this lesson's stage-0 refusals.
+
+### 2026-11-17: Pedagogy round 3 walked F2 by its prohibition and skipped its unbound first sentence (#45, judge_design round 4, pedagogy)
+In round 3 I walked F2 as "converting the ini hour or quote.py's comparison to UTC needs a named file. Area." I did not
+read the criterion's "или объясняет" against F2's first sentence, "Production servers run TZ `Europe/Moscow`". That
+sentence bears on every use of local time, labels.py included, and labels.py is in F2's must-not set. I also passed
+O2's "окружение продакшена" as an area example. Once revision 4 removed the prohibition, the sentence decided the
+level alone. Round 4 found it, a round later than it could have.
+Rule: When walking a note against a "forbids or explains" criterion, walk every sentence, not only the prohibition.
+For every file a sentence plausibly concerns, check the note's must-not set, and check each example category in the
+outcome text against the criterion.
+
+### 2026-11-17: Round-3 static ban split string targets on `.` only; `mock.patch` also resolves `pkg:obj` (#45, judge_design round 4, assessment)
+In round 3 I prescribed G-rule 3 as `stage0_g3.py`, which checks string constants by their `.`-segments. D10 adopted it
+"exactly as stage0_g3 lists it". `unittest.mock` resolves targets with `pkgutil.resolve_name`, and that function also
+accepts `pkg:obj.attr`. So `mock.patch("importlib:machinery.SourceFileLoader.get_data")` passes stage 0, and the
+r3_getdata_stdlib oracle beats every mutant again (3/3). The same holds for `importlib:_bootstrap._find_spec`, a
+loader's `get_code` run through `type(lambda: 0)`, and a bytes literal target. I had run the vocabulary against round-3
+spellings only, never against the grammar of the resolver that consumes the strings.
+Rule: When a static ban judges strings that some API resolves into names, read that API's parser and tokenize by its
+grammar (separators, alternative forms, bytes), then run one neighbour per alternative form before calling the class
+closed.
+
+### 2026-11-17: Pedagogy rounds 1-4 walked the notes' levels but never what C2/C3 match on (#45, judge_design round 5, pedagogy)
+In four rounds I walked every note against the criterion and the key's M/N sets. I never asked what the check
+recognises as "the fact" (its term), or whether task.md prints it. A root index line naming `printerd-labels.md`, or
+`@docs/team-notes.md`, fails C3 must-not, counted, for an honest learner. The cold reader's "does an extra copy break
+it? not said" pointed at it in round 5.
+Rule: For a placement check, name the token the grader matches and confirm that task.md prints it. Then walk the
+honest by-products (index, pointer, import of the source document, starter files) against the must-not side in round 1.
+
+### 2026-11-17: Round-4 tokenizer fix read one resolver's grammar; a second stdlib resolver takes `ext://` (#45, judge_design round 5, accuracy)
+Round-4 assessment prescribed splitting string constants on `.` and `:`, from `pkgutil.resolve_name`, and D11 adopted it.
+`logging.config.BaseConfigurator.convert()` also turns `"ext://importlib.abc.FileLoader"` into an object, and so does
+the same string with a trailing `\n`. The `[.:]` split leaves `//importlib`, which is not an exact word. Test code can
+reach `logging.config` through `mock.patch("logging.config.dictConfig").getter()`. The latin-1 bytes rule likewise
+closes only ASCII-compatible decodes, not `.decode("utf-16-le")`. The run-time oracle was not run in round 5 (no shell);
+the suite is in the judge-r5-accuracy scratchpad.
+Rule: When a ban judges strings that APIs resolve into names, list every resolver reachable from the allowed imports
+and from mock's own imports (pkgutil, logging.config, pickle-like loaders, codecs), not only the one in the attack at
+hand. Prescribe the effect ("no literal any reachable resolver turns into a banned name") and test the construction
+against a prefix form, a trailing-newline form and a non-ASCII codec before sending it.
+
+### 2026-11-17: Round-4 fix tokenized strings by one resolver's grammar; the allowlist has Python-expression evaluators too (#45, judge_design round 5, assessment)
+In round 4 I prescribed splitting string constants on `.` and `:` because `mock.patch` resolves targets with
+`pkgutil.resolve_name`. D11 adopted it. I read the grammar of that one resolver only. Inside the T3 allowlist,
+`typing.get_type_hints`, `functools.singledispatch(...).register` and `inspect` (reachable as `unittest.mock.inspect`)
+evaluate a string as a Python expression. So a string annotation `"__import__('importlib.machinery', ...).SourceFileLoader"`
+has no `.`/`:` segment equal to a listed word, and the round-3 oracle passed again at 3/3 (r5_typing_hints,
+r5_singledispatch, r5_docstring_annotation). It cost a fifth round on the same class.
+Rule: Before calling a string-token ban closed, scan every allowed module (to the depth the alias scan uses) for each
+function that turns a string into a name or code (eval, exec, compile, __import__, resolve_name). Then run one
+neighbour per evaluator found, not only for the resolver of the case at hand.
