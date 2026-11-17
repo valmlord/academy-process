@@ -2945,3 +2945,16 @@ order and the Tab lands elsewhere; `toBeFocused` at `:232` cannot recover. That 
 the F6 listener the design does wait for. Run A pass 1 shows it: `:223` fails at `:232` with `Received: inactive`.
 Rule: For every "no change" row, name what decides where the input lands (DOM attribute from SSR, or state set by an
 effect) and check it in the installed library source; a keyboard Tab through a roving-focus widget is not native.
+
+### 2026-11-17: M20's red test watches the fake daemon for a close that an upgraded HTTP socket never emits (#198, judge_design round 1, architecture)
+Design 7.2 and section 9 copy 4o's "a framing error closes the attach socket": the fake daemon sends the marker and a
+type-3 header, "its server socket sees the close within 1 s". The fake daemon is the `http.createServer` pattern of
+`exec.test.ts:104-166`; an http server is `allowHalfOpen: true`, and after the upgrade nothing closes its end. Measured
+in the probe clone with the probe `check-process.ts` and the real `DockerEngine`: with the correct handler the client
+socket is destroyed, yet the server socket shows only `end` (from the client's half-close after the checks tar, before
+the marker was even sent) and no `close` within 1 s, so the row is red on the correct code. The obvious repairs cannot
+fail: the server's `end` arrived before the framing error, so a test on `end` is green under M20. The design measured
+RC15 and RC16 against the probe but not this row's observable.
+Rule: For every "the peer sees X" assertion, run the correct form and the mutant against the fake peer the design
+names, and name the event that only the mutated line changes (here: the server writes after the barrier and sees
+`close`/EPIPE only when the client destroyed its socket).
