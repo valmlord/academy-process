@@ -633,6 +633,17 @@ design/ (prototype.html, proto.css, proto.js, README.md, components.html, accept
 from the files. When a judge asks for a status message on one path, ask the architect at once whether the same
 visible change on every other path is announced, so the fix is not found one path per round.
 
+### 2026-11-16: Briefed a load-based stability plan on a shared laptop and kept it through three stops (#157)
+My architect brief for #157 asked for base controls "under the same load" and named +40 `yes` as an example. Three
+judge_design rounds then refined a load harness, and the tester's full-suite and paired runs stopped three times on
+external spikes (other sessions, a Docker VM at up to 663 % CPU; host load up to ~360). The session that started this
+one halted the runs after another app on Stepan's machine crashed. The control that settled both tests needed no
+load: a forced-yield clock mock for AC6 and an injected 4 ms writeFile delay for starter-walk, both run in minutes.
+Rule: For a flaky-under-load fix, brief the architect to find a deterministic control first (mocked clock, fake timers,
+an injected per-call delay that makes the old code cross the timeout); synthetic load only when none exists, capped at
+4 generators. After a load run stops on host noise once, switch to a deterministic control rather than redesigning
+the load harness. Check sibling sessions' notes and `uptime` before any load run on this machine.
+
 ### 2026-11-16: Six design rounds, four of them on the tester procedure's prose, not the fix (#95)
 The #95 fix (about 70 product LOC) had its focus rule settled by round 2 and confirmed for the whole class. Rounds 3-6
 failed on text around the tester procedure: an incomplete hand-written list of what an isolated-stack run leaves

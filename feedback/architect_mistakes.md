@@ -1944,6 +1944,52 @@ Rule: A stability check for a flaky fix runs the old code under the same load, i
 Every background load loop has an EXIT/INT/TERM trap, guarded `${L:?}` paths and a stated Bash timeout. Every
 throwaway clone has a scripted cleanup step and every mutation an exact command.
 
+### 2026-11-16: A "strong proof" rule with 3 runs per side that a non-fix passes 11-30% of the time (#157, judge_design round 1, architecture)
+Design 5.4 calls starter-walk "fixed, base red and new green" when the old file times out in >= 1 of 3 full-suite runs
+and the new file in 0 of 3. #106 saw this timeout in about 1 of 3 base runs. At a base rate of 1/3 a change that does
+not touch the cause passes that rule with P = (1 - (2/3)^3) * (2/3)^3 = 0.21, at 1/2 with 0.11. The design's own
+failure-mode row ("the 5000 ms timeout has a cause batching does not touch") is exactly that change: 5.9 would show the
+duration drop and 5.4 would then print "fixed" by chance. The same design did the power math for L-AC6 (P(old = 0)
+about 4e-5) but not here. fullsuite.sh also runs old before new in every round, while interleave.sh alternates.
+Rule: A red-base/green-new rule states the chance that a non-fix passes it at the observed base rate (one-sided
+Fisher: C(n_old, k)/C(n_old + n_new, k) when new is 0/n_new) and claims "fixed" only at <= 0.05, extending rounds up to
+a stated cap first; old and new alternate order across rounds.
+
+### 2026-11-16: Harness steps never run once: zsh modifier, no build, wrong calibration count, blocked poll (#157, judge_design round 1, operations)
+The operations judge ran section 5 in a throwaway clone. 5.3 step 2 stops at once in the tester's zsh:
+`"$BASE:apps/..."` and `"$BASE:services/..."` are read as zsh `:a`/`:s` modifiers (`git show` gets
+`<W>/3c5ef63pps/web/...`). 5.3.3 runs the walk calibration in a fresh clone before anything is built, so the file
+fails to import `@academy/lesson-schema/schema` and detect prints 0, a STOP. After a deps build (2.5 s) the
+calibration prints `failed=2 timedOut=2`, not the `timedOut=1` the step requires, because a timed-out walk test gets
+a second FAIL block from its afterEach (ENOTEMPTY, the write loop keeps going) and the 10-line window runs into the
+next block. That is a second STOP. The 5.0 poll `sleep 60; ls` is blocked by Claude Code. Each walk timeout also leaves
+a `$TMPDIR/wks-walk-*` dir that no cleanup step removes.
+Rule: A design that hands the tester scripts has each command run once as written, in the tester's shell (zsh:
+`${VAR}:path`), from a fresh clone (install and build), with each calibration's printed value copied from that run.
+Waits use run_in_background notifications, not foreground sleep.
+
+### 2026-11-16: The stop red control finishes before the tester can send the stop, and the stall rule has no trigger (#157, judge_design round 2, operations)
+Dry run of round 2 in a fresh clone. 5.3 step 5 starts `interleave.sh stopcheck 3 4` on starter-walk.test.ts: 10 s warm-up
+plus six runs of 1-2 s, so the harness exited on its own about 18 s after start (uptime 3.9-4.4). The kill sent right after
+the GROUP line printed `kill -<pgid> failed: no such process`, and both pass conditions (`pgrep -x yes` = 0, output ends with
+`HARNESS_EXIT`) still held, because a natural exit satisfies them. So the check that decides group stop vs fallback for every
+later run can pass without stopping anything. With 100 rounds the same kill stopped yes, pnpm and vitest within 0.5 s.
+Separately, 5.0 and 5.2 tell the tester to wait for the completion notification and to stop a run with no new line for
+15 minutes, but give no command that waits: a hung run sends no notification, and nothing makes the tester look at the clock.
+Rule: A stop red control runs long enough that the stop lands mid-run (rounds sized from a measured per-run time), and its
+pass condition must be false on a natural exit (kill rc 0, `rc=143`, no `.done`, fewer run lines than planned). Every wait on
+a background run is a literal bounded command that also checks the stall rule.
+
+### 2026-11-16: A load-based stability plan for a shared host, sized as if the machine were idle (#157)
+Every #157 design round prescribed +40 `yes` (and full-suite loops) as the load for base controls, on a 10-core
+laptop shared with up to eight other sessions. Host load reached about 360 and another app crashed; the runs
+measured other sessions' spikes rather than the change, and the plan stopped three times on host noise. The one
+control that gave a clean answer, the forced-yield `performance.now` mock for AC6, needed no load at all.
+Rule: A stability plan prefers deterministic controls (fake timers, a mocked clock, an injected per-call delay that
+makes the old code exceed the timeout and leaves the new code under it). Synthetic load is a last resort: at most 4
+generators, trapped, a per-run timeout, `pgrep -x yes` empty after each run, and the plan states why no
+deterministic control exists.
+
 ### 2026-11-16: A catch-all flag taker that focuses on stale flags, with a comment claiming it never does (#95, judge_design round 1, architecture)
 Design 1.1 `FocusOnAnyRetry` focuses the not-found h1 whenever `takeAnyRetryFocus()` finds any flag. D1 says a pending
 flag is either from the retry this page replaced or "stale from an interrupted refresh; in both cases clearing it is
