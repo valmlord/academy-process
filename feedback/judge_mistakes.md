@@ -617,3 +617,11 @@ trust. Its Tab target depends on Radix RovingFocusGroup state set in a `useEffec
 Run A pass 1 (`:223` red at `:232` on a lost chunk) pointed at it; it cost a round.
 Rule: In a class-closure review, walk each "safe, no change" row against the mechanism of its first input as
 carefully as the fix rows, and read any run log row that fails where the design calls it safe.
+
+### 2026-11-18: Round-1 finding sized the pre-existing volume window as "milliseconds" (#181, judge_design round 2, architecture)
+In round 1 I wrote that today's race lives "only in the milliseconds between `ensureVolume` and the first create". The
+volume can be removed until the daemon references it at `setHostConfig` (moby `daemon/create.go:203`), after
+`CreateLayer` (:189), so the window includes the slow part of the create under load. Rev 2 took my words into the ADR
+consequence, F8, K8 and Q4, and it cost a round.
+Rule: A judge finding that states a window or a bound is held to the same proof as the design: name the call where it
+ends in the code of the system that owns it.

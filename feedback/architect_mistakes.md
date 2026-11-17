@@ -2998,3 +2998,39 @@ inline scripts run) does not have this effect.
 Rule: Before choosing "JavaScript off" as a hydration control, list which targets live inside a streamed boundary
 (notFound(), Suspense, async pages) and either pick a control that keeps inline scripts (abort `/_next/static/chunks/**`)
 or name those sites as not driven red in the design.
+
+### 2026-11-18: Real-daemon control counted a run green from the JSON report, which vitest writes before the global teardown (#181, judge_design, operations)
+Design 7 step 3 judged the 20 I-conc-docker runs by `numPassedTests == 1 && numFailedTests == 0` in each JSON file and
+only echoed a non-zero exit code. vitest 5.0.5 runs `_teardownGlobalSetup` in `Vitest.close()` (cli-api chunk, line
+13232), after the reporter has written the file. So a run whose `teardownRun` (harness.ts:349-367) found the sentinel
+or an owner object missing, or a run cut by `timeout` before teardown, still reads as a pass, and no step checked the
+daemon for leftover run-labelled objects after the loop. The brief asked for checked teardown.
+Rule: When a control's evidence comes from a test runner's report, check when the runner writes it relative to the
+teardown, and make the pass criterion include the exit code and a post-run listing of the objects the run may leave.
+
+### 2026-11-18: A "no new test, same outcome as today" failure row was wrong about what the new re-create does (#181, judge_design, architecture)
+Design 4 row F8 said a re-create that succeeds after another process removed the container gives "the same outcome as
+the caller's retry of the ensure". It does not. The retry runs `ensureVolume` first. The re-create in the adopt loop
+does not, and the container body mounts the volume by name with no `VolumeOptions.Labels` (`spec.ts:104-110`). So if
+the other process's `DELETE` (`runtime.ts:165-172`, container then volume) removed the volume too, Docker creates an
+unlabelled volume during our create. Every later ensure of that key then fails `ensureVolume` with
+`WorkspaceIdentityMismatchError` until someone removes the volume by hand. Today the same race exists only in the
+milliseconds between `ensureVolume` and the first create, and the adopt path ends in `ContainerNameUnresolvedError`, a
+clean retry. The re-create keeps that window open for up to 5 s.
+Rule: When a design adds a retry of a write, list what the caller ran before the original write (ensures, checks) and
+say for each one whether the retry still holds it. A row that says "same as today" has to name the call path it is
+compared with.
+
+### 2026-11-18: The recorded residual window was sized as "a few milliseconds"; it lasts until the daemon mounts the volume (#181, judge_design round 2, architecture)
+Rev 2 records the remaining F8 race in the ADR-0010 consequence bullet as "the few milliseconds between the two
+calls" (ensureVolume, then the container create), and F8, K8 and Q4 say the same. A remove can delete the volume until
+the daemon takes its reference on it, and that happens inside our create at `setHostConfig` (moby v28.0.4
+`daemon/create.go:203` -> `registerMountPoints`, `daemon/volumes.go:213-221`, `WithCreateReference`), after
+`newContainer` (:166) and `CreateLayer` (:189). Before the reference, `VolumeStore.Remove` (`volume/service/store.go:809`
+`hasRef`) lets the remove through. `CreateLayer` is the slow part of a create under load, the very duration #181 measured
+beyond 375 ms. So the window is the create's pre-mount time, not milliseconds, and the ADR would record it too small.
+The design's own F8 cites `create.go:203` and the findings cite `:189` before it. (Round 1's architecture finding said
+"milliseconds" too; it was wrong in the same way.)
+Rule: When a design records a residual race window in an ADR, end it at the point the other side can no longer act
+(here: the daemon's volume reference), read the daemon code up to that point, and state its length in the terms of the
+slow steps on that path.
