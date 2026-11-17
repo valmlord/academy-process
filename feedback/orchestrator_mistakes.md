@@ -797,3 +797,12 @@ round 1.
 Rule: every architect fix-round brief says "fix only the listed findings; anything else you think is needed comes back
 to me as a question, not as design text", and the orchestrator diffs the round against the previous copy before the
 judges see it and sends back any change no finding asked for.
+
+### 2026-11-17: A blanket sed of the follow-up placeholder broke the design's own guard check (#118)
+The #118 design used `#<F>` for a follow-up number the orchestrator was to file. After filing #188 I ran
+`sed 's/#<F>/#188/g'` over the whole design, which also rewrote the coder's "must print nothing" check
+`rg '#<F>|until #118|...'` into a pattern that matches the three `#188` references the design requires. Two judges
+failed judge_design round 1 on it. My dry-run extractor also wrote the wrong block to dry/tools/mutate.py.
+Rule: never fill a placeholder in a design with a blind global replace; hand the number to the architect, or edit
+each occurrence and grep the result for every check that names the placeholder. Diff any tool file extracted
+from a design against the design block before using it.
