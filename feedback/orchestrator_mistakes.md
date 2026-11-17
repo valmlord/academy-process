@@ -621,6 +621,31 @@ stopped before any build and a second tester round was needed for T5 alone (t31 
 Rule: before a tester brief that runs isolated-stack.sh, check the run's two ports with `lsof -nP -iTCP:<port> -sTCP:LISTEN`
 and name a run whose ports are free.
 
+### 2026-11-16: A flaky-fix calibration loaded the shared host far past what it can carry (#160)
+For the #160 base control under load I ran, in my own pre-judge dry run, a Docker CPU hog of 48 busy loops (40 runs,
+17:09-17:25 UTC) and then 96 busy loops (40 runs, 17:25-17:46 UTC), plus short dry runs at 96 loops (18:06-18:10 UTC),
+on Stepan's 10-core MacBook Air whose Docker VM has 10 CPUs and also runs his `academy` stack and other sessions'
+integration suites. Host loadavg1 during those runs was 90-370 (VM loadavg1 up to 103); the same afternoon another
+session's 40 `yes` generators took the host to about 360 and an app crashed. The design (and I) bounded the hog by
+container lifetime and traps, but not by what the host can carry; the result was also weak: 0/40 old reds at 48 loops,
+3/40 at 96.
+Rule: synthetic load on this machine is at most 4 generator processes, each under an EXIT/INT/TERM trap, with a
+per-test-run timeout, a total budget well under 30 minutes, and an empty `pgrep` for the generator after each run,
+reported in the tester output. A flaky fix's base control is deterministic first (inject the delay that opens the
+race, e.g. a stubbed dependency that settles late); host load is at most a bounded regression check, never the proof.
+
+### 2026-11-16: Five design rounds on an evidence procedure the fix never needed (#160)
+The #160 product design (serialize exec resizes, hold input behind a pending resize for at most 2 s) passed every
+judge from round 1 to round 5 unchanged. All four FAILs (round 1 and 2 operations, round 4 security) were in the
+host-load base control: a pass rule a no-op fix could pass, a classifier mixing stale size with a slow shell, an
+orphaned vitest worker, an unbounded hog lifetime, a budget enforced only in prose. Round 3 passed 3/3, and only the
+shared-host load limit (40 `yes` generators crashed an app) and the main orchestrator's decision to delete the load
+run ended the loop. The deterministic control (the runtime's resize stubbed to settle 1000 ms late in a throwaway
+clone) had been in the design since round 1 and gave old 10/10 red, new 5/5 green on the real daemon.
+Rule: for a race fix, ask at the architect brief whether a deterministic injection of the race window exists; if it
+does, it is the base control and no load run is designed at all. When the same procedure class fails twice, delete
+the procedure instead of hardening it, and ask the main orchestrator before a third round on it.
+
 ### 2026-11-16: Six judge_design rounds for a design-only accessibility fix (#99)
 judge_design took six rounds (3, 4, 5 and 6 granted by the parent orchestrator under Stepan's standing instruction).
 Round 1 FAILed on a silent quiz load while away; round 2 widened the quiz notice and missed its acceptance block;
