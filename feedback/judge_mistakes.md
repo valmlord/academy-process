@@ -524,6 +524,28 @@ of our own error classes directly, so the coder shipped a false comment and judg
 Rule: In judge_design, treat every comment text a design dictates as code: for an exclusivity claim, grep the
 counter-examples before PASS.
 
+### 2026-11-17: Round-2 ops prescribed array-form anchors without running the repo's formatter (#163, judge_design round 3, operations)
+Round 2 operations prescribed the M23 array anchor `'kill -9 -1 2>/dev/null',` and counted it 1 by reasoning about the
+cleanup's indented element. Biome (`quoteStyle: "double"`, enforced by `pnpm lint`) writes that element with double
+quotes, so the prescribed anchor counts 0; the architect copied it and the M3 sibling into 13.3.
+Rule: Before prescribing an anchor for a source form, generate that form, run the repo's formatter on it in a clone and
+count the anchor in the formatted file.
+
+### 2026-11-17: Prescribed a re-entrant trap after measuring only the leftover count (#163, judge_design round 6, operations)
+Round 6 operations prescribed `trap 'kill 0' EXIT INT TERM` for the #187 helpers and checked only that no child was left.
+`kill 0` signals the trapping shell too, so the TERM trap runs again: in round 7 the trap body ran 18,703 times in dash
+(academy-workspace:dev) and about 6,235 times in busybox (node:22.23.4-alpine), each a SIGTERM to the whole group, until the
+shell died by SIGSEGV (rc 139). No child was left, so the prescription's own check passed. The reset-first form
+`trap 'trap - EXIT INT TERM; kill 0' EXIT INT TERM` runs once (rc 124 or 143, 0 left) on both images.
+Rule: When prescribing a shell trap, measure how often its body runs and the shell's exit status, not only what it leaves.
+
+### 2026-11-17: Cited tests as covering a code path they never call (#163, judge_design round 13, security)
+Round 13's security note said the volume label path of `#checkedObjects` (`runtime.ts:196-197`) "is covered by existing tests
+(adopt.test.ts:121, objects.int.test.ts:83-170)". Those test `objects.ts` (`createOrAdoptContainer`, `ensureNetwork`,
+`ensureVolume`), not `#checkedObjects`; the architect copied the citation into RC11 and coverage T13, and round 14 had to FAIL it.
+The real test of that path is `runtime-stop.int.test.ts:164-182`.
+Rule: A "covered by file:line" in a judge report is read at that line first, and the line must call the function named.
+
 ### 2026-11-16: Pedagogy rounds 1-2 checked L2's overlap against 00 L5 only and missed 02 L1's placement ladder (#45, judge_design round 3, pedagogy)
 In rounds 1 and 2 I checked L2 against 00 L5 and the research overlap table. I never ran the five team facts through
 02 L1's ladder, which puts a "never run X" rule in a hook or `permissions.deny` and takes it out of memory. L2's key

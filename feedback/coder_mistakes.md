@@ -305,6 +305,23 @@ also keeps #32's comment about terminal specs that no longer exist.
 Rule: Guidance for resolving a revert lists the conflicting files and hunks from the simulation itself, every
 line of each hunk, and is checked by finishing the simulated resolution and running typecheck and tests.
 
+### 2026-11-17: A copied design comment was widened into a claim nobody checked (#163 A1, judge_code round 1, architecture)
+Design 5.1 says of `CHECK_UID_BASE = 2000` "no image user has it" (the slot uids). 9bec182 wrote
+`services/workspace/src/identity.ts:75` as "no image user has a uid from here on", a claim about every uid from 2000
+up. Both base images (ubuntu and alpine) ship the standard `nobody` user at uid 65534, so the sentence is false as
+written, in the constant a later reader consults when picking a uid.
+Rule: When a comment restates a design sentence, keep the design's quantifier or narrower; widening "it" to "every
+value from here on" is a new claim and needs its own evidence.
+
+### 2026-11-17: The round-1 fix added a new clause with a wrong label and no evidence (#163 A1, judge_code round 2, architecture)
+4685af4 rewrote `services/workspace/src/identity.ts:75-79` as "held by no user of the lesson image or of the node Alpine
+fallback image". Nothing falls back to `node:22.23.4-alpine`: it is the integration tests' `TEST_IMAGE`
+(`test/integration/docker-cli.ts:14`) and a possible `WORKSPACE_IMAGE` override, which "replaces every lesson's image"
+(`manager.ts:49`); no code path, ADR or design calls it a fallback. The evidence the fix rests on (Dockerfile:152-155,
+design :302, P2c) covers only the academy image, so the Alpine half was again a claim without a cited check.
+Rule: A fix that narrows a comment adds no new noun or clause unless the same commit names its source; check every
+label (fallback, default, override) against the code that picks the value.
+
 ### 2026-11-16: A tracked comment cited the local design, and a commit body repeated an unchecked claim (#162, judge_code round 1, architecture)
 schema.int.test.ts (I15 accepted rows) says "node-pg returns the elements only (design 1.3)". `plans/` is ignored
 by git, so the reference points at nothing for any reader of the repository; #86 already spent a round removing
