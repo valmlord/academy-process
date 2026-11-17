@@ -779,6 +779,25 @@ Rule: when a design's deliverable is prose about the behaviour of a matcher, fil
 asks for the mechanism written once with file:line and every claim derived from it, before any judge round. Before
 init in a reused worktree, check `git -C .claude branch --show-current` and the PR state of that branch.
 
+### 2026-11-17: A step moved out of the task took the evidence an AC still needed (#150)
+In judge_design round 4 the orchestrator decided to drop the E-reset destructive-colour capture (a race-prone step the
+architect had added in round 3) and to move it, together with the diff-scoped raw-colour grep, to follow-up #192.
+The grep was evidence for AC16 "tokens only (no raw colour)" and ADR-0006 item 5 in #150's own diff; only #150's tree
+can show its added lines carry no raw colour. Round 4 failed 1/3 on exactly that gap. Earlier in the same task,
+recording decision C/A only as a new section 17 left option B live in steps 6, 7b and 10, and round 2 failed on it.
+Rule: when moving a step out of a task, move only what it does, not the evidence an acceptance item still needs, and
+re-check each AC that cited that step before the next judge round. A decision is applied by having the architect
+rewrite every section it touches, never by appending a decision section.
+
+### 2026-11-17: A fix round added an unasked step and the next round failed on it (#150)
+The round-3 architect brief listed the round-2 findings to fix; the architect also added, unasked, an in-app capture
+of the destructive button colours for tester.md item 7. Round 3 failed on that step alone (a theme read that races the
+matchMedia listener and a 150 ms transition). judge_design took five rounds for a design whose mechanism passed from
+round 1.
+Rule: every architect fix-round brief says "fix only the listed findings; anything else you think is needed comes back
+to me as a question, not as design text", and the orchestrator diffs the round against the previous copy before the
+judges see it and sends back any change no finding asked for.
+
 ### 2026-11-17: A blanket sed of the follow-up placeholder broke the design's own guard check (#118)
 The #118 design used `#<F>` for a follow-up number the orchestrator was to file. After filing #188 I ran
 `sed 's/#<F>/#188/g'` over the whole design, which also rewrote the coder's "must print nothing" check

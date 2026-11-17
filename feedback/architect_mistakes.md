@@ -2391,6 +2391,108 @@ claim in an ADR about a security control.
 Rule: When a design states what a matcher misses, phrase it per fragment ("a body is reported only when it holds a
 whole listed fragment") and test the absolute against overlapping fragments from two sources before sending.
 
+### 2026-11-17: Claimed an e2e "first visit" guard without checking what earlier specs did to the same workspace (#150, judge_design round 1, operations)
+Design 8.2 adds a no-note assertion to E-echo and says it "goes red for a server that shows the note on any
+`created`". E-echo's lesson is the last visible lesson, and `leak.spec.ts:174` opens every visible lesson in the
+`chromium` project, which the `terminal` project depends on (`playwright.config.ts`). The page open starts the
+workspace there, so at E-echo the peek finds it running and the page attaches with no `PUT` at all (a t31 log of
+2026-11-17: leak opens `final-deploy-and-change` at line 598, E-echo passes in 1.1 s at line 610). The assertion
+cannot see `created`, on CI or on the isolated stack. The same step 6 also asked the tester to find `T31 OK e2e` in
+`tail -n 40`, while that line sits about 200 lines before the end of the log.
+Rule: Before claiming an e2e assertion distinguishes a server-side outcome, list every spec that opens the same
+lesson earlier in the project chain and confirm the outcome the assertion needs actually happens in that run; and
+check every success line of a tester step against an earlier real log of the same script.
+
+### 2026-11-17: Dictated comment and ADR texts carried absolutes the code and the design's own sections contradict (#150, judge_design round 1, architecture)
+Design 2.4 dictates the `lesson-started.ts` header "The one writer and the one reader of" the started flag, while
+`lib/progress/check-state.ts:224-239` (`storedStatus`, null without a row) and `lib/progress/outcome-writer.ts:65-82`
+(`lockStoredStatus`) read the same `lesson_progress` row. The ADR-0010 bullet (7.2) says `created` plus the row
+"mean the working folder was lost", while 3 and the ADR-0007 bullet (7.1) accept an interrupted reset and a start
+between another tab's `DELETE` and `PUT`, where the folder was removed on purpose. The ADR-0007 bullet says a failed
+read is logged "by name and code only", while 2.2 and `describeDbError` print the constraint too.
+Rule: Grep every "the one", "only", "mean" in a dictated comment or ADR text against the code and against the
+design's own accepted cases before sending the design.
+
+### 2026-11-17: Design conformance plan had no app screenshots at all (#150, judge_design round 1, architecture)
+Design 5.1 says the app side of the Design conformance section uses reset-done screenshots, but tester step 7 takes
+only prototype screenshots, and no step produces any app screenshot. ADR-0006 item 5 requires prototype and app
+at 375 and 1280, light and dark, every AC marked, and judge-architecture fails the change without them; leaving it
+to Stepan "at the PR" (O1) guarantees a judge_code FAIL.
+Rule: For a page with design/pages/<slug>/, the tester procedure has a command that produces every ADR-0006 item 5
+artifact, or the gap goes to Stepan as a decision before the coder starts, not at the PR.
+
+### 2026-11-17: A rejected destructive option was voided by one later section, its branches left in the procedure (#150, judge_design round 2, security)
+Section 17 declared option B (a tester spec that runs `docker rm -f` and `docker volume rm` during a t31 run) void,
+but named only section 15 and step 7b's branch. Section 9 step 6 still opened with "If Stepan chose option B, the
+tester writes its scratch spec first", step 7b kept the B branch and a "Neither answered yet" stop that no longer
+matches how the decision was taken, and section 10 "What NOT to build" still said option B's scratch spec "is the
+tester's". A tester handed section 9 alone reads a live, conditional instruction to write a removing spec.
+Rule: When a decision rejects an option with a destructive step, delete every branch, condition and permission of
+that option from the procedure and file-list sections in the same round, then grep the option's name and its
+destructive verbs (`rm`, `volume rm`, the spec's file name) and leave hits only in a history section.
+
+### 2026-11-17: Decision applied as an appended section, procedure still conditional on it (#150, judge_design round 2, operations)
+Same root as the security entry above, seen from the run: besides the option-B opener of step 6 (:377-378) and
+section 10's "What NOT to build" (:452), step 6's closing sentence (:402-403) and section 10's test LOC (:440)
+still read "unless/if Stepan picks option A", and 7b still opens "as Stepan decides". With A decided, the coder
+reading section 10 is told the E-reset spec change is optional, and the tester reading section 9 sees three
+branches where one applies.
+Rule: After a decision, rewrite the procedure and file-list sections in the decided form (no "if X picks"), and
+grep `option [AB]|picks|chose|decides|answered` across them before sending.
+
+### 2026-11-17: Round-2 fix of an exclusive comment wrote a new exclusive claim into the ADR (#150, judge_design round 2, architecture)
+Round 1 FAILed "the one writer and the one reader". The fix removed it from the code comment, then wrote into the
+ADR-0007 amendment (7.1) and section 1 that `recordLessonStarted` is "the only code that inserts the row".
+`test/integration/progress-seed.ts:46` inserts it too, and ADR-0007 item 5 itself says the row is upserted "at the
+latest together with the first attempt", which #34's attempt writer will do, so the ADR sentence is false today for
+test code and will be false for production after #34. Section 5.1 also left AC16 (both themes, tokens only) out of
+the marked ACs and never said whether the reset-done stand-in is a "Design deviation" (ADR-0006 item 5 needs a
+DESIGN follow-up for one; #192 is a dev issue), so judge_code has no settled rule to check the PR body against.
+Rule: When fixing an exclusivity finding, grep every new "only/one/sole/never" in the ADR text you add against tests,
+seeds and the ADR's own future obligations; and when a decision changes the evidence, state in the design whether it
+is a Design deviation and which ACs it answers, all of them by number.
+
+### 2026-11-17: Dictated an e2e colour read and a tester grep that were never run (#150, judge_design round 3, operations)
+Design 5.1 had E-reset read the destructive button's computed colours right after `page.emulateMedia({ colorScheme })`.
+The app switches theme with a `matchMedia` change listener (lib/theme-script.ts) and the button has a 150 ms
+`background-color` transition, so in Chromium (Playwright 1.64.1) the read straight after the switch returns the
+previous theme's values, and 50 ms later an interpolated `oklab(...)`. The "dark" slot would carry light values and
+`design_tokens.py pair` would print a plausible 5.160:1 for the wrong theme. Step 7c also required the full-tree raw
+colour grep of tester.md item 7 to be empty with `rg rc=1`; at base it prints 72 lines with rc=0 (issue references like
+`#106` and colour literals in tests), so the step fails before any change.
+Rule: Before dictating an e2e read of computed style after a theme or media change, read how the app applies the
+theme and the element's transition classes, and wait for both; run every pass criterion of the tester procedure at
+base before sending.
+
+### 2026-11-17: Dictated a computed-colour read right after emulateMedia, which returns the old theme (#150, judge_design round 3, architecture)
+Round 3 added to E-reset: for light then dark, `page.emulateMedia({ colorScheme })`, then read `getComputedStyle`
+of the destructive button into `app-destructive-colours.json`. The app's dark class is toggled by a
+`matchMedia` change listener (lib/theme-script.ts), which runs on the next rendering frame, not when `emulateMedia`
+resolves, and the button has `transition-[background-color] duration-150` (button.tsx:14). On a replica with the same
+script and transition, the immediate read gave the light values for "dark" (class still empty), which `pair` accepts,
+so the dark contrast would be reported as 5.160:1, the light pair; after waiting for the class only, the background
+read `oklab(...)` mid-transition while the text was already dark. Nothing in 7c could tell the first case apart.
+Rule: Before dictating a read of computed styles after a theme or media switch, find how the app applies the switch
+(listener, class, transition) and wait for the applied state (class on `<html>`, transitions off via
+`reducedMotion: "reduce"` or a settled value); give the tester a check that the two theme records differ.
+
+### 2026-11-17: Removed two tester.md item 7 steps from the procedure without saying so in the step (#150, judge_design round 4, operations)
+Round 4 dropped the destructive contrast and the raw colour grep from step 7c, which still opens "The rest of
+tester.md item 7:". tester.md:132-134 makes both mandatory, so a tester following his role file runs the repo-wide
+grep (72 hits at a981bf4) and fails the run, the same failure round 3 named. The deferral to #192 was written only in
+5.1 and the AC16 row, not in the step the tester executes.
+Rule: When a design drops or replaces a step a role file mandates, the procedure step itself names the role-file line, says it is not run and where it went.
+
+### 2026-11-17: Removed the raw colour grep without a replacement, leaving an ADR-0006 item 5 clause unanswered (#150, judge_design round 4, architecture)
+Round 3 failed the repo-wide raw colour grep because it has 72 hits at base. Round 4 (orchestrator decision, applied
+as given) dropped every colour check from #150 and "moved" the diff-scoped one to #192, although only #150's tree can
+show that #150's lines add no raw colour. 5.1 still quotes ADR-0006 item 5's "an empty raw colour grep" and AC16's
+"tokens only" stays in scope with no evidence for it. The contrast clause was answered with "unchanged" and no
+number, while `design_tokens.py pair` over the globals.css token values gives both ratios without any capture.
+Rule: When a check is removed because it cannot pass as written, replace it with the narrowest form that answers the
+same clause on this diff (here a grep over the diff's added lines) and state the residual; never hand a check of this
+diff to another issue.
+
 ### 2026-11-17: Dictated alias comments state a universal the same design's conversion doc contradicts (#118, judge_design round 1, security)
 Design 1.1 dictates over ALIAS_REASON "toJS() throws a ReferenceError ... for an alias with no anchor before it", and
 on the `"alias"` member "a ReferenceError, which the library throws for an alias it cannot resolve: no anchor before
