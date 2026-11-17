@@ -602,3 +602,22 @@ The #107 tester brief named `isolated-stack.sh t32`; its web port 53081 was held
 stopped before any build and a second tester round was needed for T5 alone (t31 had both ports free).
 Rule: before a tester brief that runs isolated-stack.sh, check the run's two ports with `lsof -nP -iTCP:<port> -sTCP:LISTEN`
 and name a run whose ports are free.
+
+### 2026-11-17: Fifteen design rounds on one too-large design before splitting it (#163)
+#163's design (service check runner) went through fifteen judge_design rounds. Most FAILs after round 4 were text drift in a
+design over 3,000 lines: ADR sentences copied in many places, then narrowed in one; test cases dictated as code nobody had
+run; an audit inventory of course graders inside a service design. Each class closed only after a structural move: one
+source for the cleanup rule with pointers elsewhere, every dictated test case backed by a run sketch with named mutants,
+the grader inventory moved to its own issue (#187), and the runner and stop handling split to #196. Splitting the PR at
+the planner (A1 #163, A2a #198, A2b #199) came last, though the size was over the bound from round 1.
+Rule: when the architect's first estimate is over the bound, split the issue before judge_design, not after; keep each
+behaviour stated once in a design and point to it; never dictate a test case as code without a run that shows it green on
+the correct form and red on its named mutant; move inventories of other code (course graders, other services) to their
+own issue at the first FAIL about them.
+
+### 2026-11-17: My own splice script truncated a file before reading it (#163)
+While splicing revision 4o I wrote `open(p, "w").write(apply(open(p).read()))`: Python opens the target for writing (and
+empties it) before the inner read, so coverage.md was truncated and the edit reported "OLD count 0". A backup made just
+before let me restore it.
+Rule: when a script rewrites a file in place, compute the new text first and write it in a separate statement; keep a copy
+of every file a splice touches before running it.

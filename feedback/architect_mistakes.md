@@ -10,6 +10,18 @@ target environment; the coder then hit a runtime "module not found".
 Rule: Every design that adds a module, directory, or dependency must state how it reaches the
 target environment (packaging, import path, install/symlink step). The design review checks this.
 
+### 2026-11-16: Moved graders to another uid but kept the learner's HOME without listing what it feeds (#163, judge_design round 1, security)
+Revision 2 runs graders as uid 2000-2003 so that uid 1000 cannot read `checks/`, and keeps `HOME=/workspace/home` (4.2)
+for `verify_permissions.py`. HOME and the learner repo copies that module 04 makes hold per-user and per-repo config
+of git, node, go and other tools. Some of those settings make the tool run a command of the learner's choosing, so a
+grader that only calls git on its own copy can start learner-chosen code as the grader uid. Under uid 1000 that did not
+matter; under the new uid the isolation depends on it. Neither R1, ADR-0002 item 12 nor the 19.2 audit names it, and
+the contract does not state that `PATH` must hold no learner-writable directory, although the setup script resolves
+`tar`, `mktemp`, `rm` and `chmod` through it.
+Rule: When a design moves a process to a new trust identity, list every input it still inherits from the old one
+(env, HOME, cwd, PATH, config files in copied trees) and, for each, state whether it can make a tool execute code,
+then either remove the input or name it as a residual with an owner.
+
 ### Designed against assumptions instead of the researcher's facts
 
 Produced a design based on how the system was assumed to work, not on what the researcher
@@ -1943,3 +1955,370 @@ a host with BSD sed.
 Rule: A stability check for a flaky fix runs the old code under the same load, interleaved, and requires it to go red.
 Every background load loop has an EXIT/INT/TERM trap, guarded `${L:?}` paths and a stated Bash timeout. Every
 throwaway clone has a scripted cleanup step and every mutation an exact command.
+
+### 2026-11-16: Derived web's deadline margin from a setup bound that skips half the pre-start path (#163, judge_design round 1, architecture)
+Design 3.3/3.7 bounds setup "60 s from exec start to marker", then tells #165 that "before `started` web needs only its
+inactivity limit" and that the R34-15 margin floor is 90 s per check. Between the request and the exec start, the runner
+waits for the workspace lock, which an ensure can hold for up to 30 engine calls. It then makes five Docker calls, and each
+is bounded only by a 30 s inactivity timeout (ADR-0010 item 8). Keepalives keep flowing the whole time, so web never aborts,
+and nothing in the service ends that phase. The deciding phase after the stream ends ("8 polls of 250 ms") is also polls, not
+wall-clock time, and each poll is a Docker call with the same 30 s cut. So the service can reach web's 30 s backstop, or
+the run deadline, while it is alive and healthy. A grader that passed then lands as a counted `no-result`. The same design
+also lists "framing error -> no-result" as a contract row, but its `CheckProcess.ended: Promise<void>` carries no reason,
+so PR B cannot implement that row. And it amended ADR-0007 rule 3 and R34-4 for the service-held timer without changing
+the two rule 3 sentences that still say "the runner's timer".
+Rule: For every number a contract gives the other team (margin, backstop, "only X needed"), list every phase from request
+to final line, and give each one a wall-clock bound that the service itself enforces. Check that the port interface has a
+field for each row of the end table it promises. Grep the amended ADR for each old term ("runner's timer", "exec start")
+and replace every hit.
+
+### 2026-11-16: "Nothing outlives a check" written without trying the cleanup when the container cannot start an exec (#163)
+Design revision 2 dictates ADR-0002 item 12 "Nothing outlives a check" and 6.3 "a slot is released only after its cleanup
+finished (or failed), so a new check never reuses a uid whose processes may still run". The cleanup is itself an exec. A
+grader (or learner code it starts) that fills the container's pids limit makes that exec fail to start (`docker exec`
+exit 128, "unable to start container process ... Resource temporarily unavailable", judge_design ops N2 on both images), so
+the uid's processes and its `/tmp` checks dir live until the container stops, the terminal cannot open either, and the
+outcome is a bare `failed` next to a learner-planted name (exit 5, which the learner can force on every run and which wins
+over exit 4). Residuals and the failure table missed it. The same design's mutation clone recipe (section 21) was never run:
+`git apply` stops on an empty diff, and without a build of `@academy/lesson-schema` (exports only `dist/`) every test that
+imports `identity.ts` or `lessons.ts` fails at import, so every mutation row's `TEST rc=1` is vacuous.
+Rule: For every "after every end X happens" claim whose X is a Docker call, run it once with the container's pids limit
+exhausted and once with the learner's own interference, and write the observed outcome into the contract. Run every
+prescribed clone or setup command at base and check that one known-green test is green in it before prescribing it.
+
+### 2026-11-16: Listed /tmp as a learner-controlled input but checked only fixed names, not ancestor lookups (#163, judge_design round 2, security)
+Revision 3's 4.4 table lists every grader input from learner-controlled places, and its `/tmp` row says "no tool we know
+loads code from a fixed `/tmp` name"; ADR-0002 item 12 tells grader authors only "graders use random names", and audit
+19.2 (f) asks only about fixed names a grader itself uses. The design puts the checks dir directly in `/tmp`, so `/tmp`
+is an ancestor of every grader file. Tools that resolve code or config by walking up from a file or cwd then reach a
+fixed name in a learner-writable directory: Node's `node_modules` lookup (a bare import from a checks file tries
+`/tmp/node_modules/<pkg>`), Node's package scope (`/tmp/package.json`), npm's project root and `.npmrc`, pytest's
+rootdir and `conftest.py`. A random directory name does not help, because the walk goes through the parent. Git is
+safe here only through its ownership check, and module 04's go calls only through `GOWORK=off`.
+Rule: For every learner-writable directory in the input table, also ask "is it an ancestor of a grader file or cwd?"
+and list each tool that walks up from a file or cwd, with a planted red control.
+
+### 2026-11-16: ADR text dictated verbatim kept claims that the design's own tables and P5 contradict (#163, judge_design round 2, architecture)
+Revision 3 rewrote the phase table (3.3) and the port (11.1) but did not re-read the ADR sentences dictated from the
+older text. 3.8 and the ADR-0010 item 8 amendment say a check holds the lock "only from its container inspect to its exec
+start", while 11.1's `startCheck` (called under the lock, 7) first runs `loadChecks` and `buildChecksTar`. ADR-0002 item 12
+says "every other phase of a check has a wall-clock bound the service enforces", while 3.3 rows 1 and 7 have none. Item 12,
+3.5, R6 and F27 say the failed cleanup is logged "with the exit code Docker reported", while P5 (run 3, both images) showed
+the start refused with HTTP 500 and no exit code. S163-4 says the service ended every started check "by `timeoutSec`",
+while 3.3 row 4 allows `timeoutSec + 5 s`. And 3.2 sends `service-stop` before `started`, which ADR-0007 rule 3's first
+bullet ("before the grader started, every failure is ... `pre-start: <stage>`") contradicts, and no S163 item replaces it.
+Rule: After changing a table, a port or a procedure result, grep every sentence the design dictates into an ADR for each
+claim of span, "every", "only" and "with X", and check each one against the table row, the port and the measured output.
+
+### 2026-11-16: Moved the slot-reuse guarantee onto the prelude kill and gave that line no test (#163, judge_design round 2, operations)
+Revision 3 corrected 6.3 as round 1 asked: reuse of a slot after a crash (R3) or a cleanup that never started (R6) is safe
+"because the next check's prelude kills every process of the uid" (decision 18). The prelude's `kill -9 -1 2>/dev/null` then
+became load-bearing, but no I-c test and no M row exercises it: I-c7b and M13 cover only the prelude's `rm`, and P5's
+`reuse` runs after a container restart that had already killed everything. The ops probe pk.sh (a leaker left by an
+uncleaned check, then a second check in the same slot) gave `uid2000=0 terminal-saw-B=0` with the line and
+`uid2000=2 terminal-saw-B=1` without it, on both images: the next check's `checks/` reaches the terminal. Only the
+U-exec-check literal would go red, and a literal that restates the code is edited along with it.
+Rule: When a revision makes a line the reason a guarantee holds, add in the same revision a behavioural test that starts
+from the state the line exists for, and a mutation row that deletes the line, with its anchor counted in both script forms.
+
+### 2026-11-17: Fixed a flagged ADR claim by scoping it, then re-added the counterexample in a new clause (#163, judge_design round 3, architecture)
+Round 2 said ADR-0002 item 12's "every other phase has a wall-clock bound the service enforces" was false for 3.3 rows 1
+and 7 (row 7: the cleanup's exec create and start are bounded only by docker-modem's inactivity). Revision 4 scoped the
+sentence to "from the start of the response to the last line" and then appended "and so has the cleanup after it (30 s)",
+which states the row 7 claim again: the 30 s cap covers only the polls after the start answered, and `terminate` (so the
+slot release) waits for the create and start. The sweep row 2-12p marked it fixed against rows 7-8. The same pass left two
+other ADR sentences false under item 12: ADR-0002 item 10's residual "Every process in that workspace runs as the same
+uid and can read it" (9.1 checked the neighbouring sentence at :215-216 only), and S163-11's "The one exception before the
+start", while rule 3's fourth bullet (run-deadline) and R34-14 (web-restart for every rowless check) are exceptions too.
+Rule: When fixing a flagged sentence, re-check every clause added in the fix against the same counterexample row; and when
+a decision changes who runs in the container, grep every ADR for sentences about "every process", "the same uid" and "the
+one exception" before the sweep is called full.
+
+### 2026-11-17: Gave the grader more read access than the learner but never asked where the learner's names point (#163, judge_design round 3, security)
+Rule G (4.4, ADR-0002 item 12) lists every place a grader's tools take code or config from, and the 4.4 row "Learner files the
+grader reads as data" says they matter only if executed (R1). Since the grader runs as uid 2000+slot it can read `$s`, which
+uid 1000 cannot, and revision 4 made the target path fixed and published (`/workspace/.academy-grader/<uid>/checks`). uid 1000
+can still name any path: `work` itself can be replaced by a symlink (`/workspace/home` is the learner's), and every file in
+the tree can be one. The setup's `cd /workspace/home/work` runs after the checks are extracted, so a `work` symlink to
+`$s/checks/reference` makes the reference the graded tree (`verify_ci.py:58` takes `Path.cwd().resolve()`); a
+`routing.json` symlink into `checks/data` makes `verify_routing.py:60-65` print the key file's top-level keys under an
+uncounted exit 3. A wrong slot guess is a free `exit 123`. The same pass called a check "no destination" for key copies in
+ADR-0002 item 14, though its stdout is stored in `message` (ADR-0007 :270) and shown to the learner.
+Rule: When a design gives one principal read access another lacks, list every path the weaker principal can name to the
+stronger one (symlinks, cwd, arguments, config values) and say per path why it cannot point into the stronger one's private
+places, with a planted red control. For every secret, list each channel that persists or displays a reader's output.
+
+### 2026-11-17: Counted the array-form mutation anchors in quotes the repo's formatter never writes (#163, judge_design round 3, operations)
+Design 13.3 lets the coder write both scripts as a template literal or as an array of lines and dictates array-form anchors
+for M3 (`'  kill -9 -1 2>/dev/null',\n`) and M23 (`'kill -9 -1 2>/dev/null',`), copied from the round-2 ops note. The repo's
+biome config has `quoteStyle: "double"` and CI runs `biome check .`, so a line with no quote inside it is written
+`"kill -9 -1 2>/dev/null",`. Both scripts generated from 5.2/5.3, formatted by biome in a clone and appended to today's
+spec.ts: M3 and M23 array anchors count 0 (double-quoted forms count 1); every other anchor counts 1 in both forms. The
+tester would have stopped the mutation pass at `count=0`. 5 intro's "both hold them unchanged" is also false for the printf
+line's `\n` (biome writes `"printf 'academy-check-started\\n'"`).
+Rule: Count every dictated anchor against source text produced by the repo's own formatter (write the form, run the
+formatter, then count), never against a hand-written form; if two forms are allowed, dictate one or give both anchors as
+measured.
+
+### 2026-11-17: Analysed cmdline readability for the key but kept "the grader's cmdline shows only the checks path" (#163, judge_design round 4, security)
+Revision 4e added R8 and P11 because `/proc/<pid>/cmdline` is readable across uids, but applied that fact only to uid-1000
+holders of the agent key. The other direction stayed as R2 and ADR-0002 item 12 residual (2) ("shows the checks path ...
+published anyway"), and the new ADR-0001 Decision 5 note says `checks/` content reaches the browser only "as residuals (1) and
+(7) state". uid 1000 reads the arguments of every process of the check's uid, and graders put grader material there:
+`verify_pokayoke.py:363-371` passes `checks/data/late_fee_grid.json` points and the `statement_grid.json` invoices as argv to its
+probe child (20 s), `verify_workspace.py:389` passes `behaviour.json` `inputs`, `verify_deps.py:198-200` the hidden dicts. A
+terminal loop over `/proc/*/cmdline` shows them in the browser with no learner code involved. Item 12 gives graders no rule on
+arguments, and audit 19.2 has no item, so a grader that passes an expected answer to its own helper would leak it silently.
+Rule: When a design states that a channel is readable across uids, apply it in both directions and to every process of each
+uid, and check each "except as residuals ..." note against that channel before calling the exception list complete.
+
+### 2026-11-17: Added a clause to a prescribed one-line fix and checked it against one way of ending only (#163, judge_design round 5, architecture)
+Round 4 architecture note 1 asked for one line on ADR-0010 Consequences :149: "a restart also loses every running check (item
+14)". Revision 4f added "and its grader runs on as ADR-0002 item 12, residual 3, says". Residual 3 is the crash case. A graceful
+restart (compose restart, SIGTERM) is the 3.5 row "service SIGTERM (compose stop, restart)", sweep row 10-14g1 and 6.2: every live
+check gets `service-stop` and its cleanup exec is created and started, so the grader is killed. Sweep row 10-C searched only
+web's crash backstops. The same pass wrote an exception list from 4.4's new channel table and dropped one of its rows: item 12's
+new bullet and R2 name abstract `AF_UNIX` names as reachable by uid 1000, and the bullet's exception lets a grader serve
+learner-code material there, but residual (2), the ADR-0001 Decision 5 note and S163-12 name only "an argument or ... a
+loopback port". Sweep row 0001:22 says it walked every row of that table and found "no other".
+Rule: When a fix adds a clause, check that clause against every way the thing ends: graceful stop, crash, caller close. When
+an exception list is derived from a table, tick each table row "reachable" against the list and name the row in the sweep.
+
+### 2026-11-17: Dropped a check in one section and left it as a step and a guard in two others (#163, judge_design round 5, operations)
+Round 4 operations note 1 showed 13.2's hook-time check could never fire. Revision 4f dropped it in 13.2, section 2, decision 27
+and 19.3, and 13.2 now says "Revision 4c's hook-time check is therefore dropped: it could not fire". Section 11's step A8 still
+ends "the tester reports the new file's hook time (13.2)", and section 14's F44 still names "the tester measures the hook time
+(13.2)" as its mitigation and "A8's measured hook time" as its test. A tester following A8 has no defined measurement, and F44
+claims a guard that the same design calls unfireable. The 4f change list touched only the sections the judge named; nobody
+grepped the design for the other places the check was referenced.
+Rule: When a revision drops or renames a check, grep the whole design for its name and every phrase that cites it (steps,
+failure modes, decisions, issue texts) and change each hit in the same pass; list the hits in the change note.
+
+### 2026-11-17: Listed argv members by one grep form and gave the audit a red control one named member cannot trip (#163, judge_design round 5, security)
+Revision 4f listed today's "grader material in arguments" with a Grep for `json.dumps(...)]` ("finds exactly these three") and
+gave audit 19.2 (l) one argv red control: a marker in the audit's copy of `checks/data`, then "Today the count is above 0 for
+the three graders above". `verify_deps.py:198` makes its hidden dicts from `random.Random(seed ^ 0x5EED)` in code, and no
+`checks/data` value goes into its argv, so that control reads 0 for verify_deps before any fix. The same grep missed that every
+module 02 `run_child` (`grader_runtime.py:245`, three copies, used by the probe and by `run_suite`) puts checks/ source
+(`PROBE`, `SUITE_BOOTSTRAP`) and the record nonce into argv, and module 03's `run_reporting_child` (`orchestra_runtime.py:205`)
+puts its nonce there. Each of those is a learner-code process, so it falls under residual (1). But the 4.4 row, section 2 and the
+audit's member list are incomplete, and the control cannot see material that comes from grader code or from a generator.
+Rule: Find the members of a channel class by its mechanism (every process-start call and the argv it builds), not by the form
+of one argument. Every red control the design calls "present today" gets traced to the source of that member's material
+before the sentence is written.
+
+### 2026-11-17: Narrowed one ADR sentence with a correct condition and left its siblings stating the broader universal (#163, judge_design round 6, architecture)
+Revision 4g wrote the ADR-0010 Consequences bullet as "a graceful one with `service-stop` and, when the check's exec had
+started, its cleanup", because 6.2 `stopAll` also reaches checks still preparing, and ADR-0002 item 12 "Cleanup" starts a
+cleanup only for an exec Docker started. The same amendment's item 14 text still says the broader thing: 3.5's SIGTERM row
+"every live check: `end service-stop`, response ended, cleanup exec created and started", the idle stop and web-disconnect
+rows "then the cleanup" and "the cleanup", 3.3 row 9 "in any phase ... then row 7", row 7 "the cleanup after any end", 3.6
+"start the cleanup"; and ADR-0007 S163-9 says SIGTERM "starts the cleanup of each" running check, which S163-11 says may be
+before `started`. Sweep row 10-C lists the 3.5 SIGTERM row, 10-14g1 and S163-9 as "checked against", and its own text says
+both "stopAll ... calls terminate, which creates and starts the cleanup exec" for every live check and "a check whose exec
+Docker had not started has no cleanup". 10-14g1 stays "consistent". The ADR text then contradicts itself inside one amendment.
+Rule: When a fix adds a condition to one sentence because a premise is narrower than it said, grep every sentence in the same
+ADR texts that states the same premise (here: "cleanup" after an end or a stop), give each the same condition or a pointer, and
+re-verdict their sweep rows in the same pass.
+
+### 2026-11-17: The audit issue's helper cleanup was written, not run, and dropped the no-load rule (#163, judge_design round 6, operations)
+Revision 4g moved the audit controls into #187 with the preamble "runs under `timeout <seconds>` inside a shell with
+`trap 'kill 0' EXIT` ... after each control, `pgrep -u 1000 -f audit-` prints nothing". Measured in a `t163-` container of
+`academy-workspace:dev` (dash) as uid 1000: `timeout --foreground 2 sh -c "trap 'kill 0' EXIT; sleep 300 & ..."` leaves the
+`sleep 300` (count 1); `EXIT INT TERM` leaves 0. Plain GNU `timeout` hides it by signalling its own group; busybox `timeout`
+(node alpine) leaves 1 with `EXIT` alone. The emptiness check, run the usual way (`docker exec ... sh -c 'pgrep -u 1000 -f
+audit-'`), counts its own `sh` (1), and on the macOS host it can never be non-empty. The issue also carries no part of the
+machine's no-synthetic-load rule (at most 4 helpers at once, no fills), while it tells the auditor to tighten 50 ms polls to
+10 ms; the #163 constraints file that holds the rule does not travel with the issue.
+Rule: A cleanup or "nothing left" guard that a text dictates is run once before sending, with a child it must end and in the
+shells the target images use (dash, busybox), and its emptiness check is shown non-empty while a helper runs; a moved
+procedure carries the host-load limits it needs in its own text.
+
+### 2026-11-17: An audit control attributed sockets as a root with no capabilities, and dropped what it could not attribute (#163, judge_design round 7, security)
+The revised #187 control 4 (plans/163-audit-issue-body-v2.md:290-293) tells the auditor to match each new abstract
+`AF_UNIX` name's inode, "as root through `docker exec -u 0`", against the `socket:[<inode>]` links in `/proc/<pid>/fd` of
+slot-uid processes, and says "Only names whose owner is the slot uid count". The workspace container has `CapDrop ALL`
+(spec.ts:94), and a `docker exec` without `--privileged` gets the container's capabilities, so that root has none. Reading
+another uid's `/proc/<pid>/fd` is gated like `environ` (proc(5): a PTRACE_MODE_READ_FSCREDS check; the directory is 0500 of
+the process's uid): uid 0 against uid 2000 with no CAP_SYS_PTRACE is refused, which is the same mechanism the design itself
+cites for the environ denial (ADR-0002 item 14 text, run 4b P9). So no name gets an owner, and the stated rule then counts
+none: the only dynamic check of the abstract-name channel passes every grader, and it has no known red member to expose that.
+Rule: A control step that needs privilege is checked against the container's real capability set (CapDrop, no-new-privileges)
+before it is dictated, and an attribution step fails closed: whatever it cannot attribute counts as a hit, never as clean.
+
+### 2026-11-17: Classed a sentence as a pointer because it named the source, while its other clause restated the leftovers' fate (#163, judge_design round 7, architecture)
+Revision 4h made ADR-0002 item 12 "Cleanup" the one text on what outlives a check, including where leftovers go ("leftover
+files stay in the scratch ... until the slot's next check empties it or the workspace is deleted"). Design 4.1 (:453-455)
+was rewritten in the same revision as "its files removed by the cleanup of ADR-0002 item 12 "Cleanup", with whatever that
+leaves removed by the slot's next start, whose prelude empties `$s`", and `cleanup-hits.md` classed it POINTER ("the prelude
+is not the cleanup"). The second clause is a statement of what happens to what the cleanup leaves, and it is false for
+residual 4 of the same bullet: an entry learner code made undeletable survives the cleanup (exit 5, P1u) and the next start's
+prelude cannot remove it either (exit 119), so it stays until `DELETE W`. Siblings say the same narrower thing: R3 (:538-539)
+and 5.3 "When the cleanup cannot run" (:916-917) "empties `$s`", F27 (:1898) "kills the leftovers and empties `$s` once it
+can"; only 6.3's "Why a slot may be reused" adds "and refuses to start when it cannot empty it".
+Rule: A hit is a POINTER only if every clause of the sentence is the pointer; a clause that names the source and then says
+what happens to the leftovers anyway is a restatement, and each such clause is tried against every residual of the source.
+
+### 2026-11-17: Gave the #187 helpers an exact command form whose output every specified ending discards (#163, judge_design round 8, operations)
+The #187 v3 body fixes each helper as "one `python3 -I .../audit-*.py` process run under `timeout <seconds>`" and says
+`audit-fdmap` "prints `inode pid` pairs on its stdout, which the host keeps, and it ends with the check's cleanup ... or by
+its own timeout". Every ending the text gives a helper is a signal (the cleanup's SIGKILL, `timeout`'s SIGTERM, the trap's
+`kill 0`), and Python block-buffers stdout on a pipe and does not flush on either signal. Measured in academy-workspace:dev:
+`audit-fdmap` as written delivered 0 lines to the host after the cleanup, the same loop with a flush 2 (`<inode> 171`,
+`denied 172`); a uid-1000 helper in the trap shell ended by `timeout 2` delivered nothing, with `-u` its line. The red run 1
+("held by the slot uid") then shows every name unattributed, and the poll of controls 1 to 3 shows 0, which the text tells the
+auditor to answer with a tighter poll. The same text counts "control 4 has two" helpers and concludes "a run with controls 1
+to 5 stays at 4", while it also says each slot uid with a process needs its own `audit-fdmap`: with two checks the run is 5.
+Rule: When a text fixes a helper's command line, run that exact line through each ending the text gives it and check what the
+host received; and recount a load budget for every configuration the same text allows, not only the default one.
+
+### 2026-11-17: Hid a probe behind one exit code while the two paths fork a different number of processes (#163, judge_design round 9, security)
+Design 5.2 gives every work-dir refusal exit 123 "on purpose", so that `work -> $s/checks/<name>` does not tell the learner
+whether `<name>` exists (section 1: "the refusal probes nothing"; 4.5: "the outcome tells the learner nothing about what exists
+in `$s`"). The line is `cd -P ... && [ "$(pwd -P)" = ... ] || exit 123`: the command substitution forks a uid-N subshell only
+when `cd -P` succeeded, and 5.3 of the same design says such subshells are uid-N processes with their own pid. uid 1000 can
+see them (process listings and Uid lines are readable across uids, section 2) and can count pids allocated in the container's
+pid namespace around each attempt, deterministically, with unlimited uncounted retries. So the exit code is one, but the
+process count still answers "does this directory exist in the checks copy".
+Rule: When a design merges outcomes into one code to close a probe, list every observable that differs between the merged
+paths (forks, pids, process names, timing, files touched), not only the exit code, and remove or name each one.
+
+### 2026-11-17: Shutdown ends the checks the runner knows, and a request already in its course read starts one after (#163, judge_design round 9, architecture)
+Design 6.2 runs `checks.stopAll()` and then `app.close()`, and says "every check response is ended before `app.close()`, so
+Fastify's `forceCloseConnections: "idle"` has no open stream to wait for". The route reads the course before it calls
+`runner.run` (3.1, phase 1), and 6.3 has no row for `run` after `stopAll`. A request whose course read is awaiting at SIGTERM
+resumes after `stopAll`, and Fastify 5.12.7's close only routes new requests to 503 (`router.closeRoutes()`); a handler in
+flight goes on. So that check takes a slot, starts and sends `started`; its open stream holds `app.close()` until compose's
+SIGKILL, and web sees the stream end after `started`: a counted `no-result` caused by a graceful restart. That breaks the
+ADR texts the same design dictates (ADR-0010 Consequences "a graceful one with `service-stop`", S163-9 "it ends every
+running check with `service-stop`", the 3.5 SIGTERM row).
+Rule: For every "stop all X, then close" shutdown, walk the X that arrive after the stop: an in-flight request that has not
+reached the component yet. Give the component a closed state that refuses or ends them, and test it.
+
+### 2026-11-17: Removed the one observable the judge measured and left the path walk that touches learner files (#163, judge_design round 10, security)
+Revision 4j answered the round 9 pid probe by swapping `"$(pwd -P)"` for `"$PWD"` and measured pids only. The round 9 rule
+listed "files touched" among the observables. The setup still resolves the learner's `work` link as the slot uid after the tar
+has filled `$s/checks`. A link target `/workspace/.academy-grader/<uid>/checks/<name>/../../../../home/L` reaches the
+learner's own symlink `L` only when `<name>` is a directory in the checks copy, and following a symlink updates its atime
+(Linux `pick_link` -> `touch_atime`, under the default `relatime`). uid 1000 reads that atime with `lstat`, so each uncounted
+exit 123 still answers "does this directory exist in the checks copy", with either form of the line.
+Rule: To close a probe through a learner-named path, order the script so the path is resolved before any grader material
+exists where the slot uid can reach it, instead of removing the observables one by one.
+
+### 2026-11-17: Replaced "terminate" with a list of in-flight cases and left out the awaits of the runner's own rows (#163, judge_design round 10, architecture)
+Revision 4j split the 6.3 row "preparing or running | `onStopping` / `stopAll` | terminate" into a preparing row that lists
+the in-flight cases (checks read, lock task, `startCheck` in flight, "a running setup"), and 6.4 claimed every member of the
+class "awaits, then acts after a stop began". Two states of the runner's own table await Docker calls while holding a live
+`CheckProcess` and terminate only after those calls answer: "setup resolves not-started" (one `exitStatus()`, then
+`isContainerRunning`, then "send the end ...; terminate") and "deciding" (its `stopAll` row says only "`service-stop` wins").
+A stop in either window sends the end, and when the await resumes the row "ended | anything | ignored" drops its terminate.
+After `stopAll` the container keeps running, so a setup that ended `socket-error`, `framing` or `stdin-failed` (whose shell
+may go on to exec the grader) or a grader that closed its stdout and runs on is never cleaned, against ADR-0002 item 12
+"Cleanup" ("a not-started after that answer, a service stop"). 6.4 marked "deciding" as "none". The same pass fixed the poll
+timer of `terminate({ wait: true })` as "the poll's timer is unref'd" without naming its 30 s cap, which a fake-timer-friendly
+implementation writes as a second `setTimeout`.
+Rule: When a stop row lists the cases in flight, derive the list from every row of the same table whose action follows an
+await (a pending call holds the process too), or state it as one rule over the object ("any `CheckProcess` without a
+terminate gets one"); and name every timer of a component a shutdown must not wait for, not one of them.
+
+### 2026-11-17: Justified "no test" for the unref'd cleanup poll with a claim nobody ran, and named a test after a case it contradicts (#163, judge_design round 10, operations)
+Revision 4j fixes F45 with "the poll's timer is unref'd" and says no test pins it because "no unit test here observes" when a
+process under SIGTERM can exit. Vitest 5.0.5's fake timers return handles whose `hasRef()` tracks `unref()`: a spy on
+`setTimeout` during `terminate({ wait: true })` with an exec that stays `Running` asserts every handle has `hasRef() === false`,
+and the same test goes red when the call is removed (run in the scratchpad, 1 passed / 1 failed). Measured with dockerode 5.0.1
+against a fake daemon that always answers `Running: true`: an unref'd poll lets the process exit 14 ms after the loop drains, a
+referenced poll holds it 30,123 ms, and an unref'd poll beside a referenced 30 s cap timer holds it 30,001 ms. So the fix holds
+only for one implementation shape, and nothing would catch the other. The same revision names the PR B test "stopAll while
+preparing starts no exec" (12, 19.1 Done list and body), while its third case, a `startCheck` in flight, lets the check exec
+start and then starts a cleanup exec through `terminate({ wait: false })`.
+Rule: Before writing "no test can observe X", try the cheapest observer (a fake-timer handle, a spy, a child process) and
+record what was run; and a test name dictated by a design must be true of every case listed under it.
+
+### 2026-11-17: Stated rule T over every await and end, then listed the test pairs by hand and left out pairs F46 itself names (#163, judge_design round 11, architecture)
+Revision 4k's rule T (6.3) is universal, but its acceptance test (12, 19.1 "one parametrised test over every pair of await
+state and end that can meet") was a hand-written list. It leaves out the caller's close in the setup not-started window
+(awaiting `exitStatus()` and `isContainerRunning()`), although F46 names exactly that end and the 6.3 close row still reads
+"internal `aborted` (logged only)", so a build that keeps that row passes every listed case and never terminates a setup that
+ended `stdin-failed`. It also leaves out deciding while awaiting `isContainerRunning()` (named in 6.4 and F46), `ended`
+`socket-error`, the terminating state against `stopAll` / `onStopping` / close (no second terminate), the natural ends
+(setup not-started after both answers, decided exit, `no-result`, `container-ended`), and point 4 for the checks read and the
+lock wait against the caller's close and `onStopping` (only `stopAll` and the start timer are tested there). And 6.2 still
+says `stopAll` gives "every `CheckProcess` it holds" a `{ wait: false }` terminate, while rule T says the runner holds one
+until its terminate resolves and point 3 says a call under way is left as it is: followed literally, 6.2 makes two calls.
+Rule: When a rule is stated over a product (await states x ends), write the product as a matrix in the design, mark each cell
+"can meet" with the code line that proves it or "cannot" with the reason, derive the test cases from the cells, and grep every
+sibling section for a sentence that restates the rule with a wider or narrower quantifier.
+
+### 2026-11-17: Copied a Done line that promises "every CleanupKind mapping" without checking the test table, after the split moved the only wait-false test out (#163, judge_design round 12, architecture)
+Revision 4l copies the posted #163 Done line into section 0 ("U-runtime-check (including ... every `CleanupKind` mapping, ...)")
+and says 13.1 to 13.4 need no change. The 13.1 U-runtime-check row has cases for clean, processes-left, files-left,
+processes-and-files-left, no-proc, not-started (128 and start 500), killed, unexpected-exit, container-stopped (create 409,
+inspect 404) and timed-out, but none for `docker-error` (5.3 rows 994-995) or `cleanup-started` (5.3 row 996, `terminate({ wait:
+false })`). Before the split, `wait: false` was exercised only through PR B's `stopAll` integration test, which moved to #196, so
+PR A now ships the shutdown form of `terminate` with no test at all, while the 4l 9.1 evidence insert cites that same form as
+PR A's evidence for ADR-0002 item 12 "Cleanup"'s shutdown sentence.
+Rule: When a scope split moves tests out, list every code path the remaining PR still builds and name the test left for each;
+and when copying a Done line that says "every X", count X's members in the type or table and check each has a named case.
+
+### 2026-11-17: Moved a security obligation to an issue body "that already lists it" without reading that body (#163, judge_design round 13, security)
+Revision 4m's Q5 planner note (design :2496) says that with the A1/A2 split "the obligations from #34, the round 11 acceptance
+items and the ADR texts move to the A2 issue, whose body (19.3) already lists them", and that A1 then closes #163 on a Done line
+narrowed to A1. The 19.3 body (:2533-2560) lists the ADR texts and the A2 tests, but no obligation: not ADR-0007 item 5 (the
+`checks/` confidentiality obligation that [E3] rewrites in the same revision, with its I-c2/I-c4/I-c7/I-c7b/I-c8 mapping and its
+"completed only with #187 item k" link), not R34-4, not the content-contract and ADR-0010 obligations, and not the round 11
+acceptance items. Grep "bligation" in the design: three hits, none in 19.3. Followed as written, the split closes #163 and files
+A2 with no issue owning the security obligation the coverage pass just narrowed. coverage.md's Q3 row did not catch it,
+because it checked 19.3's Done items and never the claim that 19.3 carries the obligations.
+Rule: A sentence that moves an item to another text ("already lists them") is a claim to check with Grep against that text, item
+by item, in the same revision; a security obligation that changes issue goes into the receiving body verbatim.
+
+### 2026-11-17: Coverage cases dictated a fault the transport cannot produce, and absences observed with no barrier (#163, judge_design round 13, architecture)
+Revision 4m's coverage pass gave every member a named test, but did not check that each dictated construction produces its
+member. RC14's `socket-error` input is "the fake daemon first reads the checks tar up to the client's half-close ... or it
+destroys the connection". The fake daemon listens on a Unix socket (`exec.test.ts:104-166`); a peer that closes an AF_UNIX
+stream socket with an empty receive queue gives the other end a clean EOF, not an error (Linux sets `ECONNRESET` on the peer
+only when unread data is queued), so the hijacked attach stream emits `end`, a correct `CheckProcess` reports
+`ended-before-marker`, and the case is red against correct code. RC1 ("no exec inspect"), RC5 ("no further inspect") and RC9
+("249 ms leaves no inspect recorded") assert that a timer-fired HTTP request has not reached the fake daemon right after
+`advanceTimersByTimeAsync`, which yields only one native `setTimeout(0)` per fired timer: a request that a mutated poll did send
+may still be in flight, so a shorter poll period or a wait-false form that polls can stay green. coverage.md marked all three
+"Now: RCn" without a negative run.
+Rule: For every dictated test input, name the mechanism that produces the member on the real transport of the test (Unix
+socket, TCP, fake timers) and check it in the library or kernel source; assert an absence only through a synchronous
+observable (a spy on the timer call and its delay) or after an explicit barrier, and say which mutation makes the case red.
+
+### 2026-11-17: Fake-clock tests dictated without a negative run against the mutants they claim to catch (#163, judge_design round 13, operations)
+Operations measured the round 13 class above in a scratch clone with the repo's `DockerEngine` and a Unix-socket fake daemon
+(vitest 5.0.5, default fake timers). RC1 as written stayed green 20/20 on a wait-false form that polls and 20/20 on one that
+resolves once the create answered, because the "not settled after 1 s" check runs before the create's answer has crossed the
+socket. RC9 as written stayed green 10/10 on a 100 ms period and on a first poll at 0 ms. With a real-I/O barrier (await the
+daemon's record of the held start before the 1 s check; a real 50-100 ms wait after each fake advance before an absence is
+read) each mutant went red 20/20 or 10/10 and the faithful form stayed green. RC14's destroy after the half-close gave
+`end,close` and no `error` on macOS (Node 22.23.1) and in node:22.23.4-alpine; `resetAndDestroy()` throws
+`ERR_INVALID_HANDLE_TYPE` on a Unix socket. The design said "Red when ..." for RC1 without having run it.
+Rule: A dictated test that says "red when X" is run once against X before the design ships it, in the test's own transport and
+timer mode, and the design states the barrier that makes each absence or not-settled assertion observable.
+
+### 2026-11-17: Recorded a label-mismatch member as covered by tests that never run that code, and left the mismatch input unpinned (#163, judge_design round 14, security)
+Revision 4n's RC11 (13.1) and coverage.md T13 say the volume label path of `startCheck` (`runtime.ts:196-197`, `#checkedObjects`)
+is "covered by `adopt.test.ts:121`, `objects.int.test.ts:83-170`". Those tests call `createOrAdoptContainer`, `ensureNetwork`
+and `ensureVolume` in `objects.ts`; none of them calls `#checkedObjects`, and none calls `startCheck`. The only test of
+`runtime.ts:196-197` is `runtime-stop.int.test.ts:164-182` (ensureRunning, stop, remove), still not `startCheck`. The citation came
+from the round 13 security note and was copied without opening the files. RC11's requirement also says only "a container whose
+labels do not match": an input with no labels or another instance is refused by a weaker check (`isOwnManaged`, a valid-label
+parse), so the case stays green on a `startCheck` that would exec in another user's container of this instance, the corner the
+check exists for (`labelsMatchKey` compares userId, courseId, lessonId).
+Rule: Before writing "covered by <test>", open the test and confirm it calls the function under test on the path named; a
+mismatch case uses the input where the right check and the nearest weaker one diverge (another key of the same instance).
+
+### 2026-11-17: Left a known contradiction between 11.1 and 5.3 to the planner instead of deciding it (#163, judge_design round 14, operations)
+Revision 4n's note found that 11.1 maps "any other `DockerApiError`" at the cleanup start to `not-started` and sets `httpStatus`
+to its `statusCode`, while 5.3 maps "any other Docker error (no status: socket, timeout, bad response)" to `docker-error` with
+none / none, and that `classifyDockerError` builds `DockerApiError` with `statusCode` 0 for an error with no status
+(`classify.ts:21-26`). It then left the choice to the planner. Measured: a fake daemon that answers the detached start with bytes
+that are not HTTP makes `startDetachedExec` reject with `DockerApiError(0)`, and the stub that follows 11.1 literally resolves
+`{ kind: "not-started", exitCode: null, httpStatus: 0 }`; the same rule gives `docker-error` with `httpStatus` 0 at the create and
+the inspect. The result and #196's log line then say Docker refused the cleanup with HTTP 0, when the cleanup's state is unknown,
+and no case pins either reading.
+Rule: A contradiction between two sections that the design itself finds is decided in the design, with a case that pins it;
+`statusCode` 0 is "no status" wherever a result or a log carries an HTTP status.
