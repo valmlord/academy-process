@@ -2390,3 +2390,39 @@ B. Shared text between `starter/` and `checks/` makes this realistic. The run de
 claim in an ADR about a security control.
 Rule: When a design states what a matcher misses, phrase it per fragment ("a body is reported only when it holds a
 whole listed fragment") and test the absolute against overlapping fragments from two sources before sending.
+
+### 2026-11-17: Dictated alias comments state a universal the same design's conversion doc contradicts (#118, judge_design round 1, security)
+Design 1.1 dictates over ALIAS_REASON "toJS() throws a ReferenceError ... for an alias with no anchor before it", and
+on the `"alias"` member "a ReferenceError, which the library throws for an alias it cannot resolve: no anchor before
+it, or past its default alias limit". A few lines further down, the `"conversion"` doc, test Y11 and ADR-0009's
+Consequences all say that an unresolved alias used as a YAML 1.1 merge source (`<<: *nope`) throws a plain Error. In
+yaml 2.9.1, `merge.js:65-66` calls `Alias.resolve()`, which returns undefined there (`Alias.js:41-71`), and
+`merge.js:43-44` then throws `Error('Merge sources must be maps or map aliases')`. Only `Alias.toJSON` (`:77-79`)
+throws the ReferenceError. The validator comment the design deletes ("the only shape the library uses for an alias it
+cannot resolve") was false for the same reason, and the replacement softens it without making it true. This is the
+#121/#156 lesson again.
+Rule: Before dictating a comment of the form "the library throws X for Y", grep every code path that reaches Y (here
+both callers of `Alias.resolve`) and scope the sentence to the path that throws X, naming the exception.
+
+### 2026-11-17: A "prints nothing" check that greps for the required issue number, and doc absolutes the same doc qualifies (#118, judge_design round 1, architecture)
+Design 10 step 4 says `rg -n '#188|until #118|three copies|the fs-free entry point' docs packages apps services` must
+print nothing, while 1.3 and 6.2 require "#188" in validate.ts's readYaml doc and twice in ADR-0009 Consequences. The
+check can never pass on a faithful build; a coder who trusts it deletes the follow-up references. The pattern was
+written for a placeholder, and the placeholder was later replaced by the real number everywhere, the check included.
+The same design dictates readYaml's doc "Neither the system error's message ... nor the library's message nor any
+file text is printed" and ends that doc with "A conversion failure ... propagates ... as the library's own error",
+which content:validate prints (`Error: Merge sources must be maps or map aliases`, pinned by B6/A5). The `"alias"`
+member doc says "Carries nothing: the library's message names the alias", but the alias-limit message the same doc
+names (`Alias.js:66`) does not.
+Rule: After replacing a placeholder, grep every check pattern for it; and read each dictated doc against its own last
+sentence and every case it lists before sending.
+
+### 2026-11-17: A "worktree unchanged" guard that cannot see the files the mutations target (#118, judge_design round 1, operations)
+Design 7.4's mutate.py proves "WORKTREE UNCHANGED" by hashing `git status --porcelain` plus `git diff HEAD` of the task
+worktree. In the tester phase `packages/lesson-schema/src/yaml.ts` and `test/yaml.test.ts` are untracked (A0 expects
+`??`), so their content is in neither output: an edit appended to an untracked yaml.ts left the hash identical, while
+the same edit to tracked validate.ts changed it. Eight of the nine rows mutate yaml.ts, and the script never refuses
+`repo == worktree`. The guard passes exactly where it is needed.
+Rule: A no-write guard hashes the bytes of every file the change touches, untracked ones included
+(`git ls-files -o --exclude-standard`), refuses a target equal to or inside the protected tree, and is tested once by
+planting an edit in an untracked file.

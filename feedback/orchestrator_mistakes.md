@@ -778,3 +778,12 @@ let init proceed.
 Rule: when a design's deliverable is prose about the behaviour of a matcher, filter or gate, the first architect brief
 asks for the mechanism written once with file:line and every claim derived from it, before any judge round. Before
 init in a reused worktree, check `git -C .claude branch --show-current` and the PR state of that branch.
+
+### 2026-11-17: A blanket sed of the follow-up placeholder broke the design's own guard check (#118)
+The #118 design used `#<F>` for a follow-up number the orchestrator was to file. After filing #188 I ran
+`sed 's/#<F>/#188/g'` over the whole design, which also rewrote the coder's "must print nothing" check
+`rg '#<F>|until #118|...'` into a pattern that matches the three `#188` references the design requires. Two judges
+failed judge_design round 1 on it. My dry-run extractor also wrote the wrong block to dry/tools/mutate.py.
+Rule: never fill a placeholder in a design with a blind global replace; hand the number to the architect, or edit
+each occurrence and grep the result for every check that names the placeholder. Diff any tool file extracted
+from a design against the design block before using it.
