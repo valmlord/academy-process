@@ -113,3 +113,16 @@ the same removal for Tabs. The same parenthetical also gives both controls `text
 on the radio only.
 Rule: Before calling a list of upstream class changes complete, go through the upstream class string token by
 token, `outline-none` / `outline-hidden` included, and mark each one kept, changed or removed.
+
+### 2026-11-18: A gallery demo box holding a bare .prose, flush against the frame
+#136: the new narrow prose demo in `components.html` (`.demo-narrow > .prose`, :834-845) has no inner
+padding (`.demo-narrow` and `.prose` are both 0), so at 320px "Как подключить:" sits 1px from the demo frame
+and the code block's border runs along the frame's border, a double line. The other `.demo-narrow` demos hold
+a component that carries its own padding (`.topbar` 8px 16px, `.quiz.page` 24px 16px), and on the lesson page
+prose sits inside a padded pane, so the demo draws the composition as it never appears.
+Rule: a gallery demo frame contains a padded container (the page's own, or a scale value), never bare
+content; screenshot a new demo at 320px in both themes before handing it over.
+
+### 2026-11-18: Gallery note states a fit margin measured with hidden scrollbars as fact (#136, judge_ux round 2, accessibility)
+The round-2 refinement of the quiz demo note (`components.html:725`) says the first tree "fits (at 320px with about 9px to spare in Chromium, 4px in WebKit) and is no Tab stop". The 9px was measured in Chromium with Playwright's default hidden scrollbars. With classic scrollbars, the configuration the same round made the reference in acceptance AC75 and the Windows default, the page's vertical scrollbar takes 15px: at 320px that `pre` is `scrollWidth` 243 / `clientWidth` 237, overflows and is a Tab stop with `role="group"`. The rule handles it correctly, but the note tells the reader the opposite.
+Rule: A fit or overflow claim in a note names the scrollbar mode it was measured in, and is re-measured with classic scrollbars before it is written; a margin under the page scrollbar width (15px) is not stated as "fits" for every engine.

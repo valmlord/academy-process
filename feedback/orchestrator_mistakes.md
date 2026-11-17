@@ -889,3 +889,42 @@ attach-double case to be measured (REPEAT=5 green, named mutant red), which foun
 Rule: when a plan splits work into commits, check each item's tests against what that item's own code accepts (types
 included), not only the step that owns the test file. When a judge fails one dictated observable, the fix brief asks for
 every observable of that kind to be measured, not just the failed one.
+
+### 2026-11-17: A dry-run fixture I wrote by hand broke a design check, and a control premise went unrun (#201)
+Before judge_design I saved the probe dry run as plans/201-dry-probe.log with my own annotation lines, and the design
+used it as a raw monitor log in its local scan checks. Plan constraint C3 (any non-record line fails closed) then made
+those checks return 2 instead of 1 and 0; the coder stopped and asked. Separately, the D-red control (JavaScript off)
+rested on the premise that not-found pages reach their waits through SSR-only asserts; nobody ran a JS-off page load
+before the judges, and in CI the streamed not-found boundary never swapped in, so 4 of 51 sites failed before their
+wait. judge_design also took three rounds, the last two on tester decisions still made by reading.
+Rule: a fixture that a design check reads is saved as the tool's raw output, never with notes in it; notes go in a
+separate file. A red control's premise about what each target page does under the control is checked once for real
+(or listed as unverified per site) before judge_design. When a judge names an example of "decided by reading", ask
+the architect to sweep every decision of that class, not only the examples.
+
+### 2026-11-18: An "optional" item in a rework brief cost judge_ux a third round (#136)
+judge_ux round 1 failed on one gallery padding issue. My rework brief also passed on a judge's optional nit ("say the
+first tree fits with zero slack, or leave it"). The ui-designer measured it in Playwright's default Chromium, which
+hides scrollbars, and wrote a 9px margin as fact. Round 2 failed on that line in two judges, because AC75 and README
+measure with classic scrollbars, where the tree overflows. The class sweep in round 3 then found a page-width claim in
+acceptance.md that was false for 30 tall states in the same setup.
+Rule: a rework brief carries only blocking findings and items a judge made a condition; optional nits wait for the
+next real edit. Any brief that asks for a measured layout claim names the engines and scrollbar mode the page's
+acceptance notes use, and asks for that setup to be stated next to the number.
+
+### 2026-11-18: Two design rounds patched test-plan Docker writes one by one instead of closing the class (#176)
+
+The #176 fix (one file, 12+/2-) passed all three judges in every design round. Rounds 1 and 2 failed on the test
+plan only: security found a write to a Docker object the run did not create twice (r1 a `docker tag` onto the shared
+name academy-web:t31, r2 a recovery step triggered by a later listing that could tear down another session's
+academy-t31 stack), operations found reset and naming defects in the shim procedure. My r1 brief asked the architect
+to patch the one write the judge named, so the next write of the same kind appeared in r2. Round 3, approved by the
+main orchestrator, closed the class structurally: a fully fake docker shim with no delegation path, no real
+isolated-stack run (t31/t32 are hard-coded and shared), nothing removed, the real run stated as a residual in the PR
+body. It passed 3/3, and judge_code passed 3/3 in round 1. A delegating shim also meant that even the script's own
+`compose down` of academy-t31 under the shim was a real write to a shared project.
+Rule: when a task's test plan for isolated-stack.sh (or any script on shared t31/t32 names) needs Docker, the
+architect brief prescribes from the start that failure paths are proven with a shim that answers every call itself,
+and that a real run happens only under a tag unique to the run; if the script cannot take one, the real run is a
+residual. When a judge names one instance of "acts on objects the run did not create", brief the architect to remove
+the class, not the instance.

@@ -2958,3 +2958,94 @@ RC15 and RC16 against the probe but not this row's observable.
 Rule: For every "the peer sees X" assertion, run the correct form and the mutant against the fake peer the design
 names, and name the event that only the mutated line changes (here: the server writes after the barrier and sees
 `close`/EPIPE only when the client destroyed its socket).
+
+### 2026-11-17: Red/green isolation proved by the branch diff, while PR CI runs on a merge with a moving main (#201, judge_design round 1, architecture)
+Design 4 claims "`git diff c4 c5 --stat` shows only ci.yml, so A is the only difference between red and green". CI runs
+only on `pull_request` (ci.yml:3-6), which checks out `refs/pull/<n>/merge`, recomputed against main's head at each
+push. C-red (push 2) and C-green (push 3) are 20+ minutes apart, and parallel worktree sessions merge into main, so the
+two runs can test `merge(main, c4)` and `merge(main', c5)`: a main change to the e2e specs, the workspace service or
+ci.yml would then sit between red and green, and the evidence would credit it to A. Same design: the dictated step name
+and comment "Interfaces created from here on get no IPv6" are false for interfaces created in new container namespaces
+(every container's lo keeps ::1; `net.core.devconf_inherit_init_net=0` resets IPv6 settings in a new netns); `default`
+covers the runner's own namespace only.
+Rule: A red/green pair on PR CI is isolated only when both runs have the same base SHA; the tester reads it from each
+run (checkout log `Merge <head> into <base>`) and the design says what happens when they differ. A dictated comment
+about a sysctl names the namespace it applies to.
+
+### 2026-11-17: D-red success line matched reporter-coloured text in Playwright JSON (#201, judge_design round 1, operations)
+Design 5.1 decides D-red by "first error message contains `not hydrated (1 matching elements)`" in `e2e.json`. Playwright
+1.64.1 starts every worker with `FORCE_COLOR=1` (runner/index.js, WorkerHost), and the JSON reporter keeps the message
+as is (`formatError` strips ANSI only from the snippet). `toBe("hydrated")` highlights the changed parts of the received
+string, so the message holds `\u001b[7mnot \u001b[27mhydrated\u001b[7m (1 matching elements)...`: the substring never
+matches in `errors[].message` or `error.message` (scratch run: raw=false, stripped=true), and the success line can never
+print. Same design: "every printed line is fe80 on veth/br" and "timestamps inside the window" were left to reading,
+although 4 says every decision is a step conclusion or an exit code.
+Rule: Before a design decides on text inside a Playwright JSON report, run one failing scratch test through the same
+reporter and matcher and match the stripped message (`/\u001b\[[0-9;]*m/g`); every tester decision gets a command whose
+output is the success line.
+
+### 2026-11-17: Round-2 fix gave commands to the two named C-red decisions, not to the rest of the class (#201, judge_design round 2, operations)
+Round 1 found two C-red decisions left to reading; round 2 added commands for exactly those two, and section 4 again
+says every decision is a step conclusion, an exit code or a command with a success line. Three are still read by eye:
+"`head` is the commit pushed for that run" (base step 2, the check that a run tested what was pushed, which the BASE
+SAME pairing relies on), "`grep -c '^\['` >= 1 and equal to the N of the scan's first line" (C-red), and
+"`git diff c4 c5 --stat` shows only ci.yml" (C-green). Each needs one line of shell that prints a success line.
+Rule: When a finding names examples of a class (decisions without a command), fix the class: list every tester
+decision in the design and give each one its command and success line before claiming "every decision" in writing.
+
+### 2026-11-17: Dictated guard message says every address line flushes Chromium, against the design's own F3 and R2 (#201, judge_code round 1, architecture)
+Design 3.2 dictated the scan failure text "... Chromium flushes its socket pools on each", and the coder printed it
+(scripts/netlink-guard.sh:148). R2 says RTM_NEWADDR counts only when the address is new or its ifaddrmsg differs, and
+IPv6 temporary addresses are excepted; the design's own F3 row says a pure lifetime refresh "may not flush, deciding that
+needs evidence". The guard deliberately fails on a superset, so in exactly the F3 case (an eth0 refresh at 3 AM) the
+message tells the reader a flush happened when it may not have. The #121/#156 lesson again, this time in an error text.
+Rule: A dictated error message is a factual claim; when the check is a deliberate superset of the harm, the message says
+"may" and names the superset, and it is read against every failure-mode row of the same design before judge_design.
+
+### 2026-11-17: Red control by JavaScript off also stops the inline streaming scripts, so streamed boundaries never show (#201, judge_code round 1, architecture)
+Design 5.1 counted the three not-found F6 waits and the ordinary-arrival wait as driven red by D-red, on the premise that
+not-found reaches the wait through SSR-only asserts. With `javaScriptEnabled: false` the inline `$RC` swap scripts do not
+run either, so the not-found boundary stays in a hidden div: the three 404 tests failed at :41 before the wait, and the
+ordinary-arrival wait went red with 0 matches instead of 1. The real failure the waits guard (a chunk that fails while
+inline scripts run) does not have this effect.
+Rule: Before choosing "JavaScript off" as a hydration control, list which targets live inside a streamed boundary
+(notFound(), Suspense, async pages) and either pick a control that keeps inline scripts (abort `/_next/static/chunks/**`)
+or name those sites as not driven red in the design.
+
+### 2026-11-18: Test plan retagged a shared image name to fake a leftover the shim could fake (#176, judge_design round 1, security)
+Design 5 T2 ran `docker tag node:22.23.4-alpine academy-web:t31` and later `docker image rm academy-web:t31`, gated only
+by the T0.2 check run before pnpm install and T1. `docker tag` moves an existing tag without error, so a `:t31` image
+another session built in the meantime would lose its tag, and the step 4 "only Untagged" check cannot see that. The
+shim already refuses that `image rm`, so the real tag adds no coverage: the listing is the only thing it feeds.
+Rule: A test plan fakes a state in the shim it already has before it writes to Docker. A write that is still needed
+names an object the run created and checks right before the write that the name is free.
+
+### 2026-11-18: Test plan prescribed a counter reset the orchestrator's dry-run could not run (#176, judge_design round 1, operations)
+Design 5 T0.6 resets the shim counters with `rm -rf "$S/state" "$S/calls.log"; mkdir -p "$S/state"`. In the
+orchestrator's dry-run the Claude Code safety check refused that `rm -rf` on a variable path, and the run went on with
+per-run dirs plus `ln -sfn`, which the design does not describe. A tester who improvises the reset can leave a real
+`$S/state` directory, where `ln -sfn` puts the link inside it and old counters carry over, so T1a stops at
+`STOP preflight listing failed` before the trap and T2 loses its preflight bypass. Each run's `calls.log` is also
+overwritten by the next one, so the `image rm` count cannot be checked afterwards.
+Rule: Each step of a test plan is run once as written before the design goes out, and any state reset uses per-run
+directories (no `rm -rf` on a variable path) with a check that the reset worked before the run starts.
+
+### 2026-11-18: T3 recovery triggered by a later listing, not by the run's own evidence (#176, judge_design round 2, security)
+Revision 2 T3 step 5 runs `compose -p academy-t31 down --remove-orphans` and `image rm` of the `:t31` refs when "a
+`left behind` line, or the T0.2 listings print something". The second trigger fires on objects T3 never created: if
+another session (another worktree runs the same script with t31) starts between step 2 and T3's preflight, T3 prints
+`T31 STOP leftovers of academy-t31 exist`, creates nothing, and the recovery then tears down that session's stack and
+images. The same holds when such a session starts after T3's own `RESULT OK` and before the post-run listings. T3 also
+has no exit-point rule for the preflight STOP lines that T1/T2 have.
+Rule: A recovery step removes only what the run's own log proves the run created and left (here: teardown ran, no
+preflight STOP, a `left behind` line); objects a later listing shows without that evidence are reported, never removed.
+
+### 2026-11-18: Revision 2 named per-run dirs that already exist under the scratch root (#176, judge_design round 2, operations)
+Revision 2 T0.6 says each run gets "a name not used before (T1a, T1b, T1c, T1d, T2, T2b)", but `$S/T1b` and `$S/T1d`
+already exist with filled `state/` from the orchestrator's round-1 dry-run. At T1b the reset chain stops at `mkdir`,
+`$S/state` still points at T1a's counters, the emptiness check fails and the tester stops. Fail-closed, but the plan
+is not executable as written. The T3 recovery also re-checks only the four T0.2 listings, which omit the
+`academy.workspace.instance=t31` ps/volume/network listings the script's preflight (:64-73) checks, so a leftover probe
+workspace (`api ensure`, :373) survives `compose down` and the recovery reads clean while the next run STOPs.
+Rule: Before naming run directories, `ls` the scratch root and pick names that are absent; a recovery's closing check
+lists everything the script's own preflight lists.
