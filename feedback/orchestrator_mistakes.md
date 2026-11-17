@@ -860,3 +860,13 @@ Rule: before judge_design, run the "red without the fix" half of any control pro
 clone and pass the log; read every failure in it, including tests the design marks "safe", before the judges do.
 Also: a reused worktree may carry a stale process branch; init refuses it. If that branch is clean and has no
 commits past process origin/main, `git -C .claude switch --no-track -c <task branch> origin/main` lets init proceed.
+
+### 2026-11-18: An "optional" item in a rework brief cost judge_ux a third round (#136)
+judge_ux round 1 failed on one gallery padding issue. My rework brief also passed on a judge's optional nit ("say the
+first tree fits with zero slack, or leave it"). The ui-designer measured it in Playwright's default Chromium, which
+hides scrollbars, and wrote a 9px margin as fact. Round 2 failed on that line in two judges, because AC75 and README
+measure with classic scrollbars, where the tree overflows. The class sweep in round 3 then found a page-width claim in
+acceptance.md that was false for 30 tall states in the same setup.
+Rule: a rework brief carries only blocking findings and items a judge made a condition; optional nits wait for the
+next real edit. Any brief that asks for a measured layout claim names the engines and scrollbar mode the page's
+acceptance notes use, and asks for that setup to be stated next to the number.
