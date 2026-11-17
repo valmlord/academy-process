@@ -29,3 +29,12 @@ must FAIL a change without that section. The report also did not say what the te
 (the destructive e2e guard) changed, so its content could not be reviewed.
 Rule: When the diff touches a page under design/pages/, the report has a "Design conformance" section with one
 pass/fail line per AC, and every commit the tester phase adds or folds in is named with the files it changes and why.
+
+### 2026-11-16: Synthetic CPU load on a shared laptop starved other sessions and crashed an app (#157)
+The #157 harness ran 40 `yes` processes per load run on a 10-core MacBook Air while eight other sessions worked.
+Host load reached about 360, then 122 during the `lac6 4 40` run, and another app on Stepan's machine crashed.
+The load also made the evidence useless: external spikes (a Docker VM at 45-663 % CPU) dominated, and three
+full-suite and paired runs stopped on timeouts that hit unchanged files too.
+Rule: At most 4 load generators per run, each started under `trap ... EXIT INT TERM` that kills them, every run
+with its own timeout, and `pgrep -x yes` checked and reported empty after each run. Prefer evidence that needs no
+synthetic load: a deterministic slow-down (fake timers, a mocked clock, an injected per-call delay) as the control.
