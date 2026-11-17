@@ -679,3 +679,16 @@ against the line it describes, which found two more overclaims, and I caught a n
 Rule: the coder brief for any change with new comments asks, before tester, for a list of each added comment with the
 code line or document line that makes it true; I read that list against the #117 rule (numbers keep their condition)
 before sending judge_code.
+
+### 2026-11-17: A docs-only design took three rounds on claims about what a scanner detects (#148)
+
+judge_design for a 13-line comment and ADR fix ran three rounds (the third under Stepan's standing instruction). Both
+FAILs were security findings of one class: a sentence about what the e2e leak scan does or does not detect, written as a
+case (first at the title instead of every scanned body, then a "part of a run" absolute and a run length without the
+trim). Round 3 passed once the architect wrote the detection rule once from the code (D1-D5) and derived every claim
+from it per listed fragment. Separately, `init` refused because this worktree's process worktree still sat on a merged
+task's branch; `git -C .claude switch --no-track -c <task branch> origin/main` (allowed verbs, clean tree, merged PR)
+let init proceed.
+Rule: when a design's deliverable is prose about the behaviour of a matcher, filter or gate, the first architect brief
+asks for the mechanism written once with file:line and every claim derived from it, before any judge round. Before
+init in a reused worktree, check `git -C .claude branch --show-current` and the PR state of that branch.
