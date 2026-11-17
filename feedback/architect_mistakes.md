@@ -2221,3 +2221,23 @@ Rule: A scratch harness is dictated as a script file run whole, with source read
 ### 2026-11-16: Dictated an unconditional exactness comment that the same design's 4.1 contradicts (#156)
 Design 4.6 told the coder to write in split.ts that "multiplying first leaves a single rounding (the division)", with no condition. Design 4.1 itself says that on non-dyadic live inputs (17.6 px root font, 90 % or 110 % page zoom, passed by lesson-layout.tsx:73 from getBoundingClientRect and getComputedStyle) paneMinPx * 100 and the subtraction round too, and a limit can be off by one. The coder copied the wording, so split.ts:34-36 claims an always-exact limit that holds only for binary-exact widths. 4.6 also dictated "rounds and put the 440 px tie on the wrong side", a tense clash that reached split.test.ts:22.
 Rule: A comment a design dictates carries every condition the design's own analysis attaches to the claim; reread each dictated sentence against the section that proves it, and for grammar, before handing over.
+
+### 2026-11-17: ADR residual scoped the scan's blind spot to the title, though the code drops the fragment everywhere (#148, judge_design, security)
+Design 3.1 R2 states the residual as "the e2e scan cannot detect grader material quoted inside a title". The code
+removes such a fragment from the forbidden list itself (`apps/web/e2e/leak-fragments.ts:111-114`), and the
+FragmentScanner (:119-139) then scans every served body without it. So the fragment goes undetected in any response,
+including a leak of the grader file it came from; a grader file whose fragments are all contained in titles can
+reach the browser whole without the scan noticing. The residual as written understates the leak-defence gap.
+Rule: When stating what a filter exempts, state where the exemption applies (every scanned body, not only the
+place the exempting text appears), and check it against the consumer of the filtered list, not only the filter.
+
+### 2026-11-17: Revision stated the scan's second blind spot as an absolute the matcher contradicts (#148, judge_design round 2, security)
+The round-2 R2 (design 3, line 111) adds: "a body that carries only part of a run, or grader text in shorter runs, is
+not detected either". The scanner tests every listed fragment at every body index (`leak-fragments.ts:131-138`), so a
+part of one grader run that contains another source's whole fragment is detected: a scratch run with run A =
+"assert result equals <starter line> exactly here" and B = the starter line alone reported B for a body holding only
+B. Shared text between `starter/` and `checks/` makes this realistic. The run description also drops the trim
+(`:33-34`: a 24-character regex match with edge spaces yields no fragment). Writing a gap too wide is still a false
+claim in an ADR about a security control.
+Rule: When a design states what a matcher misses, phrase it per fragment ("a body is reported only when it holds a
+whole listed fragment") and test the absolute against overlapping fragments from two sources before sending.
