@@ -637,3 +637,11 @@ D13's fallback asked to lower legacy-hunt's weight so passing could not rest on 
 regardless of weight, and bug-hunt is not a counted kind yet. Caught before shipping and reported to the lead.
 Rule: before acting on a lever (weight, limit, status) to change a learner outcome, read the rule that computes the
 outcome (ADR-0007, progress flows) and state its real effect.
+
+### 2026-11-17: An offline leak scan missed the JSON-escaped body the e2e spec reads (#45)
+PR #193 went red in the e2e leak spec: grader string literals with an escaped newline before `from unittest import mock`
+formed the run `nfrom unittest import mock`, which only the RSC payload of a theory page carries (newlines there are a
+backslash and n). content:validate has no fragment scan, and my offline scan rendered soft wraps but not JSON escaping.
+Rule: an offline stand-in for the leak spec scans every learner text both raw and JSON-escaped with the spec's own
+forbiddenFragments and FragmentScanner (plans/45-runs/leak_repro.mts); a grader writes generated source with real
+newlines or one literal per line, never an escape followed by text. Follow-up: valmlord/academy#195.
