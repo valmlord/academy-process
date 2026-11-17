@@ -879,3 +879,15 @@ Rule: before judge_design, run the "red without the fix" half of any control pro
 clone and pass the log; read every failure in it, including tests the design marks "safe", before the judges do.
 Also: a reused worktree may carry a stale process branch; init refuses it. If that branch is clean and has no
 commits past process origin/main, `git -C .claude switch --no-track -c <task branch> origin/main` lets init proceed.
+
+### 2026-11-17: A dry-run fixture I wrote by hand broke a design check, and a control premise went unrun (#201)
+Before judge_design I saved the probe dry run as plans/201-dry-probe.log with my own annotation lines, and the design
+used it as a raw monitor log in its local scan checks. Plan constraint C3 (any non-record line fails closed) then made
+those checks return 2 instead of 1 and 0; the coder stopped and asked. Separately, the D-red control (JavaScript off)
+rested on the premise that not-found pages reach their waits through SSR-only asserts; nobody ran a JS-off page load
+before the judges, and in CI the streamed not-found boundary never swapped in, so 4 of 51 sites failed before their
+wait. judge_design also took three rounds, the last two on tester decisions still made by reading.
+Rule: a fixture that a design check reads is saved as the tool's raw output, never with notes in it; notes go in a
+separate file. A red control's premise about what each target page does under the control is checked once for real
+(or listed as unverified per site) before judge_design. When a judge names an example of "decided by reading", ask
+the architect to sweep every decision of that class, not only the examples.
