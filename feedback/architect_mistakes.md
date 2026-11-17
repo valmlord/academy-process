@@ -2946,6 +2946,17 @@ the F6 listener the design does wait for. Run A pass 1 shows it: `:223` fails at
 Rule: For every "no change" row, name what decides where the input lands (DOM attribute from SSR, or state set by an
 effect) and check it in the installed library source; a keyboard Tab through a roving-focus widget is not native.
 
+### 2026-11-18: Mutation clone procedure written without an install step, and two commands that skip ^build (#137, judge_design round 1, operations)
+Design section 6 tells the tester to `git clone --local` the worktree, apply the task diff, mutate and run vitest,
+but never says `pnpm install --frozen-lockfile` in that clone (only 7.3 mentions it for the second clone). Run as
+written, every row M1-M6 exits 254 with `Command "vitest" not found`: a non-zero exit that reads as "red" for all
+six mutations. Section 7 also offers `pnpm --filter @academy/web test` and `pnpm --filter @academy/web typecheck` as
+the whole-suite and typecheck commands; neither builds `packages/*/dist` (turbo `^build`), so in a fresh clone they
+fail with 12 unresolved-package files and TS2307 for `@academy/db`. They pass in the worktree only because an old
+dist happens to match. The M6 row's expected-red list also missed the idle-notifications test.
+Rule: Before handing a procedure to the tester, run it once from an empty clone exactly as written, and prefer the
+CI command forms (`pnpm test`, `pnpm typecheck`) to package filters that skip the dependency build.
+
 ### 2026-11-17: Red/green isolation proved by the branch diff, while PR CI runs on a merge with a moving main (#201, judge_design round 1, architecture)
 Design 4 claims "`git diff c4 c5 --stat` shows only ci.yml, so A is the only difference between red and green". CI runs
 only on `pull_request` (ci.yml:3-6), which checks out `refs/pull/<n>/merge`, recomputed against main's head at each

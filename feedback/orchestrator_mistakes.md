@@ -880,6 +880,16 @@ clone and pass the log; read every failure in it, including tests the design mar
 Also: a reused worktree may carry a stale process branch; init refuses it. If that branch is clean and has no
 commits past process origin/main, `git -C .claude switch --no-track -c <task branch> origin/main` lets init proceed.
 
+### 2026-11-18: A reused worktree folder still held the last task's process branch (#137)
+The #137 session started in the folder of #118's worktree. `init` refused: the process worktree in it was still on
+refactor/118-yaml-helper (PR merged, Stepan's sync not yet run). `git -C .claude switch -c fix/137-aria-live origin/main`
+and `branch --unset-upstream` made it usable and left the #118 branch for the sync. Separately, the issue's fix had
+already landed in #151; the researcher found it, and the task became test-only. Without that read the coder would
+have had nothing to change and the tier would have been wrong.
+Rule: in a reused worktree, check `git -C .claude status -sb` before `init`; if it is on a merged task's branch, cut
+the new process branch from origin/main with `switch -c` and unset its upstream, then tell Stepan the old branch
+still needs his sync. Before tiering a bug issue, check with `git log -S` whether the change is already on main.
+
 ### 2026-11-17: A dry-run fixture I wrote by hand broke a design check, and a control premise went unrun (#201)
 Before judge_design I saved the probe dry run as plans/201-dry-probe.log with my own annotation lines, and the design
 used it as a raw monitor log in its local scan checks. Plan constraint C3 (any non-record line fails closed) then made
