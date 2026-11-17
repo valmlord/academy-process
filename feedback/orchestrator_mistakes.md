@@ -621,6 +621,25 @@ stopped before any build and a second tester round was needed for T5 alone (t31 
 Rule: before a tester brief that runs isolated-stack.sh, check the run's two ports with `lsof -nP -iTCP:<port> -sTCP:LISTEN`
 and name a run whose ports are free.
 
+### 2026-11-17: Fifteen design rounds on one too-large design before splitting it (#163)
+#163's design (service check runner) went through fifteen judge_design rounds. Most FAILs after round 4 were text drift in a
+design over 3,000 lines: ADR sentences copied in many places, then narrowed in one; test cases dictated as code nobody had
+run; an audit inventory of course graders inside a service design. Each class closed only after a structural move: one
+source for the cleanup rule with pointers elsewhere, every dictated test case backed by a run sketch with named mutants,
+the grader inventory moved to its own issue (#187), and the runner and stop handling split to #196. Splitting the PR at
+the planner (A1 #163, A2a #198, A2b #199) came last, though the size was over the bound from round 1.
+Rule: when the architect's first estimate is over the bound, split the issue before judge_design, not after; keep each
+behaviour stated once in a design and point to it; never dictate a test case as code without a run that shows it green on
+the correct form and red on its named mutant; move inventories of other code (course graders, other services) to their
+own issue at the first FAIL about them.
+
+### 2026-11-17: My own splice script truncated a file before reading it (#163)
+While splicing revision 4o I wrote `open(p, "w").write(apply(open(p).read()))`: Python opens the target for writing (and
+empties it) before the inner read, so coverage.md was truncated and the edit reported "OLD count 0". A backup made just
+before let me restore it.
+Rule: when a script rewrites a file in place, compute the new text first and write it in a separate statement; keep a copy
+of every file a splice touches before running it.
+
 ### 2026-11-17: Eight design rounds on one memory model, closed only by narrowing what the check reads (#45)
 judge_design for module 05 took eight rounds. Rounds 1-5 each failed on the L2 memory check: every round found one more
 memory source, setting or wording the model had to cover (AGENTS.md, CLAUDE.local.md, settings keys Claude Code writes
@@ -860,6 +879,18 @@ Rule: before judge_design, run the "red without the fix" half of any control pro
 clone and pass the log; read every failure in it, including tests the design marks "safe", before the judges do.
 Also: a reused worktree may carry a stale process branch; init refuses it. If that branch is clean and has no
 commits past process origin/main, `git -C .claude switch --no-track -c <task branch> origin/main` lets init proceed.
+
+### 2026-11-17: A dry-run fixture I wrote by hand broke a design check, and a control premise went unrun (#201)
+Before judge_design I saved the probe dry run as plans/201-dry-probe.log with my own annotation lines, and the design
+used it as a raw monitor log in its local scan checks. Plan constraint C3 (any non-record line fails closed) then made
+those checks return 2 instead of 1 and 0; the coder stopped and asked. Separately, the D-red control (JavaScript off)
+rested on the premise that not-found pages reach their waits through SSR-only asserts; nobody ran a JS-off page load
+before the judges, and in CI the streamed not-found boundary never swapped in, so 4 of 51 sites failed before their
+wait. judge_design also took three rounds, the last two on tester decisions still made by reading.
+Rule: a fixture that a design check reads is saved as the tool's raw output, never with notes in it; notes go in a
+separate file. A red control's premise about what each target page does under the control is checked once for real
+(or listed as unverified per site) before judge_design. When a judge names an example of "decided by reading", ask
+the architect to sweep every decision of that class, not only the examples.
 
 ### 2026-11-18: An "optional" item in a rework brief cost judge_ux a third round (#136)
 judge_ux round 1 failed on one gallery padding issue. My rework brief also passed on a judge's optional nit ("say the
