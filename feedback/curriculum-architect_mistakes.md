@@ -666,3 +666,229 @@ Rule: When a residual is closed with prescribed rules, list the attack's neighbo
 the same race moved to another point in the request, each lock removed from each honest form, the delay outside the
 atomic section. Prototype each one against every rule. When a closed set is recorded from a run, record it over the
 whole honest corpus, not only the reference. When a git-based honest form must pass a planted case, commit the plant.
+
+### 2026-11-16: Re-graded an earlier module's skill, sibling checks disagreed on honest forms, the first run named a "find" step (#45, judge_design round 1, pedagogy)
+
+Revision 1 of #45 made "cut the draft to what the code cannot tell" the first verb of L2. It graded that verb with
+a copied-lines cap and a rubric criterion that repeats 00 L5's word for word, although the research overlap table
+said not to re-grade it. memory-layout accepted facts imported via `@` as an honest form, while memory-rubric read
+only CLAUDE.md and rule files and so scored that form 0. Team note F1 ("never rename label files") contradicted
+manifest.py's rename to `.done`, so it read like the planted stale note. The S2 test command did not run on the
+L2 starter, which has no tests/. The L1 decoy "quote_parcel has no side effects" was a literal yes under the
+undefined "changes state" of the ladder (module cache). L4 budgeted 20 min to "find holes by sabotage", but the
+first counted run on the untouched starter names all five holes. L1 gave a 400-line transcript 8 min less reading
+than the measured 01 L6.
+Rule: For every lesson, check each graded verb against the overlap table and the earlier modules' module.yaml.
+Then run every honest form one check accepts through each sibling check of the same artifact. Walk each planted
+note and decoy against the starter code as a literal reader would. For every "find" step, read the check's message
+on the untouched starter. Size each part from the analogue's measured part, not from the analogue's total.
+
+### 2026-11-16: "The docs do not settle it" again, a must-not check on a partial loading model, an always-fails claim never computed (#45, judge_design round 1, accuracy)
+
+Revision 1 of #45 excluded nested `.claude/` rules and subdirectory AGENTS.md from the L2 resolver "because the docs do
+not settle them". The memory page settles both. It lists "Rules files in a subdirectory's `.claude/rules/`" among the
+files that load on demand, and it reads a subdirectory AGENTS.md only when no CLAUDE.md counts. That is the #43 round-2
+mistake again. C3's must-not-load side was computed on that reduced model, and it also left out CLAUDE.local.md,
+subdirectory CLAUDE.local.md and the user-level `~/.claude/CLAUDE.md` and `~/.claude/rules/`. So a fact Claude Code
+does load for a foreign file could still pass "not loaded". 5.2 and R9 said that a test reading the real date or hour
+"fails on at least one green run" and that this is "deterministic by the 26-hour span". At UTC 00:00-00:59 and 12:00-14:59
+(local hour 12 or 0-2 at UTC-12), all three zones are before the 15:00 cut-off. A pair of consecutive dates Mon/Tue is
+the same "weekday" case. The rollout quiz wrote METR 2025 as "measured -19%", but METR's own convention (2026 update)
+writes that result as +19% (slower) and -18% as faster.
+Rule: Before writing "the docs do not say", search the vendor page for the file or setting by name and quote what it
+says. A must-not-load check models every documented loading source, team or personal, launch or on demand (a superset).
+A must-load check counts only the sources the task accepts (a subset), and task.md names both. Before an "always fails"
+or "deterministic" claim over a drawn set, enumerate the whole set: every UTC hour, every weekday pair. Copy a study's
+numbers with the study's own sign convention and write the direction in words.
+
+### 2026-11-16: An in-process sandbox specified as a blocklist, never attacked through imports, links or fd-relative paths (#45, judge_design round 1, assessment)
+
+Revision 1 of #45 ran grader mutants in the same process as the learner's tests. It left the canonical `shipping/` text
+on disk in the run root. It said an audit-hook blocklist "closes" the first-run capture. A prototype showed three
+bypasses. First, `unittest.TestLoader().discover("shipping", top_level_dir="shipping")` plus
+`mock.patch("labels.X").getter()` loads the original code as a top-level `labels`. That oracle kills every mutant
+(5/5), with no banned name and no copied function. Second, a symlinked `tests/canon -> ../shipping` is invisible to
+rglob/os.walk in stage 0, but `copytree` copies it in (3/3). Third, `os.open(..., dir_fd=fd)` after an `os.chdir`
+writes outside the root. The `open` audit event carries no dir_fd (3/6). So does a hard link whose source is outside
+the root (5/8). In agent-gate, R5 and the binary half of R1 were task rules that no probe could fail on.
+Rule: When learner code shares a process with the code under test, list every way that process can reach another copy
+of that code (import path changes, unittest/mock importers, files copied in through links), and state the effect to
+block. Specify a sandbox as an allowlist of effects (writes only inside the root, whatever the API, link sources and
+fd-relative paths included), not as a list of events. Stage 0 and the run must see the same bytes. For every rule a
+learner-written tool must implement, name the probe that fails when the rule is left out.
+
+### 2026-11-16: Literal walk applied to notes and decoys but not to the outcome's own placement rule; per-part minutes that contradict their stated basis (#45, judge_design round 2, pedagogy)
+
+Revision 2 walked every L1 decoy and every L2 note literally, but not the five L2 facts against O2. O2 says each fact,
+"в том числе" for Explore, reaches the agent with the files of that fact. The key puts F4 and F5 at launch, which
+Explore skips, and no printed criterion decides launch versus area. Section 8 still claims that choice as the new
+skill. A literal reader of O2 puts F5 in a path rule on the Makefile and fails C2. The sizing was shown per part, and
+two parts contradict their own basis. L1 sized repo verification for "about 12 claims", but its table has 27 graded
+items, 23 of which need the repo. L4 cited "24 + 14" from 02 L2 and budgeted 30.
+Rule: Walk every key item against the outcome text and every printed decision rule, not only against the code. Where
+the key decides a level or category, print the criterion and table each item against it. After writing per-part
+minutes, recount the volume from the design's own tables and redo the arithmetic of every cited analogue.
+
+### 2026-11-16: A tool's output format assumed, a "superset" that missed sources and settings, a quiz key beyond the docs (#45, judge_design round 2, accuracy)
+
+Revision 2 of #45 made S2 accept a test command when its output has "`Ran N tests` with N >= 1". CPython 3.12 prints
+`Ran %d test%s`, with no "s" for one test, and writes it to stderr. The L2 starter ships exactly one test, so every
+honest corrected command fails stage 0. The changelog called the must-not model "the superset of every source on the
+memory page". It left out root `.claude/AGENTS.md` and a subdirectory's `.claude/CLAUDE.md`. It stripped HTML comments
+in every file, although the page documents that only for CLAUDE.md files. S4 also refused only `claudeMdExcludes`, while
+`instructionFiles` (`managed-only`) in `~/.claude/settings.json`, `CLAUDE_CODE_DISABLE_CLAUDE_MDS` and
+`CLAUDE_CODE_SIMPLE` in a settings `env` block also change what loads. O2 promised that Explore gets "каждый факт" with
+its files, but the key puts F4 and F5 at launch, and Explore skips launch files. The rollout quiz keyed "with `--bare`
+the CI agent does not see the rule file", while the docs name only CLAUDE.md.
+Rule: Before a check parses a tool's output, quote the line of the tool's source or docs that prints it, singular and
+plural included, and name the stream. A superset claim needs a table: every file and every setting the vendor page
+names, each with "in D", "refused by stage 0" or "not learner-writable". Search the settings and env-var references for
+the feature name before saying a setting list is complete. Every quiz key sentence has a quoted source that states it.
+"I expect it does" is not a source.
+
+### 2026-11-16: Rev-2 import guard carved out tests/, and the oracle moved into tests/ (#45, judge_design round 2, assessment)
+Round-1 B1 put the fix target as "no code from a file in the run root except tests/** runs", and rev 2 built the import
+guard to admit any file under <root>/tests/. The run writes tests/ to disk and the write guard allows writes in the run
+root, so a characterization test writes the original labels.py (carried as a string const or a .txt fixture, read out of
+the visible starter) into tests/orig_mod.py at run time and imports it as an oracle; it kills every mutant with no
+behavioural assertion. T8 misses it because the copy is never a .py at stage 0. b1_runtime_py, b1_txt_fixture and
+b1_overwrite all passed stage 0 and ran green under the literal rev-2 text. Separately, the guard looked up
+os.path.realpath each call, so mock.patch("os.path.realpath") (an allowed API, no T4 name) blinded both the import guard
+and the write guard: b1_patch_realpath and cap_patch_realpath passed the whole check.
+Rule: a guard carve-out ("except tests/**", "inside the run root") is a hole the learner fills with their own pasted
+copy; key the admit-list to the stage-0 BYTE set (byte-identity), not to a name or a location, and run the neighbour
+that writes/overwrites a file inside the carve-out at run time. A guard that depends on a stdlib function (realpath,
+fspath) must capture that reference at install, because mock.patch of it is cheap capture, and the guardrail exists
+against cheap capture. Try the "blind the guard's own dependency" neighbour before claiming a guard closes a class.
+
+### 2026-11-16: A blanket course-rule reason false for half the refused places; a habit no literal reader can perform; earlier modules' graded forms refused (#45, judge_design round 3, pedagogy)
+
+Revision 3 of #45 gave one reason for the L2 allowlist: "so team facts lie where everyone finds them, and the check can
+compute exactly what loads". That is false for `AGENTS.md` (the team file, and 00 L5's graded `@AGENTS.md` form), for
+root `.claude/CLAUDE.md` (a committed file with a documented load time), and for shell startup and `.env*` files, which
+are not memory places. Auto memory, which the agent writes by itself (00 L5 theory), was refused with no task text
+about how it gets there or how to clear it. No demo listed the keys Claude Code writes into the settings files by
+itself. The D8 habit "check the docs for your version" was kept as a sentence. But the research said the docs describe
+only the newest release, and no step named `claude --version` or the changelog. The S5 example was a complete accepted
+value. F5 ("never run `make reset-spool`") must sit in launch memory, while 02 L1's ladder puts such a rule in a hook
+or deny and out of memory. The hook form was refused by the key allowlist. Two-model numbers (5 hops and comment text
+for must-not) decided counted results and were not in the task.md lists.
+Rule: Walk a course-rule reason against every class it refuses, one class at a time, and write a true reason for each.
+List what the tool writes by itself during an ordinary session (memory, settings keys), from a run in the image, and
+either accept each item or name it in the task with its fix. A habit the lesson makes central is printed as steps a
+literal reader can perform with what the workspace has. Before keying any fact's placement, run it through every
+earlier module's placement rule (00 L5, 02 L1), and say in section 8 where this lesson departs and why. Every number
+and model rule that decides a counted result goes into the task.md list, the must-not side included.
+
+### 2026-11-16: A hedge applied to one message of a model pair, and the subset model's cuts printed as load facts (#45, judge_design round 3, accuracy)
+
+Revision 3 of #45 closed round-2 note n7 by adding "по модели проверки" to the must-not message only. The must-load
+messages ("F4: не загружается при запуске сессии") still state a load fact whenever the subset model A lacks the term. A
+drops block HTML comments from rule files, which the memory page strips only "in CLAUDE.md files", and it cuts imports at
+3 hops where the page says four. So F4 in a comment of a launch rule gets "не загружается" although the docs say nothing
+of the kind. The comment rule for non-CLAUDE.md files was also missing from the task.md course rules.
+Rule: When a check uses a subset model and a superset model, every message from either one says it is the check's
+model ("по модели проверки"), not the tool's behaviour. Every place where a model is narrower or wider than the docs
+(comment stripping, hop count, frontmatter, pattern forms) is printed in task.md as a course rule, with the docs' own
+scope quoted.
+
+### 2026-11-16: A captured reference closed the guard's decision but not the importer it delegates to; the allowlist refused what the tool writes itself (#45, judge_design round 3, assessment)
+
+Revision 3 of #45 captured `PathFinder.find_spec` in the import guard and listed
+`mock.patch("importlib.machinery.PathFinder.find_spec")` as closed by G-rule 1. The guard only advises. When its
+captured lookup finds nothing, it returns None, and the patched `PathFinder` later in meta_path loads a run-time
+`<root>/hidden/orig_mod.py` holding the original source. That oracle kills every mutant (3/3). Its neighbours
+(`SourceFileLoader.get_data`, `importlib._bootstrap._find_spec`, `pkgutil.get_importer` plus a loader subclass) each
+beat at least one runtime fix. A static T4 ban on the import-system vocabulary refused all of them, and the honest
+corpus stayed green. In L2, the closed settings key allowlist and the auto-memory term rule gave exit 3 on the passing
+reference after `/effort`, a `/config` toggle, the `/memory` toggle or `/sandbox`, and after Claude saved a team fact
+to `~/.claude/projects/<project>/memory/MEMORY.md`. Claude Code writes all of these by itself.
+Rule: When a guard captures a reference, trace who actually performs the guarded action after the guard returns. If
+that is a later, patchable component, the capture closes nothing. Close the class with a static rule the learner can
+read, and run each listed neighbour before calling it closed. Before an allowlist refuses state, grep the vendor
+reference for what the tool writes by itself ("writes this key", auto memory), and run the reference with that state
+present.
+
+### 2026-11-17: Notes restated without their prohibition, and the walk table kept the old prohibition's actions (#45, judge_design round 4, pedagogy)
+
+Revision 4 of #45 took the prohibitions out of F1-F4 so that they reach step 7 of 02 L1's ladder. That left the L2
+criterion's "запрещает или объясняет" to decide on "объясняет" alone. F2's first sentence, "Production servers run TZ
+`Europe/Moscow`", explains every use of the server's local time: the labels.py stamp, manifest.py's `date.today()`, and
+any new module. On a literal reading that makes F2 a session fact. The key says area, with labels.py in F2's must-not
+set. The 6.2 walk table still listed revision 3's F2 actions ("change the comparison; change the hour"), which came from
+the removed "Do not convert either to UTC". O2 named "окружение продакшена" as an example area fact, so it taught the
+reverse of the printed criterion.
+Rule: When a note's text changes, walk it against the criterion again, one sentence at a time, and write the actions
+each sentence explains into the table from the new text. Check every file that a sentence plausibly concerns against
+the note's must-not set. Every category an outcome gives as an example of a level must get that level under the
+printed criterion.
+
+### 2026-11-17: A team note contradicted by the codebase it describes; a printed procedure that sends the learner to the wrong pages (#45, judge_design round 4, accuracy)
+
+Revision 4 of #45 rewrote F4 as "`ledger-sync` reads every money amount parcel-desk produces, in any module, as int
+kopecks". The design's own section 3 has manifest.py writing rubles (`(k + 49) // 100`) and `format_rubles`, and the
+table still said "code agrees? yes". F3's "resolver column included" also makes renaming zones_v1.py a change the note
+explains, so a literal reading makes F3 a session fact. That is the same class as the pedagogy F2 entry above. The new
+version procedure said "Open the memory and sub-agents pages ... Find V1-V7 there", but V7 is on best-practices and V2's
+Bash list is on tools-reference.
+Rule: Before writing "code agrees", grep the codebase description for every noun a note quantifies over ("every money
+amount", "every change"), and check each output it names. A printed procedure names the page for each statement it asks
+the learner to find. Open each page and confirm the statement is there before printing the step.
+
+### 2026-11-17: The check recognises a fact by its term, and task.md never says so (#45, judge_design round 5, pedagogy)
+
+Revision 5 of #45 grades C2/C3 by finding each note's term (`printerd`, `pickup-board`, ...) in the modelled text. But
+10.3 never tells task.md to print that rule, and rule 5 ("never name key contents") invites hiding it. A root
+CLAUDE.md index line such as "`.claude/rules/printerd-labels.md`", or an `@docs/team-notes.md` import, holds an area
+term at launch, and C3 must-not fails, counted. Neither one is a copy of the fact the criterion talks about.
+Section 3 also leaves README.md and the stand-in CLAUDE.md unpinned against the terms, though rule 3 k) expects
+learners to import them.
+Rule: For every counted rule, print the observable the grader matches on (here: which text counts as a fact, and how
+it is matched), not only the intent ("the fact loads"). Then run the honest by-products of the task against it: an
+index, a pointer, a file name in prose, an import of the source document. Pin every starter file that can become graded
+input against the matched tokens.
+
+### 2026-11-17: A criterion sentence kept the old "changes" frame; a research example list printed as a closed set of forms; a size reason lost its condition (#45, judge_design round 5, accuracy)
+
+Revision 5 of #45 moved the L2 level to the scope line but kept "Проверка считает только изменения, которые называет
+строка охвата". The line names files, and the check counts no changes, so a literal reader takes it to mean "only the
+named files are checked". C3's must-not side checks files the line does not name. Version step 2 printed "version
+notes are inline sentences of two forms", but the research had said "Two forms recur". The memory and tools-reference
+pages also use "vX and later", "before vX", "vX or earlier" and "On Claude Code vX or later", some with X above 2.1.311.
+The printed size reason said the docs cut on-demand files "после этого предела" (40,000). The docs give 40,000 only
+for a 200K context window, and say Claude gets the start plus a pointer to read the rest. The design's own 5.3 gap
+line had kept "with a 200K context window".
+Rule: When a decision changes what decides a result, delete or rewrite every printed sentence that describes the old
+observable, and check that each one names what the check computes. Never print an example list from research as the
+docs' complete set: grep the page for the general token (`v2.`) and print a rule that covers every hit. Copy a
+documented limit together with its condition.
+
+### 2026-11-17: Counted "one hit" in the step-2 sections, over the researcher's own enumeration that listed two (#45, judge_design round 6, accuracy)
+
+Revision 6 of #45 fixed round-5 blocker 2 by searching each page for `v2.` and reading every hit inside the nine
+step-2 sections. It then asserted three times (design lines 39, 500, 1356) "the nine sections hold one hit: 'Before
+v2.1.211' in 'Set up rules' (accuracy r5)", and sized step 2 on that count. Opening the live sub-agents page today, a
+second hit is inside a step-2 section: "## Built-in subagents" (the V6 row of the design's own table) contains
+"... set `CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1` ... Requires Claude Code v2.1.198 or later." That hit lies
+between `## Built-in subagents` and the next `##`, so step 2 reads it. The architect's own source,
+45-research-pages.md section 4, already listed it ("In 'Built-in subagents': 'Requires Claude Code v2.1.198 or
+later.'"), but the design copied the round-5 accuracy judge's undercount with its "(accuracy r5)" citation over the
+researcher's data. The learner-facing handling survives (line 1362's expected case is a class, "mentions whose X is
+at or below 2.1.311", and v2.1.198 falls in it), but the stated fact and the minutes basis are wrong.
+Rule: A count of matches in a defined scope is a claim to verify by scanning the scope, not by copying an upstream
+summary. Before writing "N hits" (or "one hit"), run the search the step prescribes over every named section of every
+named page, and cross-check it against the researcher's own per-section listing; when a cited review and a cited
+research page disagree on an enumeration, open the page and take the larger set.
+
+### 2026-11-17: A trap-list sentence said prose passes the `exec*` prefix rule, and 5.1 and 10.3 disagreed on its tokens (#45, judge_design round 7, accuracy)
+
+Revision 7 applied assessment r6 N5 by adding to 5.1 and to 10.3 rule 10 that part 1's `exec*` prefix rule refuses a
+helper `execute()` while "the word 'execute' in prose passes". The cited reference, `stage0_r5fix.py` `bad()`, also
+applies the prefix test to every str constant, whole and per `[.:]` segment. So `"""execute the quote twice."""`,
+`subTest("spawned label")` and `"runner.execute"` are refused, and only mid-sentence prose and comments pass.
+5.1's own rule line still says "any `exec*` ... attribute", while the new sentence says names are refused too. The
+only run behind it (judge-r6 `fp/vocab2`) had "We execute" in mid-sentence, which is the one prose form that passes.
+Rule: When a revision adds an "X passes" or "X is refused" sentence about a stage-0 rule, read the function that
+implements the rule and list every token kind it is applied to. Then walk the sentence's example against each kind,
+including a string that begins with the word and a segment after each separator. Make the rule line and the
+learner-facing sentence name the same token set.
