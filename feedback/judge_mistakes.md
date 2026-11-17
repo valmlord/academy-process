@@ -588,3 +588,10 @@ neighbour per evaluator found, not only for the resolver of the case at hand.
 ### 2026-11-16: Design rounds passed a dictated "single rounding" comment that the design's own 4.1 contradicts (#156, judge_design, architecture)
 Design 4.6 dictated an unconditional "multiplying first leaves a single rounding (the division)" for split.ts; both design rounds passed it although 4.1 of the same design says the product and subtraction round on non-dyadic live inputs. The #121 lesson again; the false comment reached judge_code.
 Rule: In judge_design, check every dictated comment against the design's own proof section and the live caller's inputs, and FAIL an absolute that the proof qualifies.
+
+### 2026-11-17: Round 1 accepted the "no change" rows without walking them (#197, judge_design round 2, architecture)
+In round 1 I checked the fix rows and the controls but took section 4's "native hrefs and Tab" for `:223` (E-ring) on
+trust. Its Tab target depends on Radix RovingFocusGroup state set in a `useEffect`, so it races hydration like F6.
+Run A pass 1 (`:223` red at `:232` on a lost chunk) pointed at it; it cost a round.
+Rule: In a class-closure review, walk each "safe, no change" row against the mechanism of its first input as
+carefully as the fix rows, and read any run log row that fails where the design calls it safe.
