@@ -590,6 +590,24 @@ Rule: for a merge-of-main follow-up, `git fetch` right before the tester and rig
 design so it already covers "main moved by docs-only commits": a further merge commit with the same checks, judged at
 judge_code.
 
+### 2026-11-16: Comment rewrites dictated by the design passed judge_design and failed judge_code (#115)
+
+judge_design round 2 passed a 6.0 table of replacement comments the architect wrote. Two of them (spec.ts:79-80,
+:216-217) claimed more than the code: "nothing enters the create body" while Image, limits and labels come from the
+config; "the only value from the service's environment reaches the shell" while TERMINAL_SHELL goes into Cmd. The coder
+copied them verbatim, and judge_code round 1 failed on them plus two of the coder's own lines of the same class. The
+#33 rule (no ready sentences from me) covered my wording, not the architect's. What worked: running the design's
+/proc premises myself before judge_design (E0), so round 1 argued about text, not about unmeasured facts.
+Rule: when a design dictates comment or doc sentences, the architect brief asks for each one the list of cases it
+covers with the code line behind each case, and the coder brief asks the coder to re-check every dictated sentence
+against the code and grep the diff for the same class (only, nothing, never, exactly, every) before the first commit.
+
+### 2026-11-16: Merged PRs without checking main CI, and a known flake waited (#43, #130)
+After merging I moved on without looking at the CI run on main. A green PR run does not cover the merge result, and
+the e2e job on main had been failing on an Ubuntu mirror outage for hours before I noticed it.
+Rule: after every merge, read the CI run of the new main commit to its end. A failure there is fixed or rerun at once,
+and a known flake gets its issue the same day.
+
 ### 2026-11-16: Skipped the #110 rule and sent a no-shell architect's procedures straight to judges (#107)
 The #107 design prescribed two mutation rows and two lockfile gates written without a shell. I sent it to judge_design
 without anyone running them; the operations judge found a non-unique anchor (app.ts:8 and :52) and a placeholder age
@@ -613,3 +631,51 @@ Rule: For a flaky-under-load fix, brief the architect to find a deterministic co
 an injected per-call delay that makes the old code cross the timeout); synthetic load only when none exists, capped at
 4 generators. After a load run stops on host noise once, switch to a deterministic control rather than redesigning
 the load harness. Check sibling sessions' notes and `uptime` before any load run on this machine.
+
+### 2026-11-16: Six design rounds, four of them on the tester procedure's prose, not the fix (#95)
+The #95 fix (about 70 product LOC) had its focus rule settled by round 2 and confirmed for the whole class. Rounds 3-6
+failed on text around the tester procedure: an incomplete hand-written list of what an isolated-stack run leaves
+behind (rounds 3 and 4, same class twice), then one sentence crediting the final check with an image check it does not
+do (round 5). I patched the list once before closing the class by measurement; the second FAIL of the same shape was
+the signal I should have acted on at the first. Rounds 4-6 needed grants from the main orchestrator.
+Rule: a design never states a side-effect inventory or what a check verifies without a line ref the judge can read; at
+the first FAIL on such a claim, replace it with a measurement (read-only before/after snapshots run once before the
+judges) instead of correcting the list. Size the tester procedure to the change: a 70-LOC UI fix does not need the
+design to narrate the stack harness's teardown.
+
+### 2026-11-16: A worktree judge wrote its lesson into the main checkout's process repo (#162)
+In a Desktop worktree session the judge_design round 1 briefs said only "append the lesson to the responsible role's
+feedback file". The architecture judge appended to `<main checkout>/.claude/feedback/architect_mistakes.md`, which left
+an uncommitted change in main's process repo that this session cannot undo (the worktree hook blocks edits to main's
+`.claude/`). The entry had to be copied into the worktree's process repo by hand and main's copy left for Stepan.
+Rule: in a worktree session every judge and role brief names the absolute feedback path of the worktree's own
+`.claude/feedback/` and says "never the main checkout's `.claude/`".
+
+### 2026-11-16: Two judge votes of a round were never recorded (#162)
+judge_code round 2 sent three fresh judges in one message. Only the operations vote was recorded; the security and
+architecture spawns are missing from `judge_spawns` and their handbacks left no line in `.git/pipeline-hooks.log`
+(host load 70-300 at the time, cause not found). The architecture report also ended with `PASS - no architecture
+issues found` instead of a bare `PASS`. The gate kept the round 1 architecture FAIL, so a fresh architecture judge
+was needed.
+Rule: right after sending a judge round, check `status` for each new agent id in `judge_spawns`; re-send any judge
+that is missing before waiting. Every judge brief ends with "the last line is exactly `PASS` or `FAIL`, alone".
+
+### 2026-11-16: A clone decision was added as prose next to code blocks that still prescribe the worktree (#148)
+The "Orchestrator decision" paragraph in 148-design 3.3 replaces `git worktree add` / `git worktree remove` with a
+`git clone --local` and a guarded `rm -rf "$M"`, but the literal blocks in 3.1 step 1 and 3.3 still run
+`git worktree add --detach "$M" HEAD` and `git worktree remove "$M"`, and the rm guard exists only as a sentence. A tester
+running the blocks verbatim registers a worktree in the shared repo and runs a verb that is Stepan's; the rm has no
+literal `${M:?}`/path check and is the form Claude Code's rm check refuses (architect_mistakes 2026-10-29).
+Rule: a procedure decision is applied to the design's code blocks themselves (old lines removed, the guard written as a
+runnable command) before judge_design, never as a paragraph saying which lines it replaces.
+
+### 2026-11-16: Two judge_code rounds spent on comments that claimed more than the code does (#148)
+The #148 test code passed every lane in round 1; architecture failed round 1 on the I-out-7b holder comment (it gave
+#34's step order backwards and called a result "the one write") and round 2 on the TOKEN_SPENDING_KINDS comment (it
+promised a new token-spending kind would turn P6 red, but P6 only draws kinds from KINDS). Both claims came from the
+design text, so neither the coder nor I checked them. Before round 3 I had the coder re-check every added comment
+against the line it describes, which found two more overclaims, and I caught a number that had lost its condition
+("3.3 s test run" for a whole-file measurement).
+Rule: the coder brief for any change with new comments asks, before tester, for a list of each added comment with the
+code line or document line that makes it true; I read that list against the #117 rule (numbers keep their condition)
+before sending judge_code.
