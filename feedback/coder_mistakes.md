@@ -321,3 +321,41 @@ fallback image". Nothing falls back to `node:22.23.4-alpine`: it is the integrat
 design :302, P2c) covers only the academy image, so the Alpine half was again a claim without a cited check.
 Rule: A fix that narrows a comment adds no new noun or clause unless the same commit names its source; check every
 label (fallback, default, override) against the code that picks the value.
+
+### 2026-11-16: A tracked comment cited the local design, and a commit body repeated an unchecked claim (#162, judge_code round 1, architecture)
+schema.int.test.ts (I15 accepted rows) says "node-pg returns the elements only (design 1.3)". `plans/` is ignored
+by git, so the reference points at nothing for any reader of the repository; #86 already spent a round removing
+"(design Dn)" comments from tracked files. The body of `fix(web): quote stored values in StoredFactError` says the
+old message printed a stored NULL as "null"; the old `checkKindOf` passed `value ?? "<missing>"`, so a stored NULL
+printed `holds "<missing>"`, the same as a missing kind. The claim came from research 5 and was not checked against
+the code being replaced, which was in the diff.
+Rule: Before handing back, grep the added lines for "design", "research", "plan", "round" and section or decision
+ids and keep the reason without the citation; check every "before" claim of a commit body against the old code in
+`git show main:<file>`.
+
+### 2026-11-16: Comment stated a step order that the cited ADR does not have (#148, judge_code, architecture)
+The I-out-7b holder comment says #34's per-check commit is "lock the progress row, write the result, commit".
+ADR-0007 rule 7 has the opposite order: the transaction writes the result first, then applyLessonOutcome takes
+FOR NO KEY UPDATE as its last step. The holder locks first only so the test knows when the lock is held; the comment
+presents that test convenience as #34's shape.
+Rule: When a comment says "the shape of X", check X's spec for the order of steps and say where the test departs from it.
+
+### 2026-11-16: A test header claimed more isolation than its test checks, and a doc line restated the config rule loosely (#115, judge_code round 1, architecture)
+terminal-exec.int.test.ts:13-14 says the file proves "the agent key reaches the shell and nothing else in the
+container". I-exec-agent-key checks only a sibling exec's environment and `/proc/1/environ`. ADR-0002 item 14, in the
+same commit set, says every uid-1000 process in the container can read the shell's `/proc/<pid>/environ`, and the
+shell's children inherit the key, so the header contradicts the ADR. Separately, `.env.example` gives the rule as
+"1-1024 printable characters without space", while config.ts accepts only 0x21-0x7E: a printable non-ASCII character
+is refused although the line allows it.
+Rule: A test file's header states what its assertions check (which process, which file), never a wider "nothing
+else"; a doc line that restates a config rule copies the rule's charset and range from the code.
+
+### 2026-11-17: A module header dropped the narrowing the design made for the mounts check (#96, judge_code round 1, architecture)
+stack-web-container.ts:1-4 says the lookup accepts a container "with no mount at, under or above the course
+directory" and that "a chmod there changes only that container's writable layer". The code checks only the entries
+of `docker inspect .Mounts` (binds, volumes, `--mount type=tmpfs`). Design D2 step 4 and r3 N5 state that a
+`--tmpfs` mount lives in `HostConfig.Tmpfs`, is not listed there and is not checked; over `/app/course` the chmod
+would then land in that tmpfs, not in the writable layer. The safety conclusion (no host file, no other container)
+holds; the header's two claims are wider than the code.
+Rule: When the design narrows what a check covers, the comment on that check carries the narrowing (which source
+it reads, what it leaves out) and states the guarantee that actually holds, not the broader summary sentence.
