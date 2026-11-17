@@ -1943,3 +1943,205 @@ a host with BSD sed.
 Rule: A stability check for a flaky fix runs the old code under the same load, interleaved, and requires it to go red.
 Every background load loop has an EXIT/INT/TERM trap, guarded `${L:?}` paths and a stated Bash timeout. Every
 throwaway clone has a scripted cleanup step and every mutation an exact command.
+
+### 2026-11-16: A catch-all flag taker that focuses on stale flags, with a comment claiming it never does (#95, judge_design round 1, architecture)
+Design 1.1 `FocusOnAnyRetry` focuses the not-found h1 whenever `takeAnyRetryFocus()` finds any flag. D1 says a pending
+flag is either from the retry this page replaced or "stale from an interrupted refresh; in both cases clearing it is
+right", but the code focuses in both cases, not only clears. Section 8 then accepts the stale case as "pre-existing for
+every FocusOnMount", which is false for this page: today not-found never moves focus, after #95 every stale flag of any
+id (a refresh superseded by a navigation; a lesson text retry that ended on the lesson course error, flag = panel id)
+moves focus to the h1 on the next ordinary not-found arrival, against AC9 "otherwise focus does not move". The dictated
+not-found header "The h1 takes focus only after a retry this page replaced" is therefore false, and no test or mutation
+row covers the case. A cheap fix exists: store the pathname with the flag in `retry()` and let the not-found taker
+clear always but focus only when the pathname still matches.
+Rule: When widening a one-id taker to "any id", enumerate every path that leaves the flag stale and decide focus and
+clear separately for each; an exclusivity claim in a dictated comment needs a test for the counter-example.
+
+### 2026-11-16: Scratch-clone procedure leaks its clone on an early guard and its cleanup guard passes a dot-dot path (#95, judge_design round 1, operations)
+Design 6.3 prints `CLONE $C` only after the per-file guards, so the dry-run's `GUARD FAILED missing ... not-found.test.tsx`
+left a full clone in the scratchpad with no path printed. 6.4 runs the cleanup only after `RED TREE READY`, never sets
+`C`, and its `case "$C" in "$S"/m95-clone-*)` guard accepted `$S/m95-clone-X/../../outside` (case `*` matches `/` and
+`..`), echoed its refusal with exit 0, and did nothing silently when `repo/apps/web` was missing.
+Rule: A scratch procedure prints its scratch path right after creating it, runs its cleanup on every exit path, rejects
+`..` and exits non-zero on refusal; dry-run the cleanup with a dot-dot path and an early guard failure.
+
+### 2026-11-16: Dictated comment states a URL-timing guarantee that back/forward breaks (#95, judge_design round 2, architecture)
+Design 1.1 dictates the comment over `isSetOnShownPage`: "Next writes the new URL in an insertion effect of the commit
+that shows the route (app-router.js HistoryUpdater), so the pathname here is the one of the view now mounted", and
+section 0 states the same as a fact. On a back/forward press the browser changes `window.location` before `popstate`
+fires; Next then dispatches ACTION_RESTORE in a transition (`app-router.js` handlePopState/traverse) and commits later,
+and HistoryUpdater can even skip its write (`hasMissedTraversal`). Between the two, the old view is mounted under the
+new pathname. The rule still fails closed there (a taker sees a foreign pathname and drops), but the comment would ship
+false, and 1.4 lists back/forward under E4 itself.
+Rule: Before dictating a comment that says when the browser URL changes, check every way the URL can change (Next
+navigation, refresh, history.replaceState from app code, popstate), and qualify the claim for the ones that do not go
+through the router's commit.
+
+### 2026-11-16: Listed what a stack run writes outside the scratchpad, but not all of it (#95, judge_design round 3, operations)
+Round 3 change 11 added to 6.4 (and the round-3 table) that `isolated-stack.sh t32` writes "Docker resources of
+project `academy-t32` (containers, network, volumes) and the image `academy-web:t32`, which its teardown removes".
+The script runs `up -d --build` (`isolated-stack.sh:335`), so it also builds `academy-workspace-service:t32`
+(`docker-compose.yml:71`, removed by teardown through `T31_IMAGES`, `isolated-stack.sh:58`), adds BuildKit build-cache
+records for both images that teardown never removes, and pulls `node:22.23.4-alpine` when it is absent
+(`isolated-stack.sh:48,328`), which also stays. A tester reading the list as complete reports a clean machine when it
+is not, and build-cache growth is exactly what #113 measured.
+Rule: When a design says what a command writes outside the scratchpad, derive the list from every create/build/pull
+in the script it runs, and say which items its teardown removes and which stay.
+
+### 2026-11-16: The round-4 "every create, build and pull" list still stopped at the script's own lines (#95, judge_design round 4, operations)
+Round 4 rebuilt the 6.4 table from the docker lines of `isolated-stack.sh` itself, not from what those lines run.
+Missing: the `docker/dockerfile:1` frontend that BuildKit pulls for `apps/web/Dockerfile:1` (`# syntax=` directive;
+a `frontend` build-cache record that stays, and a new one when the tag moves), the `pnpm` cache mounts of both
+Dockerfiles (`exec.cachemount` records, stay), and the one-off `docker compose run --rm --no-deps web` containers of
+`check-image-migrations.sh:40,63` (called at `isolated-stack.sh:340`). 6.2's list of git-ignored worktree files cited
+`.gitignore:12-20` but left out `apps/web/.next/` and `apps/web/next-env.d.ts`, which `next typegen` in
+`pnpm typecheck` (step 1) writes. Same class as the round-3 entry above, one level deeper.
+Rule: Derive a "what this writes" list by following every command the script runs into the files it reads
+(Dockerfiles incl. `# syntax=` and `--mount=type=cache`, called scripts, package scripts behind turbo tasks), not
+only the script's own lines.
+
+### 2026-11-16: "Every create, build and pull" list still misses the build's own registry fetch (#95, judge_design round 4, architecture)
+Round 4 change 1 says the 6.4 table is derived from every create, build and pull of `isolated-stack.sh t32`, and 6.2
+reuses it for t31. The web build reads `apps/web/Dockerfile:1` `# syntax=docker/dockerfile:1`, which makes BuildKit
+fetch the dockerfile frontend image from the registry; the repo says so itself (`services/workspace/Dockerfile:2-3`,
+"a directive would make every build fetch a frontend image from the registry"). The table names only
+`docker pull "$NODE_IMAGE"` as a pull, so the tester checks the node image and not the frontend, which stays after
+teardown. Lesser: `check-image-migrations.sh:40,63` (called at `isolated-stack.sh:340`) creates `docker compose run --rm`
+web containers, a creator the table does not name (they are removed by `--rm` and caught by the final check).
+Rule: Derive a "what stays" list from the Dockerfiles and the scripts the script calls too (syntax directives, FROM,
+cache mounts, `compose run`), not only from the script's own docker lines, before claiming it is complete.
+
+### 2026-11-16: Two judge rounds spent patching a hand-written inventory of a stack run's side effects (#95, judge_design rounds 3-4)
+The #95 tester procedure listed what `isolated-stack.sh t31|t32` leaves outside the scratchpad. Round 3 failed because
+the list missed a second image, the build cache and a base-image pull; the round-4 table claimed "every create, build
+and pull" and failed again on the dockerfile frontend fetch, the pnpm cache mounts, the `check-image-migrations.sh`
+run containers and the `next typegen` output. Each fix read one level deeper and still stopped short: side effects
+hide in what the script calls (Dockerfile directives, helper scripts, tool internals).
+Rule: never hand-write an inventory of side effects. State only what the code verifies (the script's own teardown and
+final check, with line refs), name known leftover categories as examples, and have the tester measure the rest with
+read-only before/after snapshots, each snapshot command run once before the judges see it.
+
+### 2026-11-16: "Verified by code" bullet implied the final check covers the built images (#95, judge_design round 5, architecture)
+Design 6.4 lists under "Verified by code" the line "Not checked by the final check: images other than `T31_IMAGES`".
+The final check (`isolated-stack.sh:236-244`) lists only containers, volumes and networks by label; it checks no image.
+`T31_IMAGES` are only removed in teardown (`:226-230`), and a failed `docker image ls` at `:227` yields an empty
+string, so the removal is skipped with no `TEARDOWN FAIL`. The sentence credits the code with a check it does not do,
+in the very section whose round-5 promise was "states only what the code verifies".
+Rule: in a "verified by code" list, every negative ("not checked: X other than Y") is also a positive claim about Y;
+check Y against the cited lines the same way as the positive bullets.
+
+### 2026-11-16: Gate commands dry-run in a shell other than the one the tester runs, and a per-commit loop that ran zero times (#162)
+Design 4.4 and 5.14 were written for bash, but the tester's Bash tool runs zsh with `grep` wrapped by ugrep. There
+`$IT test/...` is one word (zsh does not split it: `command not found`, rc 127, which reads as "red" on every M row),
+and the M8 guard `grep -c 'holds ${storedValueText(value)}'` counts 0 (ugrep takes the `$` as an anchor; BSD
+`/usr/bin/grep` counts 1), so M8 stops at GUARD FAILED. Step 14 runs `git rev-list main..HEAD` "in the throwaway
+clone", which has no local `main` (the design says so itself in step 6): rev-list fails, the loop runs zero times,
+prints nothing and exits 0, so per-commit greenness is never checked.
+Rule: Dry-run every gate command in the shell the tester will use (the Bash tool, zsh), or put it in a file run with
+`bash <file>`; never pass a command through an unquoted variable; use `grep -F` for literal anchors; any loop over
+revisions in a clone uses `origin/main` and fails when the list is empty.
+
+### 2026-11-16: A red control that relied on a CHECK refusing NULL (#162, judge_design, architecture)
+Design 4.4 M6 strips `array_ndims(x) IS NULL OR` from `attempts_included_check_ids_dims_check` and predicts that `{}`
+is then refused (T9, T13 and every default-`{}` fixture red). `array_ndims('{}')` is NULL, `NULL = 1` is NULL, and a
+CHECK accepts NULL, so nothing goes red: the disjunct is a no-op inside a CHECK and the control was never run. The
+same blind spot sits in 1.2, where `ELSE false` is rejected only for the reported name, not because it would refuse
+`{}` (ndims NULL takes the ELSE branch).
+Rule: For every CHECK mutation, evaluate the mutated expression on each listed value to TRUE/FALSE/NULL (NULL passes)
+before predicting red, and dry-run every red control whose prediction is not obvious; a clause that only turns NULL
+into TRUE inside a CHECK is redundant and is described as such, not given a red control.
+
+### 2026-11-16: Mutation helper edits a relative path, so a reset cwd mutates the task worktree (#148, judge_design round 1, security)
+Design 3.1 `mutate()` runs `perl -0pi` on `"$file"`, and the 3.2 rows pass `apps/web/lib/progress/rules.ts` /
+`outcome-writer.ts` relative, with only "(from `$M`)" in prose and no `cd "$M" &&` in the step. Agent Bash calls start in
+the task worktree, the anchors exist there too (same base), and the active pipeline lets shell writes to product files
+through, so the mutant lands in the task worktree's product code. The helper's `git -C "$M" diff --stat` is printed,
+not asserted, so it shows nothing and the run continues; the between-runs restore is `git -C "$M"` and does not undo it.
+Rule: every mutation command takes an absolute `"$M/..."` path (or the helper prefixes `$M` itself and refuses a file
+whose real path is not under `$M`), and asserts the clone's diff is non-empty and the task worktree's diff is unchanged.
+
+### 2026-11-16: Expected red set for a mutant was taken from a grep of one field, not of every test reading the changed value (#148, judge_design round 1, architecture)
+Design 3.2 expects M1 (`isInNextRun: isCounted && !isClosed && !tally.hasPassed`) to turn exactly {P6, the example at
+rules.test.ts:263} red. The design's fact list grepped `spendsTokens`/`isInNextRun` and missed that `composeRun` reads
+`isInNextRun`: rules.test.ts:278 "composes a run of exactly the checks in the next run, with their kinds" expects the
+passed command check "done" in `includedChecks`, which M1 drops, so M1 is red in three tests. The tester is told a
+larger red set is reported, not dismissed, so the run would come back as a mismatch against the design.
+Rule: for each mutant, list every test that reads the mutated value directly or through a consumer (here composeRun,
+hasNextRun) and derive the expected red set from that list, not from a grep of the field name alone.
+
+### 2026-11-16: Between-runs restore check scoped to a directory that also holds the test patch (#148, judge_design round 1, operations)
+Design 3.2 says after each restore `git -C "$M" diff --stat -- apps/web/lib` "prints nothing (the test patch lives in
+other files and stays)". The patched rules.property.test.ts is itself under apps/web/lib, so in the dry run the line
+printed that file after every restore and can never be empty; a tester following it literally stops or learns to
+ignore it, and then a leftover mutant in rules.ts would be ignored too. The `mutate` helper's own `diff --stat` has the
+same scope. Separately, the Bash tool's shell is zsh, where `rm -f "$S"/148-*.json` aborts with "no matches found" when
+no JSON was written, and that whole rm (patch file included) is skipped.
+Rule: a "prints nothing" check is scoped to exactly the files the step restores (here rules.ts and outcome-writer.ts),
+and every scripted step is dry-run in the agent's real shell (zsh here), with globs that tolerate no match.
+
+### 2026-11-16: Dictated an exclusivity comment that ADR-0007 rule 7 contradicts (#148, judge_code, architecture)
+Design D9 prescribed the I-out-7b holder comment "this is the shape of #34's per-check commit, the one write that
+can land while the writer waits". ADR-0007 rule 7(a) runs applyLessonOutcome after every transaction that inserts
+check results or sets an attempt final (R34-3, R34-14, R34-15), and a finished attempt changes the facts through its
+missing results (rules.ts resultsWithMissing). So the result insert is not the one write; the same test's D15
+comment even names the attempt change as a possible concurrent write.
+Rule: Before dictating "the one"/"only" in a comment, read the ADR rule that lists the writers and grep for the others.
+
+### 2026-11-16: Claimed a test goes red for a new kind the generators never draw (#148, judge_code round 2, architecture)
+Design section 5 says "A new token-spending kind is added to CHECK_KIND_TRAITS without the test set: P6 (a) goes red
+at once", and the coder wrote it into the TOKEN_SPENDING_KINDS comment as "has to be added in both places, or P6 goes
+red". P6 sees only kinds that scenarioArb draws from the hand-written KINDS list (rules.property.test.ts:28, typed
+`readonly CheckKind[]`, not exhaustive) and tokenPassedScenarioArb's own `constantFrom("rubric", "hidden-task")`. A new
+kind added to the lesson schema and to CHECK_KIND_TRAITS (a Record, so it must be) but not to KINDS is never
+generated, and P6 stays green. Only a changed trait of an existing kind turns it red.
+Rule: Before writing "X goes red when Y", trace whether the test's generators can produce Y at all; a hand-written
+list of variants guards only the variants on it.
+
+### 2026-11-16: Listed one stale comment of the changed path and missed the one beside the changed line; ADR said "not in process listings" (#115, judge_design round 1, architecture)
+Design 2.2 updates the errors.ts:123-125 comment because #115 makes it stale, but not the comment directly above the
+line it changes: spec.ts:197 "Added to the container's own `HOME`; nothing from the service's environment reaches the
+shell." Once `Env` carries `ANTHROPIC_API_KEY` from the service's config, that sentence is false, and a coder who
+follows the design's list leaves it. Separately, ADR item 14 and the 2.2 table say the key is "not shown by process
+listings" / "`ps` / `docker top`: no, they show arguments". procps `ps e` (the #33 image has procps, ADR-0002 item 13)
+prints each process's environment from `/proc/<pid>/environ` for any uid-1000 caller, and `docker top <id>` passes ps
+options to a root `ps`; the readers are the same as the uid-1000 and socket-holder rows, but the sentence is false.
+Rule: When a change makes a value flow where a comment or ADR said nothing flows, grep every comment and ADR sentence on
+that path (`rg -n 'service.s environment|reaches|never' <changed files>`) and list each one to rewrite; for every
+"not shown by tool X" claim, check the tool's options that read the same source (`ps e`), not only its default output.
+
+### 2026-11-16: "Who can read the key" table missed the service-API path, and the web/db guard checked names only (#115, judge_design round 1, security)
+Design 2.2 says "web, db, any other container: no". Web holds `WORKSPACE_SERVICE_SECRET` and reaches the service on
+`workspace-api`; `GET W/terminal` with that Bearer opens a uid-1000 shell whose env is the key (ADR-0011 items 1 and 4),
+so whoever controls web, or holds the secret and reaches the service, reads the key without the learner's involvement.
+The same path already reached the `/login` credential, and ADR-0002 item 10 never named it. Separately, U-compose-key
+asserts only that web/db environment KEYS do not match `/AGENT_API_KEY|ANTHROPIC/`: `FOO: ${WORKSPACE_AGENT_API_KEY:-}`
+or `env_file: .env` on web passes it, so "web gets nothing" is not proven.
+Rule: For a "who can read secret S" table, enumerate every capability that yields S (env, /proc, socket, and every API
+that runs code where S lives) and name each credential holder of that API as a reader. A "service X never gets S" guard
+checks values and `env_file` of every other service, not only variable names.
+
+### 2026-11-16: README append command glues the key onto the previous .env variable (#115, judge_design round 1, operations)
+Design 6.4 point 1 dictates `printf 'WORKSPACE_AGENT_API_KEY=%s\n' "$(pbpaste)" >> .env`. When `.env` does not end
+with a newline (editors such as VS Code do not add one by default), compose reads the key as part of the previous
+line's value: measured with fake values, `WORKSPACE_SERVICE_SECRET` became `<secret>WORKSPACE_AGENT_API_KEY=<key>`, so
+the key reached web's environment and the service's bearer secret, the service started with no key, and nothing failed.
+Rule: A prescribed command that appends to or edits an owner's file is run against that file's corner cases (no final
+newline, an existing line for the same name) before it goes into the design.
+
+### 2026-11-16: Dictated replacement comments said "nothing else from the service's environment" over bodies built from it (#115, judge_code round 1, architecture)
+Design 6.0 dictated the spec.ts:79 comment "nothing else from the service's environment enters the container create
+body" and the spec.ts:216 comment "The only value from the service's environment that reaches the shell is the agent
+key". The coder wrote both word for word. The create body's `Image` (WORKSPACE_IMAGE override), `NanoCpus`/`Memory`/
+`PidsLimit` (WORKSPACE_*_LIMIT) and labels (WORKSPACE_INSTANCE) all come from the service's environment, and the
+exec's `Cmd` carries TERMINAL_SHELL, which becomes the shell itself. Both sentences were meant about `Env` and say
+something wider. This is the #121 lesson again, on the very rows written to fix stale comments.
+Rule: A dictated replacement comment names the field it is about (`Env`, not "the create body" or "the shell"), and
+before sending it, list every input of the function it sits in and check the sentence against each one.
+
+### 2026-11-16: Scratch red/green harness was blocked by the shell guard and still wrote into the worktree (#156)
+Design 6 dictated `cp "$W/apps/web/..." "$S/"` and `ln -s "$W/apps/web/node_modules" "$S/node_modules"`. While the main checkout holds a LEARN state, bash-code-guard consults it for any command naming `$W` (the worktree path contains the main path) and blocks a write verb followed by `apps/`, so both setup steps fail as worded. The design also claimed the harness never touches the worktree, but vitest without `--no-cache --no-fsModuleCache` writes `results.json` and creates `node_modules/.vitest-cache` through the symlink into `$W/apps/web/node_modules`. With no `--reporter=verbose` the default reporter lists only failing tests, so the "X green" expectations cannot be read from the output, and the R3-R5 rows named only some of the tests that go red.
+Rule: A scratch harness is dictated as a script file run whole, with source reads whose write target is the scratch dir, every tool cache pointed at or disabled for the scratch dir, a reporter that names every test, and an expected outcome for every test the mutation can reach.
+
+### 2026-11-16: Dictated an unconditional exactness comment that the same design's 4.1 contradicts (#156)
+Design 4.6 told the coder to write in split.ts that "multiplying first leaves a single rounding (the division)", with no condition. Design 4.1 itself says that on non-dyadic live inputs (17.6 px root font, 90 % or 110 % page zoom, passed by lesson-layout.tsx:73 from getBoundingClientRect and getComputedStyle) paneMinPx * 100 and the subtraction round too, and a limit can be off by one. The coder copied the wording, so split.ts:34-36 claims an always-exact limit that holds only for binary-exact widths. 4.6 also dictated "rounds and put the 440 px tie on the wrong side", a tense clash that reached split.test.ts:22.
+Rule: A comment a design dictates carries every condition the design's own analysis attaches to the claim; reread each dictated sentence against the section that proves it, and for grammar, before handing over.
