@@ -880,6 +880,16 @@ clone and pass the log; read every failure in it, including tests the design mar
 Also: a reused worktree may carry a stale process branch; init refuses it. If that branch is clean and has no
 commits past process origin/main, `git -C .claude switch --no-track -c <task branch> origin/main` lets init proceed.
 
+### 2026-11-18: A plan split put a test row in a commit before the code it calls (#198)
+The #198 plan put the check create body row of the `exec.test.ts` `it.each` into the A5 commit, but `createExec` accepts
+that body only from A6, so A5 alone failed typecheck (TS2345) while lint and units passed. The coder caught it; the four
+unpushed commits were rebuilt with cherry-pick so each typechecks. Separately, judge_design round 1 failed on one test
+observable copied from the parent design unmeasured (M20); round 2 passed once the brief asked for every fake-daemon and
+attach-double case to be measured (REPEAT=5 green, named mutant red), which found two more rows that did not hold.
+Rule: when a plan splits work into commits, check each item's tests against what that item's own code accepts (types
+included), not only the step that owns the test file. When a judge fails one dictated observable, the fix brief asks for
+every observable of that kind to be measured, not just the failed one.
+
 ### 2026-11-18: A reused worktree folder still held the last task's process branch (#137)
 The #137 session started in the folder of #118's worktree. `init` refused: the process worktree in it was still on
 refactor/118-yaml-helper (PR merged, Stepan's sync not yet run). `git -C .claude switch -c fix/137-aria-live origin/main`
