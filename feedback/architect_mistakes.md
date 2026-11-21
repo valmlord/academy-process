@@ -2946,6 +2946,30 @@ the F6 listener the design does wait for. Run A pass 1 shows it: `:223` fails at
 Rule: For every "no change" row, name what decides where the input lands (DOM attribute from SSR, or state set by an
 effect) and check it in the installed library source; a keyboard Tab through a roving-focus widget is not native.
 
+### 2026-11-17: M20's red test watches the fake daemon for a close that an upgraded HTTP socket never emits (#198, judge_design round 1, architecture)
+Design 7.2 and section 9 copy 4o's "a framing error closes the attach socket": the fake daemon sends the marker and a
+type-3 header, "its server socket sees the close within 1 s". The fake daemon is the `http.createServer` pattern of
+`exec.test.ts:104-166`; an http server is `allowHalfOpen: true`, and after the upgrade nothing closes its end. Measured
+in the probe clone with the probe `check-process.ts` and the real `DockerEngine`: with the correct handler the client
+socket is destroyed, yet the server socket shows only `end` (from the client's half-close after the checks tar, before
+the marker was even sent) and no `close` within 1 s, so the row is red on the correct code. The obvious repairs cannot
+fail: the server's `end` arrived before the framing error, so a test on `end` is green under M20. The design measured
+RC15 and RC16 against the probe but not this row's observable.
+Rule: For every "the peer sees X" assertion, run the correct form and the mutant against the fake peer the design
+names, and name the event that only the mutated line changes (here: the server writes after the barrier and sees
+`close`/EPIPE only when the client destroyed its socket).
+
+### 2026-11-18: Mutation clone procedure written without an install step, and two commands that skip ^build (#137, judge_design round 1, operations)
+Design section 6 tells the tester to `git clone --local` the worktree, apply the task diff, mutate and run vitest,
+but never says `pnpm install --frozen-lockfile` in that clone (only 7.3 mentions it for the second clone). Run as
+written, every row M1-M6 exits 254 with `Command "vitest" not found`: a non-zero exit that reads as "red" for all
+six mutations. Section 7 also offers `pnpm --filter @academy/web test` and `pnpm --filter @academy/web typecheck` as
+the whole-suite and typecheck commands; neither builds `packages/*/dist` (turbo `^build`), so in a fresh clone they
+fail with 12 unresolved-package files and TS2307 for `@academy/db`. They pass in the worktree only because an old
+dist happens to match. The M6 row's expected-red list also missed the idle-notifications test.
+Rule: Before handing a procedure to the tester, run it once from an empty clone exactly as written, and prefer the
+CI command forms (`pnpm test`, `pnpm typecheck`) to package filters that skip the dependency build.
+
 ### 2026-11-17: Red/green isolation proved by the branch diff, while PR CI runs on a merge with a moving main (#201, judge_design round 1, architecture)
 Design 4 claims "`git diff c4 c5 --stat` shows only ci.yml, so A is the only difference between red and green". CI runs
 only on `pull_request` (ci.yml:3-6), which checks out `refs/pull/<n>/merge`, recomputed against main's head at each
@@ -3034,3 +3058,41 @@ The design's own F8 cites `create.go:203` and the findings cite `:189` before it
 Rule: When a design records a residual race window in an ADR, end it at the point the other side can no longer act
 (here: the daemon's volume reference), read the daemon code up to that point, and state its length in the terms of the
 slow steps on that path.
+
+### 2026-11-18: Test plan retagged a shared image name to fake a leftover the shim could fake (#176, judge_design round 1, security)
+Design 5 T2 ran `docker tag node:22.23.4-alpine academy-web:t31` and later `docker image rm academy-web:t31`, gated only
+by the T0.2 check run before pnpm install and T1. `docker tag` moves an existing tag without error, so a `:t31` image
+another session built in the meantime would lose its tag, and the step 4 "only Untagged" check cannot see that. The
+shim already refuses that `image rm`, so the real tag adds no coverage: the listing is the only thing it feeds.
+Rule: A test plan fakes a state in the shim it already has before it writes to Docker. A write that is still needed
+names an object the run created and checks right before the write that the name is free.
+
+### 2026-11-18: Test plan prescribed a counter reset the orchestrator's dry-run could not run (#176, judge_design round 1, operations)
+Design 5 T0.6 resets the shim counters with `rm -rf "$S/state" "$S/calls.log"; mkdir -p "$S/state"`. In the
+orchestrator's dry-run the Claude Code safety check refused that `rm -rf` on a variable path, and the run went on with
+per-run dirs plus `ln -sfn`, which the design does not describe. A tester who improvises the reset can leave a real
+`$S/state` directory, where `ln -sfn` puts the link inside it and old counters carry over, so T1a stops at
+`STOP preflight listing failed` before the trap and T2 loses its preflight bypass. Each run's `calls.log` is also
+overwritten by the next one, so the `image rm` count cannot be checked afterwards.
+Rule: Each step of a test plan is run once as written before the design goes out, and any state reset uses per-run
+directories (no `rm -rf` on a variable path) with a check that the reset worked before the run starts.
+
+### 2026-11-18: T3 recovery triggered by a later listing, not by the run's own evidence (#176, judge_design round 2, security)
+Revision 2 T3 step 5 runs `compose -p academy-t31 down --remove-orphans` and `image rm` of the `:t31` refs when "a
+`left behind` line, or the T0.2 listings print something". The second trigger fires on objects T3 never created: if
+another session (another worktree runs the same script with t31) starts between step 2 and T3's preflight, T3 prints
+`T31 STOP leftovers of academy-t31 exist`, creates nothing, and the recovery then tears down that session's stack and
+images. The same holds when such a session starts after T3's own `RESULT OK` and before the post-run listings. T3 also
+has no exit-point rule for the preflight STOP lines that T1/T2 have.
+Rule: A recovery step removes only what the run's own log proves the run created and left (here: teardown ran, no
+preflight STOP, a `left behind` line); objects a later listing shows without that evidence are reported, never removed.
+
+### 2026-11-18: Revision 2 named per-run dirs that already exist under the scratch root (#176, judge_design round 2, operations)
+Revision 2 T0.6 says each run gets "a name not used before (T1a, T1b, T1c, T1d, T2, T2b)", but `$S/T1b` and `$S/T1d`
+already exist with filled `state/` from the orchestrator's round-1 dry-run. At T1b the reset chain stops at `mkdir`,
+`$S/state` still points at T1a's counters, the emptiness check fails and the tester stops. Fail-closed, but the plan
+is not executable as written. The T3 recovery also re-checks only the four T0.2 listings, which omit the
+`academy.workspace.instance=t31` ps/volume/network listings the script's preflight (:64-73) checks, so a leftover probe
+workspace (`api ensure`, :373) survives `compose down` and the recovery reads clean while the next run STOPs.
+Rule: Before naming run directories, `ls` the scratch root and pick names that are absent; a recovery's closing check
+lists everything the script's own preflight lists.

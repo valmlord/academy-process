@@ -880,6 +880,26 @@ clone and pass the log; read every failure in it, including tests the design mar
 Also: a reused worktree may carry a stale process branch; init refuses it. If that branch is clean and has no
 commits past process origin/main, `git -C .claude switch --no-track -c <task branch> origin/main` lets init proceed.
 
+### 2026-11-18: A plan split put a test row in a commit before the code it calls (#198)
+The #198 plan put the check create body row of the `exec.test.ts` `it.each` into the A5 commit, but `createExec` accepts
+that body only from A6, so A5 alone failed typecheck (TS2345) while lint and units passed. The coder caught it; the four
+unpushed commits were rebuilt with cherry-pick so each typechecks. Separately, judge_design round 1 failed on one test
+observable copied from the parent design unmeasured (M20); round 2 passed once the brief asked for every fake-daemon and
+attach-double case to be measured (REPEAT=5 green, named mutant red), which found two more rows that did not hold.
+Rule: when a plan splits work into commits, check each item's tests against what that item's own code accepts (types
+included), not only the step that owns the test file. When a judge fails one dictated observable, the fix brief asks for
+every observable of that kind to be measured, not just the failed one.
+
+### 2026-11-18: A reused worktree folder still held the last task's process branch (#137)
+The #137 session started in the folder of #118's worktree. `init` refused: the process worktree in it was still on
+refactor/118-yaml-helper (PR merged, Stepan's sync not yet run). `git -C .claude switch -c fix/137-aria-live origin/main`
+and `branch --unset-upstream` made it usable and left the #118 branch for the sync. Separately, the issue's fix had
+already landed in #151; the researcher found it, and the task became test-only. Without that read the coder would
+have had nothing to change and the tier would have been wrong.
+Rule: in a reused worktree, check `git -C .claude status -sb` before `init`; if it is on a merged task's branch, cut
+the new process branch from origin/main with `switch -c` and unset its upstream, then tell Stepan the old branch
+still needs his sync. Before tiering a bug issue, check with `git log -S` whether the change is already on main.
+
 ### 2026-11-17: A dry-run fixture I wrote by hand broke a design check, and a control premise went unrun (#201)
 Before judge_design I saved the probe dry run as plans/201-dry-probe.log with my own annotation lines, and the design
 used it as a raw monitor log in its local scan checks. Plan constraint C3 (any non-record line fails closed) then made
@@ -905,3 +925,30 @@ Rule: a control that runs a test process decides each run by the exit code as we
 leftovers and the owner set afterwards. A design row that says "same as today" names the code path it compares
 with, and the architect checks that each step of today's path also happens in the new one. Any time sized in a
 residual is derived from the anchors that end the window, never estimated. Count test lines in the tier sizing.
+
+### 2026-11-18: An "optional" item in a rework brief cost judge_ux a third round (#136)
+judge_ux round 1 failed on one gallery padding issue. My rework brief also passed on a judge's optional nit ("say the
+first tree fits with zero slack, or leave it"). The ui-designer measured it in Playwright's default Chromium, which
+hides scrollbars, and wrote a 9px margin as fact. Round 2 failed on that line in two judges, because AC75 and README
+measure with classic scrollbars, where the tree overflows. The class sweep in round 3 then found a page-width claim in
+acceptance.md that was false for 30 tall states in the same setup.
+Rule: a rework brief carries only blocking findings and items a judge made a condition; optional nits wait for the
+next real edit. Any brief that asks for a measured layout claim names the engines and scrollbar mode the page's
+acceptance notes use, and asks for that setup to be stated next to the number.
+
+### 2026-11-18: Two design rounds patched test-plan Docker writes one by one instead of closing the class (#176)
+
+The #176 fix (one file, 12+/2-) passed all three judges in every design round. Rounds 1 and 2 failed on the test
+plan only: security found a write to a Docker object the run did not create twice (r1 a `docker tag` onto the shared
+name academy-web:t31, r2 a recovery step triggered by a later listing that could tear down another session's
+academy-t31 stack), operations found reset and naming defects in the shim procedure. My r1 brief asked the architect
+to patch the one write the judge named, so the next write of the same kind appeared in r2. Round 3, approved by the
+main orchestrator, closed the class structurally: a fully fake docker shim with no delegation path, no real
+isolated-stack run (t31/t32 are hard-coded and shared), nothing removed, the real run stated as a residual in the PR
+body. It passed 3/3, and judge_code passed 3/3 in round 1. A delegating shim also meant that even the script's own
+`compose down` of academy-t31 under the shim was a real write to a shared project.
+Rule: when a task's test plan for isolated-stack.sh (or any script on shared t31/t32 names) needs Docker, the
+architect brief prescribes from the start that failure paths are proven with a shim that answers every call itself,
+and that a real run happens only under a tag unique to the run; if the script cannot take one, the real run is a
+residual. When a judge names one instance of "acts on objects the run did not create", brief the architect to remove
+the class, not the instance.

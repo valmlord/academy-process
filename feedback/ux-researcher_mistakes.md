@@ -921,3 +921,24 @@ against that table, so an author who follows the list ships acceptance notes tha
 require it in another.
 Rule: When a design changes a rule, grep every page acceptance file for each sentence the old rule produced
 (here `rg -n 'for a load|notice|Открыть квиз' design/pages/`) and list each hit as a work item or say why it stays.
+
+### 2026-11-18: Put quiz explanation code blocks in scope but left their composition to a dev issue with no record (#136, judge_design round 1, usability)
+The #136 flows say a fenced block in a quiz explanation follows "Scrollable code" with the name "Блок кода",
+and that "whether it has "Копировать" is #36's to decide" (`design/flows/quiz.md:608-611`). #36 is an open dev
+issue (feat(web)); its list "Requirements for #36" (`quiz.md:791-`) does not mention it, and `ia.md` "Open
+follow-ups" has no entry for it. The header decides the Tab order (one stop or two) and the ring corners, so the
+`ia.md` R4 bullet names Теория, Задание and the prompt block but not the explanation block. A design question
+handed to a dev issue that never lists it is a dead end: the dev of #36 builds whatever falls out.
+Rule: A design question you take into scope but do not decide becomes either a numbered item in the target
+issue's requirements list or an `ia.md` follow-up; never a prose "is #N's to decide" alone.
+
+### 2026-11-18: Moved a rule "to one place" but left full copies, kept a done follow-up, and kept "unchanged" reasons the new scope falsified (#136, judge_design round 1, consistency)
+D1 moves the code-block scroll rule to README "Scrollable code", yet `design/flows/quiz.md:602-609` says the rule
+was moved "from this bullet" and still restates the overflow condition, the three attributes and keep-until-blur,
+and `design/flows/lesson-environment.md` "Code blocks that scroll" states them a third time; three statements of one
+rule are the drift D1 exists to prevent. FU10 stays in `ia.md` "Open follow-ups" as "Resolved by #136", although
+the section says "Remove an item when its issue is filed and linked here, or when it is done" and #123 removed FU5
+that way. And the design puts quiz explanation blocks in scope while listing `quiz.md:783` and lesson
+`acceptance.md:1226-1227` ("only a prompt's code block scrolls") as unchanged "prompt block rule kept".
+Rule: After moving a rule, leave only the pointer plus what is local (name, scope, reasons) in each old place; remove
+a follow-up the task completes; and re-check every "no item" reason against the final scope, not the starting one.
