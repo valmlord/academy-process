@@ -696,3 +696,9 @@ vocabulary row it names, and list all hits in the same round.
 item 5 as a pointer and did not enumerate the table against the parenthesis, though the round-12 rule asks exactly that.
 Rule: For every parenthesis that follows "every"/"each" and a table name, list the table's rows and tick each one off in
 the parenthesis; a missing row is a finding even when another item covers it.
+
+### 2026-11-21: Consistency rounds up to 20 passed the inventory note "the catalog links to every `ready` lesson" (#218, judge_design round 21, consistency)
+`ia.md:765` stood unchanged through every #218 round; from #220 one catalog links only to its course's lessons (plus the
+"Другие курсы" links). I read the page inventory rows for #218 additions and never the note under the table.
+Rule: In a "main sentences #218 makes false" review, read the prose right under every table #218 edits, not only the
+table's rows.

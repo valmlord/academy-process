@@ -1231,3 +1231,13 @@ catalog": FU23 is about when the empty text shows (#147), and the clause itself 
 Rule: Before dropping a pointer-only amendment, check the sentence against the replacement statement's list item by item;
 if no item covers it, keep the pointer. A pointer goes right after the clause the target defines, never after a
 neighbouring clause.
+
+### 2026-11-21: The r20 sweep for false "every" claims stopped at half a sentence, and a new pointer names half a list item (#218, judge_design round 21, consistency)
+`ia.md:765-766` "Every page is reachable from the catalog: the catalog links to every `ready` lesson and, through the
+top bar, to the dashboard" was checked in `plans/r20/table.md` only for its top-bar clause. From #220 a catalog links
+only to its own course's `ready` lessons and also to the other catalogs ("Другие курсы", A218-14), so the first clause is
+false, with no pointer and no replacement-list item. Separately, the new list item `ia.md:607` "where F18.1-F18.2 sit
+(A218-6)" points to a decision that only places the module rows (F18.2); where the course line (F18.1) sits is the
+"Rules (#218)" row "course block", which itself lists the module rows without naming A218-6.
+Rule: In an "every/only" sweep, read every clause of a sentence against the rules, not the clause the sweep was looking
+for; a pointer after an item list must name a target that covers every item in it.
