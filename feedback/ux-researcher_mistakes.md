@@ -1241,3 +1241,30 @@ false, with no pointer and no replacement-list item. Separately, the new list it
 "Rules (#218)" row "course block", which itself lists the module rows without naming A218-6.
 Rule: In an "every/only" sweep, read every clause of a sentence against the rules, not the clause the sweep was looking
 for; a pointer after an item list must name a target that covers every item in it.
+
+### 2026-11-21: F5 Entry rewritten as the complete entry list, but it leaves out the breadcrumb "Курс" until #220 (#218, judge_design round 22, usability)
+The r21 sweep rewrote `catalog.md:16-21` F5 Entry to add the entries "missing in both releases" and made the page
+inventory's dashboard and lesson Flows cells (`ia.md:763`, `:765`) point to it ("F5 (entries: `catalog.md` F5 Entry)").
+The list names the top-bar "Курс", the module crumb and the environment-rejected "Открыть курс", but not the lesson
+breadcrumb "Курс", which opens the catalog from #30 until #220 (`ia.md:125` Action labels, flow F5; `ia.md:705`
+Navigation model; `ia.md:517`). The lesson page's commonest way back to its catalog in that release is missing from the
+list the inventory now defers to.
+Rule: When a list becomes the one place that enumerates a flow's entries, build it from the Action labels rows whose
+Flows cell names that flow, per release, and tick each row off; do not build it from the gaps a sweep happened to find.
+
+### 2026-11-21: Requirements item 9 added without re-reading the scope lines it contradicts (#218, judge_design round 22, consistency)
+`courses.md:106-107` (new item 9: the quiz answer key in `sessionStorage` also holds the course id) and its pointer in
+`quiz.md:749` change the quiz's F15 error state "Session expired while answering". The same file still says
+`courses.md:115-116` "Not designed in #218: changes to the ... quiz ... beyond the top bar and the course crumb" and
+`courses.md:121` / `courses.md:8-10` / `ia.md:603-604` "every error and focus state with several courses: see #222".
+The r21 table checked `courses.md:115-116` before item 9 was added and was not re-run after it.
+Rule: When a sweep adds a requirement or decision, re-read every scope, out-of-scope and "see #222" sentence of the
+section against it in the same pass; either the new item names the exception there or it moves to #222.
+
+### 2026-11-21: dashboard.md from-#220 clauses restate A218-2, A218-4 and A218-7 content next to pure pointers (#218, judge_design round 22, consistency)
+`dashboard.md:21-22` ("the Card names that course", A218-7's list), `dashboard.md:27-28` ("within each course",
+A218-4) and `dashboard.md:64-65` ("from #220 no Card ... and each course a block in the empty form", A218-2's last
+clause and the "course block" row) restate the rule's outcome before the pointer, while `dashboard.md:59-60` and
+`:62` of the same round use the pure form ("the Card by `ia.md` A218-2", "the end Card: `ia.md` A218-2").
+Rule: An "until #220 + pointer" clause names the term or rule id only ("from #220: `ia.md` A218-2"); it never states
+what the rule renders, because that copy drifts when the rule changes.
