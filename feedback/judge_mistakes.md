@@ -617,3 +617,82 @@ trust. Its Tab target depends on Radix RovingFocusGroup state set in a `useEffec
 Run A pass 1 (`:223` red at `:232` on a lost chunk) pointed at it; it cost a round.
 Rule: In a class-closure review, walk each "safe, no change" row against the mechanism of its first input as
 carefully as the fix rows, and read any run log row that fails where the design calls it safe.
+
+### 2026-11-18: Round-1 "unscoped old sentence" finding named one place in progress.md, not the class (#218, judge_design round 2, consistency)
+Round 1 flagged `progress.md:94-99` (retry "unchanged") but not `progress.md:141-143`, which says F18.3-F18.5
+"change only through the progress section's "Повторить"" and points only to the until-#220 row, while A218-10 makes
+every dashboard retry re-read the whole page. The rework fixed the named place and round 2 found the neighbour.
+Rule: For an unscoped-sentence finding, grep every sentence that points to the until-#220 R2 rows ("dashboard
+progress section", "dashboard course error") and every "only" about how a dashboard part changes, and list them all.
+
+### 2026-11-20: Accessibility rounds 2-8 passed F22's "Урок" landing without the one-pane row (#218, judge_design round 9, accessibility)
+`courses.md:109` ("`F6` to "Урок" lands on the course crumb") stood from the first rounds; the accessibility judge checked
+the dashboard landings per release but never read the lesson landing against R3's one-pane row (`ia.md:417`, the switch
+tab), although the next sentence of the same paragraph is about 320 px. Found in round 9.
+Rule: For every `F6` landing a flow states, read every R3 row of that region (two panes, one pane, each course state)
+in the same round, not only the row the flow cites.
+
+### 2026-11-20: Consistency rounds up to 9 passed #218 restatements of R3/R4 landings inside ia.md (#218, judge_design round 10, consistency)
+`ia.md:600` (Course scope: "The `F6` landing on "Верхняя панель" stays "Академия"") and `ia.md:772` (Dashboard
+structure: "the skip link moves focus to `main` (R4)") were written by #218 before round 10 and restate R3 :410/:557
+and R4 :462-464. I checked "each #218 rule defined once" for the A218 decisions and named rules only, not for the R3/R4
+landings #218 sentences repeat, and passed round 9.
+Rule: In a "defined once" review, grep the landing verbs in every line the task added to `ia.md` too, and check each
+against the R3/R4 place that defines it, not only the task's own named rules.
+
+### 2026-11-20: Consistency rounds up to 10 passed a counted "three changes" summary in ia.md (#218, judge_design round 11, consistency)
+`ia.md:726-728` ("the #30 page with three changes") stood since the first rounds; I checked its items as pointers
+but never checked the count against the end-Card row (second heading from #220) and the same table's row 3 (no Card,
+empty-form block). Found in round 11.
+Rule: For every counted or "only" summary a task adds, enumerate the changes the named rules and the adjacent table
+make and compare the count, not only whether each item is a pointer.
+
+### 2026-11-20: Consistency rounds up to 11 passed R6 "Course scope" opening sentence that its own table contradicts (#218, judge_design round 12, consistency)
+`ia.md:585-586` ("Every course control is built from one course, the course in view") stood from the first rounds
+next to the row `ia.md:596` ("Другие курсы" links: "each other course of the root"); I checked the table's rows as
+pointers and never read the opening sentence against the table. Same class at `ia.md:908-912` (the one-course
+catalog ways leave out the end Card's "Открыть курс" that the two-course ways list).
+Rule: For every sentence that introduces a table or list with "every"/"each"/"the", check the sentence against each
+row, and compare per-count variants of the same list item by item.
+
+### 2026-11-21: Consistency rounds up to 12 passed a #218 restatement of a Course scope row in lesson-environment.md (#218, judge_design round 13, consistency)
+`lesson-environment.md:220-221` ("Открыть курс" (the catalog of the lesson's own course, the URL's)) is #218 text that
+restates the R6 "Course scope" lesson row. I checked "defined once" against ia.md and courses.md and the pointers of the
+other files, but never grepped the Course scope rows' control labels across the flow files.
+Rule: In a "defined once" review of a table-shaped rule, grep each row's control label in every changed flow file and
+read each hit for a restatement or for a list that omits the row.
+
+### 2026-11-21: Consistency rounds up to 13 passed a restatement of "Dashboard by course count" row 1 in dashboard.md (#218, judge_design round 14, consistency)
+`dashboard.md:43-44` quotes row 1's condition ("the course root that cannot be read, or holds no course") before pointing
+to the row; it stood before round 14 (`plans/r14/dashboard.diff:22`). I checked dashboard.md's #218 lines as pointers
+and did not compare the text before each pointer with the condition cell it points to.
+Rule: For every pointer to a table row, read the words before it against the row's condition cell; a quote of the cell
+is a restatement even when the pointer follows.
+
+### 2026-11-21: Consistency round 14 passed courses.md Q9's paraphrase of not-found way (3) (#218, judge_design round 15, consistency)
+`courses.md:162-163` ("a course id the root does not hold is not-found way (3)") stood in round 14, when I had just
+failed the same condition-then-pointer pattern in dashboard.md:43-44; I checked the not-found way pointers for the right
+number, not the words before them.
+Rule: When a round fails a pattern, grep that pattern's shape ("<condition> is/: <rule> row/way N") across every changed
+file in the same round, not only the wording of the hit found.
+
+### 2026-11-21: Consistency rounds up to 15 passed courses.md decision titles that differ from ia.md's (#218, judge_design round 16, consistency)
+Every bold decision title in `courses.md` "Decisions (#218)" (`:201-254`) differs from the `ia.md` title of the same id
+(`:658-700`), and A218-12, A218-13, A218-8 and A218-1 put the rule's condition in it. Rounds 12-15 accepted them as "the
+decision's own title" (`plans/218-r12-table.md`, `plans/218-r13-table.md`) without comparing them with ia.md's titles.
+Rule: For every id-titled entry that appears in two files, compare the title text side by side; two titles for one id
+is a finding, and a title is read for restated conditions like any other sentence.
+
+### 2026-11-21: Consistency round 16 failed one A218-14 restatement and passed the next sentence of the same item (#218, judge_design round 17, consistency)
+Round 16 failed the `courses.md` A218-14 reason for "never shown with one course" (ia.md:700) and passed the sentence after
+it, "It is a section of the catalog, not a course list page, so [A218-1] ... hold", which restates the vocabulary row
+"other-courses list" (`ia.md:37`) and A218-1's own pointer to it (`ia.md:660-661`). It is still there in round 17.
+Rule: When one sentence of an item is a restatement, read every other sentence of that item against every rule and
+vocabulary row it names, and list all hits in the same round.
+
+### 2026-11-21: Consistency rounds 14-17 passed a narrower gloss of "every row" in courses.md Requirements item 5 (#218, judge_design round 18, consistency)
+`courses.md:184-185` ("in every row (the dashboard rows: item 2; the lesson row ...; the catalog rows)") stood from round 14
+(`plans/r14/courses-table.md:83`); the R6 "Course scope (#218)" table also has the not-found and top-bar rows. I read
+item 5 as a pointer and did not enumerate the table against the parenthesis, though the round-12 rule asks exactly that.
+Rule: For every parenthesis that follows "every"/"each" and a table name, list the table's rows and tick each one off in
+the parenthesis; a missing row is a finding even when another item covers it.

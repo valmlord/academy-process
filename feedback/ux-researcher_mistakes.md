@@ -942,3 +942,281 @@ that way. And the design puts quiz explanation blocks in scope while listing `qu
 `acceptance.md:1226-1227` ("only a prompt's code block scrolls") as unchanged "prompt block rule kept".
 Rule: After moving a rule, leave only the pointer plus what is local (name, scope, reasons) in each old place; remove
 a follow-up the task completes; and re-check every "no item" reason against the final scope, not the starting one.
+
+### 2026-11-18: Removed a navigation link without re-checking WCAG 2.4.5 Multiple Ways per page (#218, judge_design round 1, accessibility)
+A218-3 removes the top-bar "Курс", which was a way to the catalog on every page, and the design never states
+2.4.5 for the #220 pages. A course with no `ready` lesson (Q6, F20 empty states) then has exactly one link to its
+catalog on the whole site, its dashboard block heading: no module rows, no lesson breadcrumb, no all-passed Card,
+and not-found way (4) is a typed URL. `ia.md:750-754` and A218-3's "the cost is one link" count steps from the
+dashboard, not independent ways.
+Rule: When a design removes or replaces a navigation link, list every page the link reached and name two
+independent ways (nav, list, breadcrumb or related links, search, site map) to each page in each state, or record
+why a page is exempt.
+
+### 2026-11-18: Amended a flow sentence but left the old reference beside it, and named one focus target two ways (#218, judge_design round 1, consistency)
+`progress.md:94-99` adds "from #220 a retry that loads focuses the Card heading (row "dashboard progress error")"
+and keeps, in the same bullet and unqualified, "The retry and its focus are unchanged (row "dashboard progress
+section" ... in the section)", a row `ia.md:326` now scopes "until #220". The "Card heading" focus target is
+"Следующий урок" alone in A218-10 (`courses.md:346`) and `ia.md:369`, but "Следующий урок" or "Все доступные
+уроки пройдены" in the retry rows `ia.md:325` and `:327`, although A218-10's own case (the Card course broke
+meanwhile, the rest all finished) leaves an all-passed Card. A new term, "Card course", was introduced as
+"`ia.md` vocabulary" in `courses.md:19-22` with no vocabulary row in `ia.md`.
+Rule: After a "from #N" insertion, read the rest of its bullet and qualify every old sentence ("until #N"); when
+a target or term is defined in two places, grep its name across `design/flows/` and make every statement name
+the same set; a term a flow cites as `ia.md` vocabulary gets its row in the vocabulary table.
+
+### 2026-11-18: Treated "finished" as "passed" in new copy rules, and left a removed course block without a focus target (#218, judge_design round 1, usability)
+`courses.md:95-98` says a course whose `ready` lessons are all finished shows "Пройдено уроков: M из M", and A218-2
+and the "Dashboard by course count" row "every `ready` lesson finished" give it the all-passed Card "Все доступные
+уроки пройдены". A finished lesson may be "Не пройден" (F14, `ia.md` lesson status set), and the course line counts
+passed lessons (dashboard AC4), so both texts misinform for a course with a closed check. Separately, A218-10 and
+F21 name focus targets for a re-read that changes a block ("that block's heading") but none for a re-read that
+removes a whole block, the retried one included, although the design itself says the learner's own edits of
+`course/` change courses between reads, and Q5 suggests renaming directories with a prefix, which under Q1 removes
+the old id. R2 says focus never falls to `body`.
+Rule: When a rule maps a state to copy, check each word of the copy against every member of the state ("finished" =
+passed or closed); when a re-read can change a set of blocks, name the focus target for a block that disappears,
+not only for one that changes.
+
+### 2026-11-18: New focus rule not walked through its own author sample, and an "only through" left false by it (#218, judge_design round 2, usability)
+The round-1 rework wrote the dashboard focus fallback (A218-10: a removed block's focus goes to the next block's
+heading, else the previous block's, and only then the Card heading). The author work list sample
+`courses-block-renamed` (`plans/218-design.md:79-80`) still says "or on the Card heading when it was the last block",
+which the rule sends to the preceding block's heading; the product designer would draw the wrong target. The same
+rework made every dashboard retry re-read the whole page, yet `progress.md:140-143` still says F18.3-F18.5 "change only
+through the progress section's "Повторить", which moves focus to what it shows" and points only to the until-#220 row.
+Rule: After writing an ordered rule, walk every author sample that names it (last block, first block, renamed) through
+the rule step by step; after widening what a control re-reads, grep "only", "never" and "changes" in every flow that
+describes the re-read parts and scope each sentence.
+
+### 2026-11-18: A focus chain summarised with a branch the states table makes unreachable (#218, judge_design round 2, consistency)
+The removed-block chain ends "else the Card heading" in three places (`courses.md:186` F21 error states,
+`ia.md:332` R2 row "dashboard course block error", A218-10 (3) "after (2) finds no block"). No block left means the
+root holds no course, which is the root error by Q3 and "Dashboard by course count" row 1, so no Card exists; the
+reachable end is A218-10 (5), the root error h2, which the two summaries leave out.
+Rule: When a fallback list is summarised elsewhere, check each step against the states table and end the summary on
+the step that can actually occur, not on the one that reads naturally.
+
+### 2026-11-19: A removed F18 row walked only for "its section is gone", and the rule's summary skipped its own step (1) (#218, judge_design round 3, usability)
+`progress.md:148-150` says a dashboard re-read removes a focused F18.3 or F18.4 row only when "no Card is left, so the
+sections are not rendered". A course block retry that loads adds that course's attempts and weak checks, so the five
+newest rows reshuffle and the focused row can drop out while the Card and both sections stay; a course that broke
+meanwhile drops its rows the same way. A218-10 step (4) then sends focus from the bottom of the page to the first
+course block's heading, against the rule's own reason ("the nearest one keeps the learner's place"). The same rule
+ends "So a chain that starts at a block ends at step (2) or (5)", which skips step (1), a block that remains.
+Rule: For every place a fallback names, walk each way the re-read can remove the focused element (the container gone,
+and the item gone from a container that stays), and check every summary sentence against every step, the first included.
+
+### 2026-11-19: A rewritten work-list sample names the heading link as the focus target, not the h2 (#218, judge_design round 3, consistency)
+The round-2 rework rewrote `courses-block-renamed` (`plans/218-design.md:81-83`) to "focus moves to its heading link
+"Пробный курс"". A218-10 step (2), `ia.md:332` and F21.3 all name the block heading, the h2 with `tabindex="-1"`, and
+the link is only its content. The neighbour sample `courses-block-removed` correctly says "the last block's heading".
+A product designer who draws the sample focuses the `a`, so a screen reader says "link" where the rule says it reads a
+heading, and the prototype differs from the R2 row.
+Rule: In every sample that walks a focus rule, name the target element exactly as the rule does (h2 `tabindex="-1"`,
+not the link inside it), and diff each sample's target against the R2 row before closing the rework.
+
+### 2026-11-20: The single A218-10 definition leans on a render rule that the progress error breaks (#218, judge_design round 4, consistency)
+Round 3 rework made `ia.md` R2 A218-10 the one definition, but step (5) (`ia.md:406-408`) justifies itself with
+"which happens only with no Card, because the sections render exactly when the Card does", copied from
+`courses.md:45` and `progress.md:115`. `progress.md:95-97`, `courses.md:108-112` and "Dashboard structure" item 3 say
+that from #220 the progress error shows with a Card and none of F18.3-F18.5 renders then, so a block retry whose
+re-read finds the database down removes a focused F18.3/F18.4 section while the Card stays. Defining a rule once does
+not help when the definition cites a premise that two other places contradict. In the same rework the guard's
+"on `body`" (`ia.md:362`) is not said to be judged before or after the re-read renders, and the two readings give the
+`attempts-row-reshuffled` sample two different targets (the block heading or the "Последние попытки" h2). Also
+`courses.md:108-109` and `dashboard.md:48` say the no-progress Card takes "the first readable course in list order",
+while A218-2 (`courses.md:324-325`) says "the first readable course with one" (`ready` lesson).
+Rule: Before closing a single-definition rework, check every premise the definition cites ("only", "exactly when",
+"always") against each state that can change it (progress error, root error, empty course), and say when each
+condition of an interacting rule (the guard's "on body") is evaluated.
+
+### 2026-11-20: Progress lost at a block retry explained only to a learner who had tabbed away (#218, judge_design round 5, usability)
+Round 5 added sample `attempts-progress-lost` and A218-10 step (5): a learner who tabbed on to a "Где трудно" row
+before the re-read finds the database down is sent to the h2 "Прогресс недоступен". The main F21 path was not walked
+on the same data: focus stays on block 2's "Повторить", course 2 loads, focus goes to the block heading (R2 row
+"dashboard course block error", `ia.md:333`), and the block shows the heading only (A218-11, `ia.md:763`). The
+progress error appears above, not live, and nothing reads it; the next Tab leaves `main`, because F18.3-F18.5 are
+gone. A218-10 calls these changes silent "because between two reads only the learner's own edits of `course/` and
+their own activity change them" (`ia.md:396-397`), which a database outage falsifies. `courses.md` F21 error
+states do not list the case either.
+Rule: When a sample walks a new focus target on one data set, walk the same data with focus where the flow's own
+steps leave it (the retried control), and check every "because" of a silent change against each cause that can
+produce that change (database, root, the learner's edits).
+
+### 2026-11-20: Two #218 statements of what a block shows during the progress error, and a trigger restated in other words (#218, judge_design round 5, consistency)
+A218-11 (`ia.md:763`) says "Every readable block then shows only its heading", and the round-5 plan (`plans/218-design.md:420`)
+uses "readable block" for empty-form blocks too. "Dashboard structure" item 4 (`ia.md:835-837`) drops only the "readable,
+with a `ready` lesson" form to its heading and keeps the empty form's "В курсе пока нет готовых уроков" in every state. So a
+database outage with one course ready and one without a `ready` lesson renders block 2 two ways. Separately, `courses.md:58`
+opens the F20 error bullet with "Progress cannot be read (database down), a course can:" and then names the Card and the
+progress error, but a readable course with no `ready` lesson gives neither (A218-2, A218-11, "Dashboard by course count"
+rows 3 and 6). Both are the same rule stated twice in different words, the class round 5 set out to remove.
+Rule: After a single-definition rework, grep each rule's subject nouns ("readable block", "a course can", "heading only")
+in every file and in the other ia.md rules, and check that a scope word means the same set (readable course vs readable
+form) wherever it appears; a pointer's lead-in names the state only by the rule's own link, never by a shorter condition.
+
+### 2026-11-20: A new focus override took the retry's "Fails again" move and left the learner's own result unsaid (#218, judge_design round 6, usability)
+Round 6 A218-10 (a) (`ia.md:421-429`) sends every focus move of a re-read that newly shows the progress error to its h2
+"Прогресс недоступен", the row's "Fails again" target included. (b) (`ia.md:430-442`) says only newly shown errors, and the
+retried block's error was shown before, so nothing says it. A block retry that fails again while the database newly goes
+down (announce table B4) therefore reads exactly what a retry that loads reads (B3): "Прогресс недоступен", and the learner
+cannot tell whether their course loaded. The reason for (a) (`ia.md:425-426`, "the retried course's own outcome is one
+block that shows its heading only meanwhile") holds only for "Loads". R2 itself says a "Fails again" move exists so a
+repeated failure is read (`ia.md:349-355`); the override removed that for this case.
+Rule: When a new rule overrides a focus target, list every outcome column it replaces and, for each, say how the outcome
+that target used to announce is still announced; check the rule's "because" against each column, not only the first.
+
+### 2026-11-20: A218-10 (a)'s reason restates what a block shows during the progress error (#218, judge_design round 6, consistency)
+Round 6 made "Dashboard structure" item 4 (`ia.md:876-893`) the one definition of block forms: only the readable form
+drops to its heading while progress cannot be read; the empty form keeps "В курсе пока нет готовых уроков" and the error
+form keeps its Alert. A218-10 (a) (`ia.md:424-426`) links item 4 and then, in the same sentence, says "the retried course's
+own outcome is one block that shows its heading only meanwhile", which is wrong when the retried course loads into the
+empty form or fails again (error form). The round-6 rule table lists `ia.md:424` as a pointer that "adds only local data",
+so the pointer walk missed the clause after the link. Separately `courses.md:284` says "The error block's heading" where
+item 4 names the form "error form" wherever a block's form is meant.
+Rule: Read each pointer to the forms to the end of its sentence: a link followed by a description of what a block shows
+is a second definition; name the form ("a block in its error form") or the outcome, never what it renders.
+
+### 2026-11-20: The narrowing to normal states left a broken course's block and retry described in "Questions for #219" and a decision reason (#218, judge_design round 7, consistency)
+Round 7 moved every error state with several courses to #222 and replaced each statement with a "see #222" line;
+"Dashboard structure" item 4 (`ia.md:752`) says a broken course's block is #222's. `courses.md:135-136` (Q4) still says
+what such a block shows: "each block shows the course error under its directory name", the block error form #222 owns.
+`courses.md:119` ("a broken course keeps its id and its block") and `courses.md:154-155` (Q9, "what a block heading ...
+need when the rest of the tree fails") state the same #222 condition, that a broken course has a block with a heading.
+`courses.md:236-238` (A218-14 reason) rests on the broken catalog's "Повторить" and "its own retry", which `catalog.md:45`
+moves to #222 ("which ids, the retry"). The orchestrator's grep patterns were the removed rules' own wording, so prose
+in Q-text and reasons that paraphrases them was never hit.
+Rule: After moving a state out of scope, grep its subject nouns ("broken", "block", "course error", "retry",
+"Повторить", "rest of the tree") in Questions, Requirements and Decisions reasons too, and turn every sentence that says
+what the moved state shows or does into a "see #<issue>" line.
+
+### 2026-11-20: A new catalog keyboard sentence states the F6 landing in every course error, which R3 scopes to #222 (#218, judge_design round 8, consistency)
+#218 added to `catalog.md:72-73` (F5 keyboard path): "`F6` to `main` lands on the first module link, or on "Повторить"
+in the course error." It carries no "until #220" and no "see #222", so it also states the landing in the catalog course
+error with several courses. `ia.md:441` (R3) scopes the same clause "(with several courses, from #220: see #222)", and
+`catalog.md:45` moves that error's retry to #222. The round-8 table (row "catalog.md:72") kept it as a restatement of
+main's R3, but main's R3 had no several-courses case to scope, and the line restates an R3 rule in a second file.
+Rule: A sentence #218 adds about an error state carries the same scope marker ("until #220" / "with several courses,
+from #220: see #222") as its rule in `ia.md`, or is a pointer to that rule only; check a "kept: restates main" verdict
+against the current `ia.md` text, not main's.
+
+### 2026-11-20: F22 keyboard path restated the "Урок" landing without R3's one-pane condition (#218, judge_design round 9, accessibility)
+`courses.md:109` says "`F6` to "Урок" lands on the course crumb (`ia.md` R3 table); the module crumb is the next Tab",
+and the next sentence (:110-111) is about 320 px and 200 % zoom. R3 row `ia.md:415` gives the crumb only in two panes or
+full width with no "Окружение"; row :417 lands on the switch tab "Урок" in one-pane mode (below 1024 px with an
+environment), where the crumb is the next Tab after the switch. So the sentence is false in the very widths it then
+discusses. The round-9 table justified it by quoting only the "course was read" half of row :415.
+Rule: A flow that names an `F6` landing either points to the R3 row ("`F6` to "Урок": `ia.md` R3 table") or copies
+every condition of that row (width, pane, course state); check each restated landing against every R3 row of its region.
+
+### 2026-11-20: Round-10 sweep closed the class outside ia.md but left #218 restatements of R3/R4 landings inside it (#218, judge_design round 10, consistency)
+Round 10 made every flow sentence a pointer, and its "Agreement inside ia.md" check walked the catalog, not-found,
+dashboard and "Урок" landings only. Two #218-written sentences in `ia.md` still restate a landing defined elsewhere in
+the same file: R6 "Course scope (#218)" ends with "The `F6` landing on "Верхняя панель" stays "Академия"" (`ia.md:600`),
+a third statement after the R3 row (:410) and R6's "`F6` lands on "Академия" ... in every release" (:557), which the
+"from #220" row of "Top bar by release" (:552, "as from #30") already covers; and Dashboard structure "Tab order and
+`F6`" opens with "the skip link moves focus to `main` (R4)" (:772), a second statement of R4's skip-link move
+(:462-464), while the until-#220 R3 bullet and `dashboard.md` point to R4 for it.
+Rule: When a round closes a "stated once" class, grep every landing verb (`lands`, `moves focus`, `next Tab`, `stays`)
+in the lines the task added to `ia.md` as well, and turn each one that is not the defining place into a pointer.
+
+### 2026-11-20: Round-11 rewording kept a counted summary that is narrower than the rules it names (#218, judge_design round 11, consistency)
+`ia.md:726-728` (Dashboard by course count) says "With exactly one course the page is the #30 page with three
+changes: the top bar, the course name in the Card, and the progress part inside one course block". Round 11 turned
+each item into a pointer but kept the count. With one course from #220 the page also changes in two places the other
+rules define: the end Card can read "Все доступные уроки завершены" (vocabulary row "end Card", from #220 at every
+count, `courses.md` A218-2), and with no `ready` lesson there is no Card at all, only a block in the empty form with a
+heading link (the same table's row 3, Dashboard structure item 4), where #30 showed "В курсе пока нет готовых уроков"
+in the Card's place and `F6` to `main` landed on `main` itself (R3 until-#220 bullet). A counted list of what other
+rules define is a narrower restatement, and it is wrong as soon as one rule adds a change.
+Rule: A summary that counts or lists what other rules change ("N changes", "only X and Y") is a restatement: drop
+the count and name the rules, or check it against every rule and every row of its own table before keeping it.
+
+### 2026-11-20: Round-12 sweep kept an "every" definition its own table contradicts, and two ways/steps lists narrower than the rules (#218, judge_design round 12, consistency)
+`ia.md:585-586` (R6 "Course scope") opens "Every course control is built from one course, the course in view", and
+the table four lines below says the "Другие курсы" links (`ia.md:596`) are built from "each other course of the
+root", which is not the catalog's course in view. The round-12 table kept it as "R6 Course scope definition". The
+same sweep kept `ia.md:908-912` (Multiple ways, catalog): with two or more courses it lists the end Card's "Открыть
+курс" among the ways, with one course it does not, although the end Card exists at one course (Dashboard by course
+count row 2, A218-2). And `ia.md:891-892` reaches lessons "in two through the catalog, or in one for a block's next
+lesson (A218-4)", while A218-5 removes the block link of the Card course, whose next lesson is one step away only by
+the Card (A218-2), and from #35 the F18.3/F18.4 rows (A218-13) reach lessons in one step too.
+Rule: Before keeping an "every"/"each" sentence or a list of ways or cases as "a definition", read it against every
+row of the table or list it introduces and against each rule that adds or removes an element of that set (here
+A218-2, A218-5, A218-13, A218-14), and make the per-count variants of one list name the same elements.
+
+### 2026-11-21: Q1's "Depends on it" list built from citations, missing Q5, which restates Q1 without citing it (#218, judge_design round 13, usability)
+The round-13 rewording of `courses.md:133-135` (Q1) lists what depends on the course id rule as "the places that cite
+Q1". Q5 (`courses.md:144-145`) orders the course list by "the course id (the directory name, ...)", which is Q1's
+assumption restated in its own words with no "Q1" in it, so a grep for citations missed it. If #219 keeps a
+`course.yaml` `id` with no tie to the directory, Q5's assumption contradicts itself (id order and directory order
+diverge), and with it the list order of the blocks and of "Другие курсы" (vocabulary row "list order"); Q1's list, the
+one place a #219 decision is checked against, does not name it.
+Rule: A "depends on it" list is built from what uses the assumption's content, not from what cites its id: grep the
+assumption's nouns ("directory name", "course id") as well, and make every user cite the assumption by id, so the
+citation list and the dependency list are the same set.
+
+### 2026-11-21: The round-13 sweep left the #218 lines of the other flow files and the "Открыть курс" (environment rejected) row unchecked (#218, judge_design round 13, consistency)
+The sweep covered ia.md and courses.md only. `lesson-environment.md:220-221` (#218 text) restates the R6 "Course scope"
+lesson row ("the catalog of the lesson's own course, the URL's") instead of pointing to it, as `dashboard.md:64` does for
+the end Card. The same row is missing from lists that claim the ways to or changes of it: `catalog.md:16-21` F5 Entry
+(every lesson-page way except that "Открыть курс"), `courses.md:259-260` "No change to ... the environment ... flows
+beyond the top bar and the breadcrumb's first crumb" (#218 set that button's target), and its own "When it is not
+rendered" cell `ia.md:600` points to "the R3 table", whose only row is the two-pane `F6` landing (`ia.md:425`), not the
+F8 state. Same class elsewhere: `ia.md:888` not-found Flows "F22 (way (4))" while `courses.md:109` sends every lesson-URL
+way (3 and 4) there, and `ia.md:694-695` A218-12 names "Главная" as "the way on" after round 13 added "Академия" to F22
+Exit for that very reason.
+Rule: Run the every/only/list sweep over every #218 line of every changed flow file, and for each R6 "Course scope" row
+grep the control's label in all flow files: each mention points to the row, and each list of ways, entries, exits or
+changes names it.
+
+### 2026-11-21: Round-14 sweep fixed a row-1 restatement in courses.md but kept its twin in dashboard.md (#218, judge_design round 14, consistency)
+`dashboard.md:43-44` ("From #220: the course root that cannot be read, or holds no course: the root error, [Dashboard by
+course count] row 1") restates row 1's condition cell (`ia.md:724`), which rests on Q3, an assumption #219 may overturn.
+The same round fixed the identical wording in `courses.md:58` as a restatement ("The root error: row 1 (Q3)") while the
+dashboard table kept it as "exact: the row is named by its own first cell". One fact, two verdicts in one sweep. The twin
+of another fix of that round stands too: `ia.md:914` "Sign-in with no `next` also lands on it (F1.4)", the phrase
+`courses.md:38` replaced as narrower than F1.4.
+Rule: When a sweep fixes a sentence, grep its wording (and its key phrase) in every changed file and give each hit the
+same verdict; a row is named by its number or id, never by quoting its condition cell.
+
+### 2026-11-21: Round-15 condition sweep left a paraphrase of not-found way (3) in courses.md Q9 (#218, judge_design round 15, consistency)
+`courses.md:162-163` ("a lesson page reads only the URL's course (a course id the root does not hold is not-found way
+(3), `ia.md` page inventory)") paraphrases the from-#220 condition of way (3) (`ia.md:888`, "a lesson URL whose course id
+names no course of the root") before naming it, the round-14 pattern. The round-15 sweep grepped only the wording of the
+round-14 finding ("cannot be read|holds no course|no `next`") and rechecked only the rows marked "exact" in round 14;
+Q9 was marked "fixed" in round 14 for another reason, so nobody read it for a restated condition.
+Rule: A restated-condition sweep greps the condition words of every rule the files point to (each not-found way, each
+dashboard row, each A218 condition) and reads every hit, whatever verdict the row had before.
+
+### 2026-11-21: courses.md gives every #218 decision a second title, several carrying the rule's condition (#218, judge_design round 16, consistency)
+`courses.md:198-199` says the list "gives the decisions' titles", but none of the eleven bold titles equals the title the
+decision has in `ia.md` (A218-12: "The not-found action." at `ia.md:689` vs "Not-found offers "Открыть курс" only in way
+(4)." at `courses.md:239`; A218-13: "Cross-course rows." at `ia.md:693` vs "...rows name the course only with two or more
+course blocks." at `courses.md:244-245`; A218-8 adds "no "Главная" crumb", A218-1 "no `/courses` page"). So one id has two
+names, and the courses.md one restates the condition `ia.md` defines next to the id, the pattern ia.md:649-650 forbids.
+The round-16 sweep checked parentheses and "is <rule>" clauses only and marked the titles "own title".
+Rule: A decision has one title, written once in its defining place and copied verbatim wherever the id is listed; a
+title never holds the rule's condition (counts, "only in", "no X") unless the defining place's title holds it too.
+
+### 2026-11-21: A218-14 reason still restates the vocabulary row "other-courses list" (#218, judge_design round 17, consistency)
+The round-17 rework of the `courses.md` A218-14 reason dropped "never shown with one course" but kept "It is a section of
+the catalog, not a course list page (`ia.md` vocabulary row "other-courses list"), so [A218-1] holds" (`courses.md:248-249`).
+The words before the pointer are the row's meaning cell ("the catalog section of [A218-14], not the course list",
+`ia.md:37`), and `ia.md` A218-1 (`:660-661`) already places "Другие курсы" outside the course list by that same row. The
+round-17 table even says the sentence "cites the row that defines it": a definition quoted before its pointer.
+Rule: When a reason points to a vocabulary row or rule, delete the words before the pointer that say what the row says;
+if the reason is only "the row says so", the pointer alone (or nothing, when the defining place already cites it) stays.
+
+### 2026-11-21: A moved reason duplicates FU21's revisit trigger, and "every row" is glossed by a narrower list (#218, judge_design round 18, consistency)
+The round-18 move put "Revisit when the page grows long (FU21)" at the end of A218-6 (`ia.md:698`), while FU21
+(`ia.md:1143`) already says "Revisit A218-6 (module rows in every block) when the dashboard grows long": one trigger
+now stands twice inside `ia.md`, in two wordings, the first a condition quoted before its pointer. The A218-14 reason's
+parenthesis "(the techniques, G185 and G125: [Multiple ways], item "catalog")" (`ia.md:735-736`) is the same shape:
+it summarises that item before pointing to it. And `courses.md` "Requirements for #220" item 5 (`:184-185`) glosses
+"in every row" of R6 "Course scope (#218)" with "(the dashboard rows: item 2; the lesson row ...; the catalog rows)",
+which leaves out the not-found row (`ia.md:599`, item 6) and the top-bar row (`ia.md:592`, item 1).
+Rule: When a reason moves next to its rule, delete from it every clause that another entry (an FU, a Multiple ways
+item) already defines and keep only the pointer; a parenthesis that maps "every row" must name every row or say
+"among them".
