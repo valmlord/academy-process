@@ -2946,6 +2946,14 @@ the F6 listener the design does wait for. Run A pass 1 shows it: `:223` fails at
 Rule: For every "no change" row, name what decides where the input lands (DOM attribute from SSR, or state set by an
 effect) and check it in the installed library source; a keyboard Tab through a roving-focus widget is not native.
 
+### 2026-11-18: Stale-text grep predicted empty while its pattern hits a true line the design keeps (#188, judge_design round 1, architecture)
+Design 6 T7 says `rg -n 'rethrow|...' packages/lesson-schema/src ...` "prints nothing". The pattern `rethrow`
+also matches validate.ts:33, the readFailureReason doc "the caller rethrows it", which is true (readText:48 rethrows
+an error without an errno code) and which the design leaves unchanged (5.1 replaces only :53-61). So T7 is red on a
+correct diff: the tester reports a false failure, or the coder rewrites a true comment to quiet the grep.
+Rule: Before writing "prints nothing" for a grep gate, run the pattern on HEAD and account for every hit as either
+replaced by the design or excluded by the pattern.
+
 ### 2026-11-17: M20's red test watches the fake daemon for a close that an upgraded HTTP socket never emits (#198, judge_design round 1, architecture)
 Design 7.2 and section 9 copy 4o's "a framing error closes the attach socket": the fake daemon sends the marker and a
 type-3 header, "its server socket sees the close within 1 s". The fake daemon is the `http.createServer` pattern of
