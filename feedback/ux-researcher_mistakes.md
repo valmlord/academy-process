@@ -1220,3 +1220,14 @@ which leaves out the not-found row (`ia.md:599`, item 6) and the top-bar row (`i
 Rule: When a reason moves next to its rule, delete from it every clause that another entry (an FU, a Multiple ways
 item) already defines and keep only the pointer; a parenthesis that maps "every row" must name every row or say
 "among them".
+
+### 2026-11-21: The compaction dropped a pointer the replacement statement does not cover, and moved a pointer to the wrong clause (#218, judge_design round 19, consistency)
+The r19 rewrite dropped the "Progress by release sentence" amendment (`plans/r19/after.md`, "Dropped"), so `ia.md:585`
+"Every other F18 and F19 statement holds in every release from #30" stands with no pointer, although from #220 F18.1-F18.2
+move into the course blocks and F18.3-F18.5 run across courses (A218-6, A218-13). The replacement statement
+(`ia.md:604-607`) lists only "the F18.3 and F18.4 row names" for F18, and the `progress.md:49` pointer covers
+progress.md, not this ia.md claim. Separately, `courses.md:33` puts "(FU23)" after "whose heading link still opens its
+catalog": FU23 is about when the empty text shows (#147), and the clause itself restates the "course block" row.
+Rule: Before dropping a pointer-only amendment, check the sentence against the replacement statement's list item by item;
+if no item covers it, keep the pointer. A pointer goes right after the clause the target defines, never after a
+neighbouring clause.
