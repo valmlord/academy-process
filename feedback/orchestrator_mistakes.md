@@ -959,3 +959,16 @@ the class, not the instance.
 statements of what #222 depends on disagree; a #219 decision against Q4 would not be traced to #222 from the issue.
 Rule: When a rework changes which #218 parts point to a moved-out issue, re-read that issue's scope text (the plans
 comment and the posted body) against the design and update both in the same round.
+
+### 2026-11-21: Two design rounds on a dictated comment that listed which actions change a box (#216)
+judge_design passed 3/3 in round 3 (approved by the main orchestrator). Rounds 1 and 2 failed only in architecture,
+both on the same sentence in the dictated `scrollable-code.tsx` comment and its Verified and F6 echoes: a list of user
+actions that do or do not change the `pre`'s box. Round 1 claimed the one-pane switch and zoom change it; round 2
+claimed the one-pane switch never does, false at viewport height <= 30rem with classic scrollbars. My round-1 brief
+asked the architect to fix that line and sweep comments for overclaims, so the rewrite produced a new, narrower list
+that was again wrong in one corner. Round 3 dropped every list and stated only the mechanism (the observer reruns on
+any box change; a remount decides afresh), and judge_code passed 3/3 in round 1. The size was also misjudged: TASK
+by the issue, 8 files and about 360 lines with tests.
+Rule: when a dictated comment or failure row enumerates cases ("X, Y and Z change the box", "W does not"), brief the
+architect from round 1 to state the mechanism the code relies on instead of a case list, unless the list is
+exhaustive and each case is checked against the code that sizes the element. Count test lines in the tier sizing.
