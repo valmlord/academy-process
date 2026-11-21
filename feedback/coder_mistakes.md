@@ -305,6 +305,23 @@ also keeps #32's comment about terminal specs that no longer exist.
 Rule: Guidance for resolving a revert lists the conflicting files and hunks from the simulation itself, every
 line of each hunk, and is checked by finishing the simulated resolution and running typecheck and tests.
 
+### 2026-11-17: A copied design comment was widened into a claim nobody checked (#163 A1, judge_code round 1, architecture)
+Design 5.1 says of `CHECK_UID_BASE = 2000` "no image user has it" (the slot uids). 9bec182 wrote
+`services/workspace/src/identity.ts:75` as "no image user has a uid from here on", a claim about every uid from 2000
+up. Both base images (ubuntu and alpine) ship the standard `nobody` user at uid 65534, so the sentence is false as
+written, in the constant a later reader consults when picking a uid.
+Rule: When a comment restates a design sentence, keep the design's quantifier or narrower; widening "it" to "every
+value from here on" is a new claim and needs its own evidence.
+
+### 2026-11-17: The round-1 fix added a new clause with a wrong label and no evidence (#163 A1, judge_code round 2, architecture)
+4685af4 rewrote `services/workspace/src/identity.ts:75-79` as "held by no user of the lesson image or of the node Alpine
+fallback image". Nothing falls back to `node:22.23.4-alpine`: it is the integration tests' `TEST_IMAGE`
+(`test/integration/docker-cli.ts:14`) and a possible `WORKSPACE_IMAGE` override, which "replaces every lesson's image"
+(`manager.ts:49`); no code path, ADR or design calls it a fallback. The evidence the fix rests on (Dockerfile:152-155,
+design :302, P2c) covers only the academy image, so the Alpine half was again a claim without a cited check.
+Rule: A fix that narrows a comment adds no new noun or clause unless the same commit names its source; check every
+label (fallback, default, override) against the code that picks the value.
+
 ### 2026-11-16: A tracked comment cited the local design, and a commit body repeated an unchecked claim (#162, judge_code round 1, architecture)
 schema.int.test.ts (I15 accepted rows) says "node-pg returns the elements only (design 1.3)". `plans/` is ignored
 by git, so the reference points at nothing for any reader of the repository; #86 already spent a round removing
@@ -342,3 +359,12 @@ would then land in that tmpfs, not in the writable layer. The safety conclusion 
 holds; the header's two claims are wider than the code.
 Rule: When the design narrows what a check covers, the comment on that check carries the narrowing (which source
 it reads, what it leaves out) and states the guarantee that actually holds, not the broader summary sentence.
+
+### 2026-11-17: Script header stated Chromium's address rule as an absolute the research qualifies (#201, judge_code round 1, architecture)
+scripts/netlink-guard.sh:3-4 says Chromium flushes "on every RTM_NEWADDR / RTM_DELADDR on any non-loopback interface,
+link-local included". R2 (the source the design cites): a NEWADDR counts only when the address is new or its ifaddrmsg
+differs, a DELADDR only for a known address, IPv6 temporary addresses are excepted, and Chromium filters no interface by
+type, loopback included; lo is exempt by the guard's scope (line 22 says so correctly). The header therefore wrongly
+implies Chromium ignores lo and that every line the guard counts caused a flush, the question design F3 leaves open.
+Rule: A header that explains why a guard fails states the vendor rule as the research gives it, conditions and
+exceptions included, and says separately where the guard is a deliberate superset of it.

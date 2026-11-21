@@ -621,6 +621,25 @@ stopped before any build and a second tester round was needed for T5 alone (t31 
 Rule: before a tester brief that runs isolated-stack.sh, check the run's two ports with `lsof -nP -iTCP:<port> -sTCP:LISTEN`
 and name a run whose ports are free.
 
+### 2026-11-17: Fifteen design rounds on one too-large design before splitting it (#163)
+#163's design (service check runner) went through fifteen judge_design rounds. Most FAILs after round 4 were text drift in a
+design over 3,000 lines: ADR sentences copied in many places, then narrowed in one; test cases dictated as code nobody had
+run; an audit inventory of course graders inside a service design. Each class closed only after a structural move: one
+source for the cleanup rule with pointers elsewhere, every dictated test case backed by a run sketch with named mutants,
+the grader inventory moved to its own issue (#187), and the runner and stop handling split to #196. Splitting the PR at
+the planner (A1 #163, A2a #198, A2b #199) came last, though the size was over the bound from round 1.
+Rule: when the architect's first estimate is over the bound, split the issue before judge_design, not after; keep each
+behaviour stated once in a design and point to it; never dictate a test case as code without a run that shows it green on
+the correct form and red on its named mutant; move inventories of other code (course graders, other services) to their
+own issue at the first FAIL about them.
+
+### 2026-11-17: My own splice script truncated a file before reading it (#163)
+While splicing revision 4o I wrote `open(p, "w").write(apply(open(p).read()))`: Python opens the target for writing (and
+empties it) before the inner read, so coverage.md was truncated and the edit reported "OLD count 0". A backup made just
+before let me restore it.
+Rule: when a script rewrites a file in place, compute the new text first and write it in a separate statement; keep a copy
+of every file a splice touches before running it.
+
 ### 2026-11-17: Eight design rounds on one memory model, closed only by narrowing what the check reads (#45)
 judge_design for module 05 took eight rounds. Rounds 1-5 each failed on the L2 memory check: every round found one more
 memory source, setting or wording the model had to cover (AGENTS.md, CLAUDE.local.md, settings keys Claude Code writes
@@ -860,3 +879,62 @@ Rule: before judge_design, run the "red without the fix" half of any control pro
 clone and pass the log; read every failure in it, including tests the design marks "safe", before the judges do.
 Also: a reused worktree may carry a stale process branch; init refuses it. If that branch is clean and has no
 commits past process origin/main, `git -C .claude switch --no-track -c <task branch> origin/main` lets init proceed.
+
+### 2026-11-18: A plan split put a test row in a commit before the code it calls (#198)
+The #198 plan put the check create body row of the `exec.test.ts` `it.each` into the A5 commit, but `createExec` accepts
+that body only from A6, so A5 alone failed typecheck (TS2345) while lint and units passed. The coder caught it; the four
+unpushed commits were rebuilt with cherry-pick so each typechecks. Separately, judge_design round 1 failed on one test
+observable copied from the parent design unmeasured (M20); round 2 passed once the brief asked for every fake-daemon and
+attach-double case to be measured (REPEAT=5 green, named mutant red), which found two more rows that did not hold.
+Rule: when a plan splits work into commits, check each item's tests against what that item's own code accepts (types
+included), not only the step that owns the test file. When a judge fails one dictated observable, the fix brief asks for
+every observable of that kind to be measured, not just the failed one.
+
+### 2026-11-18: A reused worktree folder still held the last task's process branch (#137)
+The #137 session started in the folder of #118's worktree. `init` refused: the process worktree in it was still on
+refactor/118-yaml-helper (PR merged, Stepan's sync not yet run). `git -C .claude switch -c fix/137-aria-live origin/main`
+and `branch --unset-upstream` made it usable and left the #118 branch for the sync. Separately, the issue's fix had
+already landed in #151; the researcher found it, and the task became test-only. Without that read the coder would
+have had nothing to change and the tier would have been wrong.
+Rule: in a reused worktree, check `git -C .claude status -sb` before `init`; if it is on a merged task's branch, cut
+the new process branch from origin/main with `switch -c` and unset its upstream, then tell Stepan the old branch
+still needs his sync. Before tiering a bug issue, check with `git log -S` whether the change is already on main.
+
+### 2026-11-17: A dry-run fixture I wrote by hand broke a design check, and a control premise went unrun (#201)
+Before judge_design I saved the probe dry run as plans/201-dry-probe.log with my own annotation lines, and the design
+used it as a raw monitor log in its local scan checks. Plan constraint C3 (any non-record line fails closed) then made
+those checks return 2 instead of 1 and 0; the coder stopped and asked. Separately, the D-red control (JavaScript off)
+rested on the premise that not-found pages reach their waits through SSR-only asserts; nobody ran a JS-off page load
+before the judges, and in CI the streamed not-found boundary never swapped in, so 4 of 51 sites failed before their
+wait. judge_design also took three rounds, the last two on tester decisions still made by reading.
+Rule: a fixture that a design check reads is saved as the tool's raw output, never with notes in it; notes go in a
+separate file. A red control's premise about what each target page does under the control is checked once for real
+(or listed as unverified per site) before judge_design. When a judge names an example of "decided by reading", ask
+the architect to sweep every decision of that class, not only the examples.
+
+### 2026-11-18: An "optional" item in a rework brief cost judge_ux a third round (#136)
+judge_ux round 1 failed on one gallery padding issue. My rework brief also passed on a judge's optional nit ("say the
+first tree fits with zero slack, or leave it"). The ui-designer measured it in Playwright's default Chromium, which
+hides scrollbars, and wrote a 9px margin as fact. Round 2 failed on that line in two judges, because AC75 and README
+measure with classic scrollbars, where the tree overflows. The class sweep in round 3 then found a page-width claim in
+acceptance.md that was false for 30 tall states in the same setup.
+Rule: a rework brief carries only blocking findings and items a judge made a condition; optional nits wait for the
+next real edit. Any brief that asks for a measured layout claim names the engines and scrollbar mode the page's
+acceptance notes use, and asks for that setup to be stated next to the number.
+
+### 2026-11-18: Two design rounds patched test-plan Docker writes one by one instead of closing the class (#176)
+
+The #176 fix (one file, 12+/2-) passed all three judges in every design round. Rounds 1 and 2 failed on the test
+plan only: security found a write to a Docker object the run did not create twice (r1 a `docker tag` onto the shared
+name academy-web:t31, r2 a recovery step triggered by a later listing that could tear down another session's
+academy-t31 stack), operations found reset and naming defects in the shim procedure. My r1 brief asked the architect
+to patch the one write the judge named, so the next write of the same kind appeared in r2. Round 3, approved by the
+main orchestrator, closed the class structurally: a fully fake docker shim with no delegation path, no real
+isolated-stack run (t31/t32 are hard-coded and shared), nothing removed, the real run stated as a residual in the PR
+body. It passed 3/3, and judge_code passed 3/3 in round 1. A delegating shim also meant that even the script's own
+`compose down` of academy-t31 under the shim was a real write to a shared project.
+Rule: when a task's test plan for isolated-stack.sh (or any script on shared t31/t32 names) needs Docker, the
+architect brief prescribes from the start that failure paths are proven with a shim that answers every call itself,
+and that a real run happens only under a tag unique to the run; if the script cannot take one, the real run is a
+residual. When a judge names one instance of "acts on objects the run did not create", brief the architect to remove
+the class, not the instance.
