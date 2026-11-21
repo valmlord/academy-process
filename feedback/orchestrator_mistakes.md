@@ -952,3 +952,10 @@ architect brief prescribes from the start that failure paths are proven with a s
 and that a real run happens only under a tag unique to the run; if the script cannot take one, the real run is a
 residual. When a judge names one instance of "acts on objects the run did not create", brief the architect to remove
 the class, not the instance.
+
+### 2026-11-20: #222 issue text lists the #218 assumptions it builds on without Q4, after round 8 tied Q4 to #222 (#218, judge_design round 8, consistency)
+`courses.md:119-120` says "The error states of #222 build on Q1 to Q4 and Q9", and Q4 (`courses.md:132-134`) ends
+"(failure cases: see #222)". `plans/222-comment.md:15` and the posted #222 body say "Q1, Q2, Q3 and Q9". The two
+statements of what #222 depends on disagree; a #219 decision against Q4 would not be traced to #222 from the issue.
+Rule: When a rework changes which #218 parts point to a moved-out issue, re-read that issue's scope text (the plans
+comment and the posted body) against the design and update both in the same round.
