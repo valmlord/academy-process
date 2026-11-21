@@ -912,6 +912,20 @@ separate file. A red control's premise about what each target page does under th
 (or listed as unverified per site) before judge_design. When a judge names an example of "decided by reading", ask
 the architect to sweep every decision of that class, not only the examples.
 
+### 2026-11-18: A failure row and its residual took two extra design rounds (#181)
+judge_design passed 3/3 in round 3. Round 1 failed on two gaps: the 20-run real-daemon control judged runs by the
+JSON report, which vitest writes before the global teardown, so a teardown failure or a timeout still read as a
+pass; and failure row F8 claimed a re-create had "the same outcome as today's caller retry", missing that the
+retry re-ensures the volume and that Docker auto-creates an absent mounted volume without labels. Round 2 failed
+on the size of the residual left after the volume guard: "milliseconds", while the window runs until the daemon
+takes the volume reference after creating the container layer. The size of the task was also misjudged: the TASK
+tier was set from the researcher's 2-4 files and under 100 lines, but the diff came to 5 files, +391/-72, mostly
+the deterministic stub tests.
+Rule: a control that runs a test process decides each run by the exit code as well as the report, and lists
+leftovers and the owner set afterwards. A design row that says "same as today" names the code path it compares
+with, and the architect checks that each step of today's path also happens in the new one. Any time sized in a
+residual is derived from the anchors that end the window, never estimated. Count test lines in the tier sizing.
+
 ### 2026-11-18: An "optional" item in a rework brief cost judge_ux a third round (#136)
 judge_ux round 1 failed on one gallery padding issue. My rework brief also passed on a judge's optional nit ("say the
 first tree fits with zero slack, or leave it"). The ui-designer measured it in Playwright's default Chromium, which

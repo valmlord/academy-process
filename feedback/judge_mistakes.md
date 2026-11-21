@@ -702,3 +702,11 @@ the parenthesis; a missing row is a finding even when another item covers it.
 "Другие курсы" links). I read the page inventory rows for #218 additions and never the note under the table.
 Rule: In a "main sentences #218 makes false" review, read the prose right under every table #218 edits, not only the
 table's rows.
+
+### 2026-11-18: Round-1 finding sized the pre-existing volume window as "milliseconds" (#181, judge_design round 2, architecture)
+In round 1 I wrote that today's race lives "only in the milliseconds between `ensureVolume` and the first create". The
+volume can be removed until the daemon references it at `setHostConfig` (moby `daemon/create.go:203`), after
+`CreateLayer` (:189), so the window includes the slow part of the create under load. Rev 2 took my words into the ADR
+consequence, F8, K8 and Q4, and it cost a round.
+Rule: A judge finding that states a window or a bound is held to the same proof as the design: name the call where it
+ends in the code of the system that owns it.
