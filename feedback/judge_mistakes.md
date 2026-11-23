@@ -749,3 +749,10 @@ measured with them; Windows and Linux default; the 1280x1024 at 400% reflow case
 the `pre`. The architect copied the wording and round 2 had to FAIL it.
 Rule: Before supplying a "changes neither X" wording for a layout, walk every media block that sizes the element
 (width and height queries) with classic and overlay scrollbars, not only the block the finding was about.
+
+### 2026-11-23: Round 1 checked course-2 module rows but not the shared top bar of the course-2 states (#233, judge_design round 2, usability)
+In round 1 I failed the course-2 module rows that opened course 1's catalog, but did not follow the top-bar links of
+the new two-course and course-2 catalog states. They open dashboard `first-run` (one course), which round 2 had to
+raise.
+Rule: When a finding is "a link opens the wrong course", follow every link of the same states, shared elements
+(top bar, crumb) included, before writing the round's verdict.

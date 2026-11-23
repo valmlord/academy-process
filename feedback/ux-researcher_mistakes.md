@@ -1268,3 +1268,70 @@ clause and the "course block" row) restate the rule's outcome before the pointer
 `:62` of the same round use the pure form ("the Card by `ia.md` A218-2", "the end Card: `ia.md` A218-2").
 Rule: An "until #220 + pointer" clause names the term or rule id only ("from #220: `ia.md` A218-2"); it never states
 what the rule renders, because that copy drifts when the rule changes.
+
+### 2026-11-23: One F6 landing claimed for "every state below", including states R3 lands elsewhere (#233, judge_design round 1, accessibility)
+`plans/233-course-prototypes-design.md:97` says the catalog's `F6` to `main` "lands on the first module link in every
+state below", and the table under it lists `loading` (Skeletons `aria-hidden`, no module link: R3 lands on `main`
+itself) and `course-error` (R3 and catalog acceptance :109-110: "Повторить"). Section 7 then asserts "the landings in
+section 4 tables" per state, so the verification would assert a landing R3 does not give, or push an author to make
+something focusable that should not be.
+Rule: A landing stated for a group of states is checked state by state against R3 (nothing focusable -> `main`
+itself; error -> "Повторить"); when the states differ, give the landing per row as the dashboard table does.
+
+### 2026-11-23: Kept until-#220 states whose retry outcomes land in states the same plan redraws (#233, judge_design round 1, usability)
+`plans/233-course-prototypes-design.md:15-18` keeps dashboard `course-error`, `progress-unavailable` and catalog
+`course-error` "rendering unchanged", while `:73` and `:106` redraw their retry targets in the #220 form. Their
+"Повторить" is `data-goto-state="first-run"` + `#next-lesson-heading`, `data-goto-state="in-progress"` +
+`#progress-heading` (`dashboard/prototype.html:83,142`) and `data-goto-state="default"` + `#course-title`
+(`catalog/prototype.html:68`). From #220 the course line is a `p` under the block h2 (`ia.md` Rules (#218) row
+"course block"), so `#progress-heading` no longer exists, and an until-#220 retry would open a from-#220 page. The plan
+says nothing about where these outcomes land, so the author either breaks the focus move or invents a target.
+Rule: When a release model keeps a state and redraws another, list every `data-goto-state`/`data-focus` and link
+between the two groups and decide each crossing (target state, focus target, or a stated prototype limit).
+
+### 2026-11-23: Course-2 module rows pointed at the course-1 catalog "as today" (#233, judge_design round 1, usability)
+`plans/233-course-prototypes-design.md:88` sends every module row to `../catalog/prototype.html#<moduleId>`, which opens
+the catalog `default` state, course 1. For block 2's "Пробный модуль" row (`courses-two`, `courses-all-passed`,
+`attempts-two-courses`) F20.4 then opens another course's catalog, against Rules (#218) row "course of each control",
+although the plan itself adds `#state-stub-course`, whose only module is that one.
+Rule: For every control of a second-course sample, name the prototype target by course; reuse a one-course fallback
+only where it lands in the control's own course.
+
+### 2026-11-23: Sample data that cannot produce the row the state claims (#233, judge_design round 1, consistency)
+`plans/233-course-prototypes-design.md:71` gives `attempts-two-courses` "one later failed attempt" on "Пробный урок"
+and claims a course-2 row in both F18.3 and F18.4. F18.4 lists a check only when it is closed or has at least
+`WEAK_CHECK_MIN_FAILED_COUNT` (2) counted failed results (`progress.md` F18.4, A72-2), so one failure gives no
+"Где трудно" row; the author would draw, and #220's e2e would assert, a row the rule forbids.
+Rule: For every sample state, check the stated data against each rule that selects what renders (thresholds, limits,
+order) before claiming a row, a count or a Card.
+
+### 2026-11-23: Redrew a past-release state in the #220 form and used it as a #220 case (#233, judge_design round 1, consistency)
+`plans/233-course-prototypes-design.md:11-13,115-119` give every lesson state the #220 bar and crumb and a "#220" label,
+and use `m0` as the full-width landing case. `m0` is the "M0 lesson" release state (`lesson-environment.md` "Lesson
+page by release": #30 shipped, #31, #32, #34 not yet), which cannot exist from #220, while the plan keeps the dashboard's
+analogous `before-catalog` as drawn. The lesson's labels (M0, v1, #35, #36) also get no stated rule.
+Rule: In a release model, classify every existing state by its own release first (past, current, kept, redrawn) and
+apply one treatment per class across pages; a past-release state is never a verification case for the new release.
+
+### 2026-11-23: A limit rule wider than the precondition that admits limits (#233, judge_design round 2, consistency)
+`plans/233-course-prototypes-design.md:25-31` says every href goes to a state of the same course, release class and
+progress, and only "where the prototype has none" is an href a prototype limit; L1 then sends every href of a past or
+kept state to the target page's from-#220 default. The same rework added kept targets that match: dashboard
+`in-progress-until-220` (1 of 6 passed, `intro-agent-loop` started) and catalog `default-until-220` ("as `default`", the
+same progress, the plan's own "(L4 but `in-progress`)"). So the top-bar "Курс" of `in-progress-until-220` and the top-bar
+"Академия"/"Главная" of `default-until-220` have a same-class target, yet rows :97 and :123 ("hrefs L1") send them across
+the release line, and the verification at :189-190 would certify that.
+Rule: After adding states, re-check every limit rule against the precondition that admits it: a limit applies only
+where no matching target exists, or the limit states its real cause (here: one shared href for all states).
+
+### 2026-11-23: L4 "progress only" covered top-bar links that drop a course (#233, judge_design round 2, usability)
+L4 (plan :37-39) says its targets show "the same course and release with other sample progress" and sends the top
+bar to dashboard `first-run`; the catalog applies it to every from-#220 state (:111), including `courses-two`,
+`courses-one-empty`, `stub-course` and `stub-course-empty`. `first-run` has one course block, so from course 2's
+catalog "Главная" opens a dashboard without course 2: the F22/F5 exit "the top bar into F20" lands in the wrong
+course set, and L4 describes it as progress only. Exact targets exist (dashboard `courses-two` matches catalog
+`courses-two` and `stub-course`, dashboard `courses-one-empty` matches the two empty variants) and the top bar already
+takes state-scoped variants (`dashboard/prototype.html:26`). The dashboard's own top bar in its two-course states has no
+target rule at all.
+Rule: A limit names every dimension the target differs in (course set, not only progress); before applying a limit to
+a shared element, check each state it is shown in for a matching target.
