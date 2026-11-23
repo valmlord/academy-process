@@ -3192,3 +3192,24 @@ one workspace and left out the idle sweep, which stalls for every workspace. Tes
 option B", and the paragraph is kept whichever option lands, against 9.2's "drop the other option's sentences".
 Rule: A constraint written to prevent a failure states the failure's condition (hold and wait on the same lock) and its
 whole reach, not the one call that showed it; text kept for every option names no option.
+
+### 2026-11-21: Dictated a component comment that its own failure-mode table contradicts (#216, judge_design round 1, architecture)
+Design 1.1 dictates for `scrollable-code.tsx` "Pane split, one-pane switch, window width, zoom and text size all change
+the pre's box". The one-pane switch does not: below 64rem both panes share one grid area of `main.lesson-layout`
+(no padding), and the hidden pane is `position:absolute; inset:0` of the same box, so the `pre`'s width is the same
+shown and hidden; F6 of the same design says exactly that. Zoom also leaves the box in CSS px unchanged while the
+`.prose` 70ch cap holds. The coder would copy a false comment (the #121 and #156 lesson again).
+Rule: Before dictating a "these all do X" comment, check each listed case against the CSS that sizes the element and
+against the design's own failure-mode rows; state the cases where X does not happen and why the result is still right.
+
+### 2026-11-21: "Same width shown and hidden" stated from the tall-viewport grid only (#216, judge_design round 2, architecture)
+Round 2 put "the `pre`'s width is therefore the same shown and hidden" into "Verified" and F6, and took the judge's
+comment "a one-pane switch ... changes neither the box nor the overflow" into 1.1. At viewport height <= 30rem
+(`globals.css:405-408`, rows `auto auto`) the shown lesson pane grows to its content and the document scrolls, while
+the hidden pane is `inset:0` of `main` and its `ScrollArea` (`overflow-auto`, `page.tsx:150`) overflows vertically;
+with classic scrollbars, which AC75 itself was measured with, the scrollbar narrows the `pre`. The observer still
+catches it, so only the dictated text is false; the round-1 wording came from the judge, the "Verified" line and F6
+are the architect's.
+Rule: A "same box in both states" claim is checked against every media block of the layout (height queries too) and
+against classic scrollbars of every scroll container between the element and the grid, before it is written as
+verified.
