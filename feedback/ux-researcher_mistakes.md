@@ -1386,3 +1386,17 @@ once they are stored", which A71-11 (stored from #37, still not listed) makes fa
 draft with "a mentor call goes on meanwhile", a restated A71-7 outcome before the pointer.
 Rule: When a decision accepts a wider meaning for a word or changes when something shows, update the vocabulary row of
 that word and every title that states the old condition in the same edit; outside ia.md write the pointer alone.
+
+### 2026-11-23: The round-2 cut removed a rule but kept the pointers and the sentences that depended on it (#71, judge_design round 3, consistency)
+Two places still lean on what the cut took out of A71-2. First, `mentor.md:58-59` F17.2 still says a hint press goes
+"at the cost `ia.md` A71-2 names". In round 2, A71-2 said "A review and a hint add to their attempt's cost"; it now
+names only a review's cost and a hint's "до $N" budget, and a hint's cost is an obligation. So the pointer now gives a
+cost that no rule defines. Second, A71-2 now has the review use the run's budget confirmation, keep it open on a
+background change and send focus back to the pressed control. The sentences that still read as true for every budget
+confirmation were not narrowed: `checks.md:393` B23 (closes on a background change), `checks.md:394` B24 (focus back to
+"Проверить"), and the vocabulary definition of a run, `ia.md:40` and `checks.md:26` ("Запустить" in the budget
+confirmation is a run). A71-8 already writes "for a run's, B24", so ia.md treats B24 as a run's while checks.md does
+not.
+Rule: When a cut removes or reverses part of a rule, grep every pointer to that rule id across `design/flows/` and reread
+each one against the new text. When a shared component gets a second use, narrow every unscoped sentence about it to
+its first use ("a run's") in the same edit, vocabulary rows included.

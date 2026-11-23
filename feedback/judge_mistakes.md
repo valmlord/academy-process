@@ -725,3 +725,11 @@ that with the vocabulary rows "total cost" (`ia.md:64`, "checks and mentor revie
 neighbours of the R2 budget-dialog sentence it failed (`ia.md:297-298`, `:305`).
 Rule: For every "accepted" widening of a word in a new rule, read the vocabulary row of that word and every rule titled by
 it in round 1; for every sentence failed, read the sentences before and after it in the same round.
+
+### 2026-11-23: Consistency rounds 1-2 did not read the vocabulary row "run" when the review took over the run's dialog (#71, judge_design round 3, consistency)
+From round 1, A71-2 has "Разобрать с ментором" open the run's budget confirmation. The vocabulary row "run" (`ia.md:40`,
+"one press of "Проверить", or "Запустить" in the budget confirmation") and `checks.md:26` define a run by that dialog's
+button, so a review's "Запустить" reads as a run. Rounds 1 and 2 failed the review's dialog focus at `ia.md:305` but
+never read the vocabulary row that names the dialog, or the B23 and B24 rows.
+Rule: When a design reuses a component that a vocabulary row or a B-table row names, grep the component's name across
+the vocabulary and the transition tables in round 1, and check that each sentence still holds for both uses.
