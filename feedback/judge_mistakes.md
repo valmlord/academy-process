@@ -711,6 +711,28 @@ consequence, F8, K8 and Q4, and it cost a round.
 Rule: A judge finding that states a window or a bound is held to the same proof as the design: name the call where it
 ends in the code of the system that owns it.
 
+### 2026-11-21: Round-3 fix proposal named one of two stoppers and asked for a lock hold without reading the lock (#199, judge_design round 4, operations)
+My round-3 B2 fix said "a run request reads the start record only after it has taken the workspace lock" and that the
+first request holds it through the stop and start. I did not read `lock.ts` (not reentrant) against item 8's "take it
+as `POST W/stop` does", and I did not list the stop after a result other than `clean`, which acts on the same record in
+the same paragraph. Revision 4 took my words and both gaps cost round 4.
+Rule: A judge's proposed fix for a race lists every actor on the shared state and is checked against the lock's code
+before it is written into a finding.
+
+### 2026-11-21: Round-4 fix wording "never take the lock again" named the call, not hold-and-wait (#199, judge_design round 5, operations)
+My round-4 B1 fix said the run request never takes the lock again. Revision 5 wrote it as "nothing calls `mutex.run` on
+a key it already holds"; a holder that awaits a stop another path queued on that key hangs the same way.
+Rule: A judge's fix for a deadlock states the wait condition (a holder waiting on work that needs the lock), checked
+against one design that avoids the named call.
+
+### 2026-11-21: Round-5 fix listed the lock's users without grepping `mutex.run` (#199, judge_design round 6, operations)
+My round-5 fix asked to add `DELETE W` and the idle sweep to the users of the workspace lock. I did not grep for
+`mutex.run`, so terminal attach (`terminal/registry.ts:95`) and reconcile's stop/remove (`reconcile.ts:132,137`) were
+left out. Revision 6 took the list as written. The constraints are universal, so it did not block, but it is the same
+miss as my round-4 entry.
+Rule: Before a finding names "the users" of a lock or shared state, grep every call site and list them all, or say
+"among them".
+
 ### 2026-11-21: A read-only disk check pulled an image (#216, judge_design round 1, operations)
 To read the Docker VM's free space I ran `docker run --rm --entrypoint df node:22.23.4-alpine`. The image was absent,
 so `docker run` pulled it (235MB). The review was told to make no Docker writes beyond the run's own project; `docker
