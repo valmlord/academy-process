@@ -1335,3 +1335,12 @@ takes state-scoped variants (`dashboard/prototype.html:26`). The dashboard's own
 target rule at all.
 Rule: A limit names every dimension the target differs in (course set, not only progress); before applying a limit to
 a shared element, check each state it is shown in for a matching target.
+
+### 2026-11-23: #233 round 3, L1 justifies a from-#220 target by "no kept state" while a past state is in the class
+The round-3 L1 sends lesson hrefs of kept states (dashboard `first-run-until-220`, `progress-unavailable` "Начать";
+catalog `default-until-220` and `progress-unavailable` lesson rows) to the lesson default drawn from #220, because "the
+lesson has no kept state". LT's class is "until #220", and past counts: lesson `m0` is in it, same course, and the same
+round sends `m0`'s own top bar to kept dashboard and catalog states as a same-class L4 match. The rule is applied one way
+only, and the reason given is narrower than the class it argues about.
+Rule: A "no target exists" claim is checked against the class as LT defines it (past and kept together); if a member is
+excluded, the limit says which dimension rules it out.

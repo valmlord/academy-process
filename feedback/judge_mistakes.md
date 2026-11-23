@@ -756,3 +756,9 @@ the new two-course and course-2 catalog states. They open dashboard `first-run` 
 raise.
 Rule: When a finding is "a link opens the wrong course", follow every link of the same states, shared elements
 (top bar, crumb) included, before writing the round's verdict.
+
+### 2026-11-23: #233 round 2 judge-consistency did not apply its L1 finding to the lesson
+In round 2 I failed L1 for dashboard and catalog targets only. The same L1 sentence also sent kept-state lesson hrefs
+to the from-#220 lesson default while lesson `m0` (past, so "until #220" under LT) exists; round 3 had to raise it.
+Rule: When a finding is about a limit's scope, check every page and every member of the class the limit covers, past
+states included, before the verdict.
