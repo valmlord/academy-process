@@ -3104,3 +3104,80 @@ is not executable as written. The T3 recovery also re-checks only the four T0.2 
 workspace (`api ensure`, :373) survives `compose down` and the recovery reads clean while the next run STOPs.
 Rule: Before naming run directories, `ls` the scratch root and pick names that are absent; a recovery's closing check
 lists everything the script's own preflight lists.
+
+### 2026-11-21: Guarded a dialog test on the owner's stack by one identifier, and closed a fetch list with no check (#206, judge_design round 1, security)
+Design D1 put a test that opens the reset dialog outside the DESTRUCTIVE_E2E gate, so it runs on Stepan's plain
+`pnpm test:e2e` against his real firstLesson workspace. The only "never press Сбросить" check was
+`rg resetConfirmLabel`, a form check: `dialog.getByRole("button").last().click()`, a `/Сбросить/` name regex or an
+Enter after a focus move all pass it and reset his folder. The same test plan said the builds "may fetch exactly"
+two images, "nothing else", but its read script keeps only turbo-prefixed lines, so no command ever looks at a build
+line, and section 4.2 claimed "nothing touches any object this run did not create" while both Dockerfiles write the
+shared `id=pnpm` BuildKit cache mount and `pnpm install` in W and C writes the host pnpm store.
+Rule: A safety property of a test that runs on the owner's stack is checked by its effect (list every interaction
+call in the test and its helpers, the set must equal the prescribed one), never by grepping one name; every closed
+"only X" list in a test plan has a command whose output decides it; an absolute "touches nothing it did not create"
+names each shared write (cache mounts, package stores) as an explicit exception or is not written.
+
+### 2026-11-21: Red-set prediction ignored Playwright project dependencies (#206, judge_design round 1, architecture)
+Design 4.4 predicted for R "skipped + did not run = B" and for N two failed tests (E-live-reset and E-reset-cancel), and
+D1 said a failure in lesson.spec "fails only this test". playwright.config.ts:107-112 makes `terminal` depend on
+`chromium`, and Playwright 1.64.1 runs a project only when every dependency project passed (runner/index.js:6757-6759,
+6773-6775). So one red chromium test turns the whole terminal and terminal-webkit projects into "did not run":
+E-reset-cancel never runs in N, and both R and N would read NOT AS EXPECTED and stop the tester on a correct product.
+Rule: Before predicting a red set, read the runner config's project graph (dependencies, serial mode, shards) and the
+runner's rule for dependents of a failed project; list every test that the failure stops from running.
+
+### 2026-11-21: Error-block anchor matched by the test's own title, and a wait with no command (#206, judge_design round 1, operations)
+Design 4.4 R checks that E-live-reset's error block has "a line containing `under the reset dialog` and not `notices
+shown`". The block starts with the failure header, and the test title "...stay announced under the reset dialog
+(AC51)" is in it, so the header alone meets the check when the second read fails (scratch spec, Playwright 1.64.1:
+header line plus `Error: under the reset dialog, notices shown`). The check cannot tell the first read from the second,
+and 4.6 claims it does. The same read filters the log down to turbo-prefixed lines before it extracts the `T32` lines,
+which carry no prefix, and the 60-minute hang limit gives no command that waits. The project-dependency part of the
+red sets is the architecture entry above, found in the same round.
+Rule: A log anchor that tells two failures apart matches the full message line (`^ *Error: <message>$`), is checked
+against the test title and header, and is run once on a scratch failure of each kind. A read names which stream each
+item comes from, and a time limit on a background run comes with the literal bounded wait command.
+
+### 2026-11-21: Self-test expectations named a subset of items, and one of them wrongly (#206, judge_design round 2, operations)
+Design r2 4.8 says K1 read in mode R gives "C6 OK and C7R OK (C1, C2, C3 BAD)". The read's C1 takes K1's own rc file,
+which holds `rc=1` (K1 fails on purpose), and mode R expects `rc=1`, so C1 is OK, not BAD; C4 (passed 0, not Pc-1, no
+`did not run` line) and C5 (setup+chromium line count) are BAD and not listed. X3, X5, X6 and X8 also turn further
+items BAD (X5 changes a ✓, so C4's passed-equals-✓ count breaks too) while 4.8 allows other BAD items only "where
+listed". 4.8 then says a self-test that comes out otherwise stops the tester before R, so a correct read stops the
+run. The same section asks for one Bash call per poll of up to 540 s without naming the call's timeout; the tool's
+default is 120 s.
+Rule: For each read self-test, write the full expected vector (every item OK or BAD) derived from the doctored input
+and the rc file actually passed, or state that only the named items are judged; a poll prescribed as one tool call
+names the call's timeout, above the loop's own bound.
+
+### 2026-11-21: One doctored self-test input with no before/after check, while the design claims all have one (#206, judge_design round 3, operations)
+Design r3 4.8 X7 builds `206-x7.log` by appending a line to G's log and states C2 OK because "the last T32 line is
+still `T32 RESULT OK`", but X7 has no precondition before or after the edit: nothing checks that G's log ends in a
+newline (otherwise the line joins `T32 RESULT OK`, C2 turns BAD and a correct read stops the run), that `alpine:3.20`
+is absent from G's log and present once in the copy, or that the `^T32 ` lines are the same in both. X5s, X10 and K4d
+each have both checks, and F16 says "preconditions on every doctored edit", so the claim is false for X7.
+Rule: Every doctored input, an append included, gets a command before the edit and one after it that prove exactly
+the change the expected vector assumes; list the doctored inputs and tick each one off before claiming "every".
+
+### 2026-11-21: Dropped the only self-test of a check moved into C5, while C5's clause is the sole guard (#206, judge_design round 3, architecture)
+Design r3 drops C6 and X6 and says a second failed test in R or N "is a second ✘ result line, which C5's exactly one ✘
+reads BAD". No kept self-test makes C5 BAD through that clause: X9 is BAD on "terminal lines, no ✘", K2-R and X10 on
+"count 1, no E-live line". A C5 without the "exactly one ✘" and "E-live ✓" clauses prints the same vectors, passes every
+self-test, and reads an R or N log with a red E-live, or any second red chromium test (F11), as AS EXPECTED; C1, C2,
+C7R and C8 are the same in that log. 4.8's own rule ("a self-test exists where a wrong read could report OK on a red
+result and no other kept check would catch it") keeps exactly this case, as it kept X5s for the skip.
+Rule: When a scope cut moves a guard from a dropped check into a clause of a kept one, find a kept self-test whose
+expected BAD comes only from that clause; if none, add one, and list which clause each kept self-test's BAD isolates.
+
+### 2026-11-21: Fetch list command omits the resolve and FROM line forms tester.md names (#206, judge_design round 4, operations)
+Design r4 4.2 says the image fetch list is closed per tester.md:60-70, but its grep keeps only `load metadata for`,
+`Pulling from`, `[auth]`, `naming to` and `unpacking to`. tester.md defines the closed build case by every resolve,
+metadata, fetch, auth/pull-token or `FROM` line. On two real isolated-stack logs (#216, 2026-11-21) the
+`docker/dockerfile:1` frontend shows up only as `resolve image config for docker-image://docker.io/docker/dockerfile:1`,
+which the command never prints, while the allowed `load metadata for docker.io/docker/dockerfile:1` never appears.
+So the one fetch the list allows for the frontend is never observed, and a different frontend or base would not be
+either.
+Rule: Before closing a fetch list with a grep, run that grep on a real build log from the same recipe and check that
+every line form the governing rule names (resolve, metadata, auth, FROM, naming, unpacking) is in the pattern and
+each allowed entry actually appears in the output.

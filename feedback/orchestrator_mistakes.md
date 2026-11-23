@@ -959,3 +959,15 @@ the class, not the instance.
 statements of what #222 depends on disagree; a #219 decision against Q4 would not be traced to #222 from the issue.
 Rule: When a rework changes which #218 parts point to a moved-out issue, re-read that issue's scope text (the plans
 comment and the posted body) against the design and update both in the same round.
+
+### 2026-11-21: A test-only task spent four design rounds on its own evidence harness (#206)
+#206 adds one Playwright test (the AC51 reset dialog case). Every judge found the test itself sound from round 1.
+All seven FAILs over four rounds were in the test plan: first in predicted red sets, then in a log-reading script
+with eight checks and a dozen self-tests whose expected vectors kept being incomplete, and in round 4 in a closed
+image fetch list whose grep missed the line forms tester.md names. My round-1 brief asked the architect to make every
+read check provably able to fail, which grew the harness the later rounds failed on. The orchestrator then removed
+the harness (round 4: two quoted runs, green and one mutation), and round 4 still failed on the one closed list left.
+Rule: for a test-only task, brief the architect from the start for the smallest evidence that decides it (a green
+run and one named mutation, with the relevant runner output quoted), not a script that grades the logs. Any closed
+list the plan keeps is checked once against a real log of the same recipe (another session's log counts) before
+judge_design.
