@@ -3104,3 +3104,71 @@ is not executable as written. The T3 recovery also re-checks only the four T0.2 
 workspace (`api ensure`, :373) survives `compose down` and the recovery reads clean while the next run STOPs.
 Rule: Before naming run directories, `ls` the scratch root and pick names that are absent; a recovery's closing check
 lists everything the script's own preflight lists.
+
+### 2026-11-21: "Their assertions do not change" for a fixture swap that leaks into a later loop iteration (#135, judge_design round 1, architecture)
+Design 8.3 replaces every `write(\`${L}/quiz.yaml\`, "q: 1\n")` with a helper that also writes task.md with the
+`` **`q`** (квиз): ... `` sentence, and says the assertions of the three affected tests stay. In
+`caps the limit of ready quiz and bug-hunt checks at 3` (validate.test.ts:309-326) the fixture is written once before
+a loop whose second iteration replaces the checks with a bug-hunt check only and expects `[]`; the task.md sentence
+then names "q", which is no quiz check of that lesson, so the new check reports T5 and the test goes red with the
+design followed exactly.
+Rule: When a fixture change adds a file that a new check reads, trace every test that writes it through each
+`withChecks`/loop iteration after the write, and run the old assertions against the new rules before saying they hold.
+
+### 2026-11-21: Merge-order rule without a fetch, ADR text narrower than the code, a miscounted restore criterion (#135, judge_design round 1, operations)
+Design section 6 makes `git merge-base --is-ancestor origin/main HEAD` the merge gate for content PRs with no
+`git fetch` before it, while main is unprotected (branch protection 404, `allow_update_branch` false), so the check
+can pass against a stale ref and nothing else enforces it; the design also does not say where the rule is written
+for whoever merges. Section 7's ADR paragraph lists the count markers as "N верных", "N из M" or a percentage and
+the restatement as "Квиз: не меньше K из Q", while 3.3 also triggers on "N правильн..." and accepts
+"не меньше K верных из Q"; T3 points authors to ADR-0001 item 8 although the form is defined in the amended item 6.
+14(d) decides the restore by "the three RESTORED lines" for four mutants (M1, M2, M2b, M3).
+Rule: A merge-order rule fetches the ref it compares and names the place it is recorded; ADR text that defines what
+a check matches is checked phrase by phrase against the regexes; every counted pass criterion is recounted against
+the list it counts.
+
+### 2026-11-21: Prototype run reinstalled the worktree's lesson-schema node_modules; ADR "one word" wider than the code (#135, judge_design round 2, operations)
+The r6 mutant run called `pnpm exec vitest` in the scratch prototype, a package outside the workspace whose
+node_modules is a symlink to the worktree's `packages/lesson-schema/node_modules`. pnpm's pre-run dependency check
+ran a fresh install without the lockfile (`r6/m-before.out`: "Packages are cloned...", `+ vitest 5.1.1`), which
+replaced the worktree's tree: `.bin/vitest` is now 5.1.1 while pnpm-lock.yaml pins 5.0.5 (vite 8.3.8 for 8.3.5).
+The design still says the prototype ran on 5.0.5, offers `git status` as the proof that nothing outside the
+scratchpad changed (git does not see node_modules), and the tester precondition only installs when
+`$W/node_modules` is missing, so the coder and tester would run a vitest that CI does not. Separately, amended
+item 6 defines a count as "N <one word> из M" while the code accepts only `[а-яё-]+`, so
+"Квиз: не меньше 5 tasks из 6." is skipped although the ADR says it is reported; the sweep row calls it "exact".
+Rule: A prototype never shares a node_modules with the worktree through a symlink and never runs `pnpm exec`/`pnpm
+run` outside the workspace; side effects are proven on node_modules too (`vitest --version` against the lockfile),
+not only by `git status`. An ADR phrase that names a character class says the class the regex uses.
+
+### 2026-11-21: ADR clause (e) keeps mid-paragraph terminators; PR comment addresses the author under his own name (#135, judge_design round 3, operations)
+Amended item 6 (e) says the paragraph "is split after every `.`, `!` or `?` that is followed by whitespace, and one
+`.`, `!` or `?` that ends the paragraph is dropped". Section 3.2 and the code also drop the inner terminator and the
+whitespace after it; the clause does not. Read literally with (i) and (j), "... нужно 4 верных." keeps its dot and
+" Квиз: не меньше 5 из 6" starts with a space, so neither grammar matches (measured, `jops3/adr-literal.mjs`): the
+own sentence of 17 of 18 quiz lessons and every mid-paragraph restatement would be "in neither form" and reported
+under (l), while the code reads them. The 7a row (e) is "exact" because its expectations came from the code's
+output, not from the clause. (i) "the id part of (g)" also leaves open whether ` (квиз):` belongs to it. Separately,
+the section 6 PR comment is posted through gh as valmlord, Stepan's own account, and says "Stepan, ... since you
+merge everything here": under the author's name it reads as the author writing to himself (human-text.md), and it
+repeats the PR body's "Merge order" section; "minus #135 itself" names the issue number, not the PR's.
+Rule: Measure each ADR clause by implementing the clause's literal reading, not by comparing fixture output with
+the code; text posted under the author's account is written in his voice and never addresses him.
+
+### 2026-11-21: ADR item 6 (d)/(e) leave out the trimming and the terminator drop the code does (#135, judge_design round 3, architecture)
+Read literally, amended item 6 trims only the lines that (d) joins to a paragraph, and (e) splits "after" a
+terminator without dropping it or the whitespace after it. The reader trims every line outside a fence (the
+first line of a paragraph and every block-start line too) and drops the inner terminator with the whitespace.
+So under the clauses, `- Квиз: не меньше 5 из 6   ` (trailing spaces, also a Markdown hard break "  " before
+a wrapped continuation), `Квиз пройден. Квиз: не меньше 5 из 6.` (fixture e2-dot) and the own sentence of 17
+of 18 quiz lessons are "in neither form" and reported under (l), while the code reads all of them
+(measured, `jarch3/bin/trail.ts`). Section 7a marks (d) and (e) "exact" because the expected column is the
+code's output, the same method revision 3 says it removed. Also (i) "the id part of (g)" does not say
+whether ` (квиз):` belongs to it.
+Rule: Each ADR clause that describes text processing names every transformation the code applies (trim,
+drop, normalise) at every place it applies, and is checked by an implementation of the clause's literal
+reading run over table C, not by the code's output.
+
+### 2026-11-21: Revision-4 ADR item 6 still calls 13 of 18 own sentences "not in the first form" (#135, judge_design round 4, operations)
+The amended paragraph (design section 7) gives the own-sentence form as `` `<id>` (квиз): Q вопросов, нужно K верных. `` and then says a sentence that begins with `` `<id>` (квиз): `` "but is not in the first form" is reported. 13 of the 18 course sentences are not in that form literally ("вопросов-сценариев", "нужно не меньше 5 верных", words before "нужно") and the code reads them with 0 issues (run on a prototype copy: `` `closed-environments-quiz` (квиз): 6 вопросов-сценариев, нужно не меньше 5 верных. `` and "... 6 вопросов про всё подряд, нужно 5 верных." give 0 issues). The next bullet, "Counts written another way are not recognised, and their sentences pass unchecked", is false for anchor-led sentences: "`closed-environments-quiz` (квиз): шесть вопросов, нужно пять верных." and "..., нужно 5/6." are reported (T4). Section 7a ran only examples that agree with each sentence, never the course's own variants A, C, D against the sentence that says what is reported.
+Rule: For every ADR sentence that says what is reported or what passes, run the course's own variants and the other bullets' examples against it, not only the sentence's own examples.
