@@ -368,3 +368,14 @@ type, loopback included; lo is exempt by the guard's scope (line 22 says so corr
 implies Chromium ignores lo and that every line the guard counts caused a flush, the question design F3 leaves open.
 Rule: A header that explains why a guard fails states the vendor rule as the research gives it, conditions and
 exceptions included, and says separately where the guard is a deliberate superset of it.
+
+### 2026-11-24: A doc comment justified a missing log line by a report that never covers its case (#220, judge_code round 1, architecture)
+apps/web/lib/course/courses.ts:154-155 says the non-slug failure and the `.: no course` result built in
+firstReadableCourse log no per-request line because "the startup recompute and the image build's export report such
+a root". `.: no course` comes from line 176 only when every listed slug answered not-found, which the code's own comment
+at :173 places in a `pnpm dev` race after the listing: the image never reaches it (immutable root) and the startup
+recompute ran before the directories went away, so neither reports it. What does cover it is the next request's
+`listNames`, which logs W2. Separately, test/course-server-fake.ts:30-31 exports `logLines` and fills it, but no test
+reads it: dead code with a doc comment that suggests the lines are checked.
+Rule: A comment that explains why a signal is absent names the place that does emit it for each case it lists, checked
+against when that case can occur; a test helper exports nothing no test reads.

@@ -126,3 +126,31 @@ content; screenshot a new demo at 320px in both themes before handing it over.
 ### 2026-11-18: Gallery note states a fit margin measured with hidden scrollbars as fact (#136, judge_ux round 2, accessibility)
 The round-2 refinement of the quiz demo note (`components.html:725`) says the first tree "fits (at 320px with about 9px to spare in Chromium, 4px in WebKit) and is no Tab stop". The 9px was measured in Chromium with Playwright's default hidden scrollbars. With classic scrollbars, the configuration the same round made the reference in acceptance AC75 and the Windows default, the page's vertical scrollbar takes 15px: at 320px that `pre` is `scrollWidth` 243 / `clientWidth` 237, overflows and is a Tab stop with `role="group"`. The rule handles it correctly, but the note tells the reader the opposite.
 Rule: A fit or overflow claim in a note names the scrollbar mode it was measured in, and is re-measured with classic scrollbars before it is written; a margin under the page scrollbar width (15px) is not stated as "fits" for every engine.
+
+### 2026-11-24: The mentor block's system section covers one of its three placements (#71, judge_ux round 1, consistency)
+`system/README.md:198` lists the mentor composition as used on "lesson, Проверки", and `:358-360` says the block sits
+"in a `.check-row-panel`" and "`space-4` below the panel item before it" (`proto.css:830`). A71-5 and A71-10, fixed
+before the author phase, also put it in the closed quiz block (`lesson/prototype.html:2774-2775`, a child of `.quiz`,
+so `gap: space-6`) and in an attempt panel (`:2517`, inside `.history-results > li`, so `space-2`). Two of the three
+placements have a spacing and a parent the README does not name, the gallery draws neither, and the inventory row
+omits the Квиз tab.
+Rule: Before writing a composition's placement and spacing, list every place the flows put it (grep the rule ids that
+name it) and state the parent and the gap for each, in the inventory row, the section and the gallery.
+
+### 2026-11-24: The review's "Повторить" got a second look with no reason given (#71, judge_ux round 1, consistency)
+Every other "Повторить" in the prototypes (catalog :68, dashboard :83 and :142, sign-in :44, lesson :321, :2341-2344,
+:2743, gallery :824) is a secondary sm Button in the error Alert's `.alert-actions`. `system/README.md:380-386` makes
+the review's "Повторить" an outline sm `.mentor-action` after the Alert, in the same Проверки tab as the history
+error's secondary one. The stated reason ("Outline, as "Пройти квиз"") explains outline versus default, not the
+departure from the secondary in-Alert retry, so one label has two looks with no written reason.
+Rule: When a new composition reuses a label the system already draws, grep that label across every prototype and the
+gallery, and either use the same variant and placement or write the reason for the departure in the README.
+
+### 2026-11-24: The review's retry claims "every other Повторить" is secondary, but the status bar's is default (#71, judge_ux round 2, consistency)
+`design/system/README.md:384-387` ("every other "Повторить" (catalog, dashboard, sign-in, the lesson's text and quiz
+load errors and the history error) is a secondary sm Button ... one label, one look"), the `proto.css:848-849` comment
+and the `components.html:939` gallery note say "as every other "Повторить"". The environment status bar's "Повторить"
+(`components.html:423`, `lesson/prototype.html:3082`, a status action) is a default sm Button, so the system has two
+looks for the label and the stated reason is false. The round-1 rule was followed for Alerts only.
+Rule: Before writing "every"/"each" about a label or component, grep it in every prototype and the gallery and tick each
+hit off against the sentence; scope the claim to what holds (e.g. "every error Alert's Повторить") or name the exception.

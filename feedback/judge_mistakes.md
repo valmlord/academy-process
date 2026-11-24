@@ -703,6 +703,13 @@ the parenthesis; a missing row is a finding even when another item covers it.
 Rule: In a "main sentences #218 makes false" review, read the prose right under every table #218 edits, not only the
 table's rows.
 
+### 2026-11-21: Usability round 1 walked A71-1 without the check that has no `mentorAfter` (#71, judge_design round 2, usability)
+A71-1's threshold on the optional `attempts.mentorAfter` was in the design from round 1. Round 1 walked the dead end on
+a closed check but never ran the entry condition over real `lesson.yaml` data, where most checks have no `mentorAfter`
+and module 04's have no limit either, so F16 has no entry there. Found in round 2.
+Rule: For every entry condition that reads a lesson field, grep the field's count across `course/**/lesson.yaml` in round
+1 and walk the absent-field case, not only the sample checks the design note names.
+
 ### 2026-11-18: Round-1 finding sized the pre-existing volume window as "milliseconds" (#181, judge_design round 2, architecture)
 In round 1 I wrote that today's race lives "only in the milliseconds between `ensureVolume` and the first create". The
 volume can be removed until the daemon references it at `setHostConfig` (moby `daemon/create.go:203`), after
@@ -710,3 +717,78 @@ volume can be removed until the daemon references it at `setHostConfig` (moby `d
 consequence, F8, K8 and Q4, and it cost a round.
 Rule: A judge finding that states a window or a bound is held to the same proof as the design: name the call where it
 ends in the code of the system that owns it.
+
+### 2026-11-21: Consistency round 1 did not read the vocabulary rows of the nouns in A71-2's cost sentence (#71, judge_design round 2, consistency)
+A71-2 adds hints to the total and says "the total's "разборы" then covers hints, accepted", yet round 1 did not compare
+that with the vocabulary rows "total cost" (`ia.md:64`, "checks and mentor reviews") and "mentor review" (`ia.md:52`,
+"разбор") or with `progress.md` A72-11 / A72-16, so the stale rows survived to round 2. Round 1 also did not read the
+neighbours of the R2 budget-dialog sentence it failed (`ia.md:297-298`, `:305`).
+Rule: For every "accepted" widening of a word in a new rule, read the vocabulary row of that word and every rule titled by
+it in round 1; for every sentence failed, read the sentences before and after it in the same round.
+
+### 2026-11-23: Consistency rounds 1-2 did not read the vocabulary row "run" when the review took over the run's dialog (#71, judge_design round 3, consistency)
+From round 1, A71-2 has "Разобрать с ментором" open the run's budget confirmation. The vocabulary row "run" (`ia.md:40`,
+"one press of "Проверить", or "Запустить" in the budget confirmation") and `checks.md:26` define a run by that dialog's
+button, so a review's "Запустить" reads as a run. Rounds 1 and 2 failed the review's dialog focus at `ia.md:305` but
+never read the vocabulary row that names the dialog, or the B23 and B24 rows.
+Rule: When a design reuses a component that a vocabulary row or a B-table row names, grep the component's name across
+the vocabulary and the transition tables in round 1, and check that each sentence still holds for both uses.
+
+### 2026-11-21: Round-3 fix proposal named one of two stoppers and asked for a lock hold without reading the lock (#199, judge_design round 4, operations)
+My round-3 B2 fix said "a run request reads the start record only after it has taken the workspace lock" and that the
+first request holds it through the stop and start. I did not read `lock.ts` (not reentrant) against item 8's "take it
+as `POST W/stop` does", and I did not list the stop after a result other than `clean`, which acts on the same record in
+the same paragraph. Revision 4 took my words and both gaps cost round 4.
+Rule: A judge's proposed fix for a race lists every actor on the shared state and is checked against the lock's code
+before it is written into a finding.
+
+### 2026-11-21: Round-4 fix wording "never take the lock again" named the call, not hold-and-wait (#199, judge_design round 5, operations)
+My round-4 B1 fix said the run request never takes the lock again. Revision 5 wrote it as "nothing calls `mutex.run` on
+a key it already holds"; a holder that awaits a stop another path queued on that key hangs the same way.
+Rule: A judge's fix for a deadlock states the wait condition (a holder waiting on work that needs the lock), checked
+against one design that avoids the named call.
+
+### 2026-11-21: Round-5 fix listed the lock's users without grepping `mutex.run` (#199, judge_design round 6, operations)
+My round-5 fix asked to add `DELETE W` and the idle sweep to the users of the workspace lock. I did not grep for
+`mutex.run`, so terminal attach (`terminal/registry.ts:95`) and reconcile's stop/remove (`reconcile.ts:132,137`) were
+left out. Revision 6 took the list as written. The constraints are universal, so it did not block, but it is the same
+miss as my round-4 entry.
+Rule: Before a finding names "the users" of a lock or shared state, grep every call site and list them all, or say
+"among them".
+
+### 2026-11-21: A read-only disk check pulled an image (#216, judge_design round 1, operations)
+To read the Docker VM's free space I ran `docker run --rm --entrypoint df node:22.23.4-alpine`. The image was absent,
+so `docker run` pulled it (235MB). The review was told to make no Docker writes beyond the run's own project; `docker
+system df` and `docker info` already answer the question without creating anything.
+Rule: A judge's Docker commands are listings only (`ls`, `ps`, `df`, `info`, `inspect`); never `run`, `pull`,
+`create` or `build`, not even with `--rm`.
+
+### 2026-11-21: Round-1 fix wording said a one-pane switch never changes the pre's box, from the tall-viewport rows only (#216, judge_design round 2, architecture)
+Round 1 FAILed the 1.1 observer comment and supplied the replacement "a one-pane switch ... changes neither the box nor
+the overflow", reasoning from `globals.css:370-388` alone. At viewport height <= 30rem the rows are `auto auto`
+(`globals.css:405-408`): the shown lesson pane grows to its content and the document scrolls, while the hidden pane is
+`inset:0` of `main` and its `ScrollArea` (`overflow-auto`) overflows vertically. With classic scrollbars (AC75 was
+measured with them; Windows and Linux default; the 1280x1024 at 400% reflow case) that scrollbar takes its width from
+the `pre`. The architect copied the wording and round 2 had to FAIL it.
+Rule: Before supplying a "changes neither X" wording for a layout, walk every media block that sizes the element
+(width and height queries) with classic and overlay scrollbars, not only the block the finding was about.
+
+### 2026-11-23: Round 1 checked course-2 module rows but not the shared top bar of the course-2 states (#233, judge_design round 2, usability)
+In round 1 I failed the course-2 module rows that opened course 1's catalog, but did not follow the top-bar links of
+the new two-course and course-2 catalog states. They open dashboard `first-run` (one course), which round 2 had to
+raise.
+Rule: When a finding is "a link opens the wrong course", follow every link of the same states, shared elements
+(top bar, crumb) included, before writing the round's verdict.
+
+### 2026-11-23: #233 round 2 judge-consistency did not apply its L1 finding to the lesson
+In round 2 I failed L1 for dashboard and catalog targets only. The same L1 sentence also sent kept-state lesson hrefs
+to the from-#220 lesson default while lesson `m0` (past, so "until #220" under LT) exists; round 3 had to raise it.
+Rule: When a finding is about a limit's scope, check every page and every member of the class the limit covers, past
+states included, before the verdict.
+
+### 2026-11-24: #233 round 3 judge-consistency named catalog "lesson rows" but not the prerequisite lesson links
+My round-3 finding listed the catalog lesson rows of `default-until-220` as kept-state lesson hrefs, but not the
+"Сначала пройдите" links the same drawing renders (`catalog/prototype.html:135` ff.), so the round-4 rework fixed the rows
+only and round 4 had to raise the links.
+Rule: When a finding names hrefs of a state, grep every href that state renders and name all of them, not the most
+visible element.
