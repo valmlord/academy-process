@@ -1344,3 +1344,13 @@ round sends `m0`'s own top bar to kept dashboard and catalog states as a same-cl
 only, and the reason given is narrower than the class it argues about.
 Rule: A "no target exists" claim is checked against the class as LT defines it (past and kept together); if a member is
 excluded, the limit says which dimension rules it out.
+
+### 2026-11-24: #233 round 4 moved kept-state lesson rows to `m0` but dropped the prerequisite links and kept a rows pointer with no rows
+The round-4 rework deleted "other hrefs of kept states: L1" and catalog `default-until-220` "hrefs L1" and named only
+"lesson rows: lesson `#state-m0` L4". `default-until-220` is today's `default` drawing, which also shows the
+"Сначала пройдите: <lesson>" links (`catalog/prototype.html:135,142,149,156`, separate anchors outside `a.item`), so those
+lesson hrefs of a kept state are left with no target and fall back to the from-#220 lesson default. The same round wrote
+"rows: L1" for dashboard `progress-unavailable`, whose drawing renders no module rows (`dashboard/prototype.html:146`
+`item-group` excludes it; acceptance :105), a pointer that covers nothing.
+Rule: When a pointer is narrowed from "hrefs" to an element name, list every href the state renders (grep the drawing by
+its `data-state`) and check each one lands in exactly one pointer; name a pointer only for an element the state draws.

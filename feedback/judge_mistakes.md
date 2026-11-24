@@ -762,3 +762,10 @@ In round 2 I failed L1 for dashboard and catalog targets only. The same L1 sente
 to the from-#220 lesson default while lesson `m0` (past, so "until #220" under LT) exists; round 3 had to raise it.
 Rule: When a finding is about a limit's scope, check every page and every member of the class the limit covers, past
 states included, before the verdict.
+
+### 2026-11-24: #233 round 3 judge-consistency named catalog "lesson rows" but not the prerequisite lesson links
+My round-3 finding listed the catalog lesson rows of `default-until-220` as kept-state lesson hrefs, but not the
+"Сначала пройдите" links the same drawing renders (`catalog/prototype.html:135` ff.), so the round-4 rework fixed the rows
+only and round 4 had to raise the links.
+Rule: When a finding names hrefs of a state, grep every href that state renders and name all of them, not the most
+visible element.
