@@ -974,3 +974,92 @@ Rule: In a DESIGN rework, brief the role to delete the failing rule or sentence 
 obligation, unless the issue cannot be met without it; pass the judges the byte diff against the last round and a
 grep of every place that names each touched string or control. Keep obligations in the repo, not only in an issue
 comment that may not be postable.
+
+### 2026-11-23: An ADR amendment specified log lines one by one and cost a third design round (#219)
+judge_design round 1 failed 3/3 (course id rule only for URL ids, a "required" CI job that GitHub does not enforce,
+a replaced sentence named by ordinal, a renamed course directory with no operator signal). My round-1 brief asked the
+architect to name a log line for every operator-invisible state; round 2 then failed on the same class, because the
+#220 test list did not pin each of those lines. Stepan chose to cut: the amendment now holds one obligation of #220
+(decide, document and test what an operator sees; no user id, no file contents) instead of per-line text, and round 3
+passed 3/3. Separately, all three round-1 judges lacked a shell and could not read the issue body; from round 2 the
+brief quoted the issue bullets.
+Rule: an ADR states decisions and constraints on log lines (what must be distinguishable, what they never carry), not
+the lines themselves; the implementing issue owns and tests the exact lines. When judges cannot run `gh`, the brief
+quotes the issue text they must check against.
+
+### 2026-11-21: A test-only task spent four design rounds on its own evidence harness (#206)
+#206 adds one Playwright test (the AC51 reset dialog case). Every judge found the test itself sound from round 1.
+All seven FAILs over four rounds were in the test plan: first in predicted red sets, then in a log-reading script
+with eight checks and a dozen self-tests whose expected vectors kept being incomplete, and in round 4 in a closed
+image fetch list whose grep missed the line forms tester.md names. My round-1 brief asked the architect to make every
+read check provably able to fail, which grew the harness the later rounds failed on. The orchestrator then removed
+the harness (round 4: two quoted runs, green and one mutation), and round 4 still failed on the one closed list left.
+Rule: for a test-only task, brief the architect from the start for the smallest evidence that decides it (a green
+run and one named mutation, with the relevant runner output quoted), not a script that grades the logs. Any closed
+list the plan keeps is checked once against a real log of the same recipe (another session's log counts) before
+judge_design.
+
+### 2026-11-21: A lost design cost six design rounds, most of them on ADR text for other issues (#199)
+#199 was written to implement rev 4o of the #163 design "unchanged", but that design, its ADR sweep and its sketch
+suite lived only in git-ignored plans/ of removed worktrees, so the task became a rebuild. judge_design took six
+rounds: r1 0/3 (same-uid attacker, observables decided by reading, procedure 21 comparing other sessions' objects),
+r2 2/3 (restart cost missing, a #230 gate red on main), r3 2/3 (paste block unfenced, lock read order), r4 1/3 and
+r5 2/3 (the lock protocol dictated for #196 deadlocked on the non-reentrant KeyedMutex and then banned only one call
+shape), r6 3/3 once Stepan moved the protocol into a #196 obligation. The code-PR part was stable from r3 on and passed
+judge_code 3/3 in round 1. What worked: a researcher measuring the design's forms in a throwaway clone between
+rounds, running every gate on main with its seed before a round, rendering paste blocks with `gh api markdown`, and a
+byte snapshot of the design before each architect rewrite (the architect role has Write only) so the diff proved the
+edit stayed in scope.
+Rule: a design that other issues build on is posted to its issue as soon as it is approved, not left in plans/.
+When an issue's design would dictate behaviour another issue owns (a lock protocol, a route), state it as a named
+obligation with constraints from the start instead of as ADR text. Before handing a design to an architect for a
+targeted edit, snapshot the file and diff afterwards; give judges the diff.
+
+### 2026-11-21: Two design rounds on a dictated comment that listed which actions change a box (#216)
+judge_design passed 3/3 in round 3 (approved by the main orchestrator). Rounds 1 and 2 failed only in architecture,
+both on the same sentence in the dictated `scrollable-code.tsx` comment and its Verified and F6 echoes: a list of user
+actions that do or do not change the `pre`'s box. Round 1 claimed the one-pane switch and zoom change it; round 2
+claimed the one-pane switch never does, false at viewport height <= 30rem with classic scrollbars. My round-1 brief
+asked the architect to fix that line and sweep comments for overclaims, so the rewrite produced a new, narrower list
+that was again wrong in one corner. Round 3 dropped every list and stated only the mechanism (the observer reruns on
+any box change; a remount decides afresh), and judge_code passed 3/3 in round 1. The size was also misjudged: TASK
+by the issue, 8 files and about 360 lines with tests.
+Rule: when a dictated comment or failure row enumerates cases ("X, Y and Z change the box", "W does not"), brief the
+architect from round 1 to state the mechanism the code relies on instead of a case list, unless the list is
+exhaustive and each case is checked against the code that sizes the element. Count test lines in the tier sizing.
+
+### 2026-11-24: A sentence I moved "to remove ambiguity" was also the scope of the rule it left (#233)
+judge_design round 5: the architect's cross-check relied on "In-page anchors keep the state; sign-in has no release
+form." applying to every state, but the sentence sat inside L1. I briefed moving it into the LT paragraph. That
+sentence was also what limited L1 to cross-page hrefs, so after the move L1 ("an href of a past or kept state to a
+catalog module section opens its default state") covered the in-page module list of the kept catalog states too,
+the opposite of the LT sentence. Consistency failed the round on it; usability and accessibility passed.
+Rule: before moving a sentence out of a rule, read the rule without it and check its scope did not widen; when a
+rule needs a scope, state it in the rule itself ("on another page"), never by a neighbouring exception.
+
+### 2026-11-24: Six design rounds on link targets, closed by a parsed two-direction anchor check (#233)
+judge_design took six rounds, every FAIL from round 2 on in one class: where a state's links go (shared top bar,
+kept-state lesson links, prerequisite links, pointers that covered no anchor, a moved sentence that widened L1).
+Each rework fixed the named links and the next round found the next one, because the tables were checked by
+reading. What closed it: running the consistency judge's parser (each a[href] / [data-goto-state] by data-state
+scope, per state) and checking two directions against the LT tables: every anchor has exactly one rule, every rule
+cell covers an anchor. The author phase reused it per page and judge_ux needed two rounds, the second only for state
+globs (`attempts-*`) that a new state had joined.
+Rule: when a DESIGN task assigns link targets per state, give the architect the parsed anchor list from round 1 and
+require the two-direction check before the first judge round; in the author brief, require a sweep of every state
+glob and counted list in acceptance notes against the page's data-state-label set.
+
+### 2026-11-23: An ADR that paraphrased a parser took five design rounds (#135)
+judge_design for the task.md quiz threshold check passed only in round 5. Security passed every round; the other
+failures were nearly all one class: the ADR-0001 item 6 amendment described the reader in English (which words a
+count may hold, how lines are trimmed and sentences split, "the form" of the sentence, which counts pass unchecked),
+and each rewrite drifted from the regexes while its sweep table said "exact", because the expected column was taken
+from the code. My round 1 brief asked the architect to make the ADR "name exactly what the code matches", which set
+up the paraphrase. Stepan's fix was to delete every sentence that described the reader and name the code and its
+fixture table as normative. Separately: in round 2 the architect ran a prototype outside the workspace with
+`pnpm exec`, which did a lockfile-less install into the worktree (vitest 5.1.1) that git status could not show; and
+the TASK tier was set from the issue while the change came to about 1 200 lines, most of them fixtures.
+Rule: when a contract or ADR text covers parser or matcher behaviour, the brief says from round 1 that the text
+states only the author-level rule and names the code and its test table as normative, with no description of
+phrasings, tokens or residuals. Any prototype run outside the workspace calls the workspace's binaries directly,
+never pnpm, and each run logs the tool version next to the lockfile pin; judges each work on a private copy.

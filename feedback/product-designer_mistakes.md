@@ -206,3 +206,16 @@ no Alert. The prototype comment at `prototype.html:3034` ("present and empty in 
 than Prototype limitation 6 (e), which draws `#mentor-status` in the 20 `#state-mentor-*` states only.
 Rule: When a note justifies markup by "every other X", grep X in this page's Components, Copy and prototype and make the
 sentence true for each hit; re-read the HTML comment beside any element whose scope a round changed.
+
+### 2026-11-24: A state glob kept its old meaning after a new state joined it (#233, judge_ux round 1, consistency)
+Dashboard acceptance.md uses `attempts-*` for the one-course #35 states, and #233 added `attempts-two-courses`,
+which the glob now matches. AC61 (:620) says the `attempts-*` states show one block, AC67 (:651) says no row in
+the `attempts-*` states holds a course name, and L4 (:209) says the heading links of the `attempts-*` states
+open catalog `default`: all three are false for `attempts-two-courses` (two blocks, course names in every F18
+row, heading to `#state-courses-two`), and AC67 contradicts its own first sentence. The same L4 item also
+leaves out the six block-1 module rows of `courses-all-passed`, which open catalog `default` with other
+progress (design row: "block 1 rows: cat `#<moduleId>` L4"), so the opening "every link ... same sample
+progress, except" claims they match.
+Rule: When a new state id matches a glob or list the note already uses, grep every use of that glob and
+either exclude the new state by name or confirm the claim holds for it; and check each L-rule enumeration
+against the design table row by row, every state and every link kind.
