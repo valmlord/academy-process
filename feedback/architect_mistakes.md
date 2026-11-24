@@ -3403,6 +3403,28 @@ reading run over table C, not by the code's output.
 The amended paragraph (design section 7) gives the own-sentence form as `` `<id>` (квиз): Q вопросов, нужно K верных. `` and then says a sentence that begins with `` `<id>` (квиз): `` "but is not in the first form" is reported. 13 of the 18 course sentences are not in that form literally ("вопросов-сценариев", "нужно не меньше 5 верных", words before "нужно") and the code reads them with 0 issues (run on a prototype copy: `` `closed-environments-quiz` (квиз): 6 вопросов-сценариев, нужно не меньше 5 верных. `` and "... 6 вопросов про всё подряд, нужно 5 верных." give 0 issues). The next bullet, "Counts written another way are not recognised, and their sentences pass unchecked", is false for anchor-led sentences: "`closed-environments-quiz` (квиз): шесть вопросов, нужно пять верных." and "..., нужно 5/6." are reported (T4). Section 7a ran only examples that agree with each sentence, never the course's own variants A, C, D against the sentence that says what is reported.
 Rule: For every ADR sentence that says what is reported or what passes, run the course's own variants and the other bullets' examples against it, not only the sentence's own examples.
 
+### 2026-11-24: Issue text made the source of a file path with no form check (#221, judge_design round 1, security)
+plans/221-course-reference.md Q1 makes "the `<course-id>` of the "Module / lesson" path in its issue" the course
+of a task and builds `docs/courses/<course-id>/reference.md` from it. valmlord/academy is public and the
+module.yml form is open to any GitHub account, so that field is untrusted text, and it now reaches roles that have
+Bash (content-researcher, practice-designer, student). The design states no form for the value (one path segment,
+an existing directory directly under `course/`, ADR-0009 item 6), no "ask on mismatch", and no rule that the value
+is data and never pasted into a shell command. F3 even says the orchestrator's prompt carries the path, which
+contradicts Q1 naming the issue as the source.
+Rule: When a design turns issue or other untrusted text into a path or argument an agent uses, name one source,
+state the accepted form and the existence check, say what the role does on anything else (stop and ask), and
+forbid interpolating it into a shell command.
+
+### 2026-11-24: Tester grep could not see .claude/, and a count check could not fail (#221, judge_design round 1, operations)
+T1 of the #221 tester plan ran `grep -rn ... .` from the product worktree root and expected the one historical
+`./.claude/feedback/...` line. In an agent's Bash `grep` is a shell function that runs ugrep with `--ignore-files`,
+and the product `.gitignore` ignores `/.claude/`, so every process-repo hit (CLAUDE.md, the content briefs) is
+silently dropped: the check meant to catch stale pointers in the process repo saw none of it. T2 also expected
+"at least 1" `_contract.md` per brief, but each brief already names `_contract.md` once in its load list, so the
+check passed before any edit.
+Rule: A tester grep across both repos uses `command grep` (or `git grep` per repo), and every expected count is
+checked against the current tree first: if the unchanged tree already meets it, the check cannot fail.
+
 ### 2026-11-24: #220 design obliges #241 to add the stub course #241 ruled out, and claims the proxy matcher covers every app path (#220, judge_design round 1, security)
 `plans/220-design.md:213` ("the content team adds the #217 stub only with #241") and `:319` ("the stub course added
 together with it") hand #241 a second course in `course/`, while #241's own text decides the two-course e2e runs

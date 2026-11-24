@@ -17,7 +17,7 @@ Talk to him in Russian, short and direct. No em dashes; straight double quotes.
 | Team | Works on | Agents | Judges |
 |------|----------|--------|--------|
 | dev | `apps/`, `services/`, `packages/`, `images/`, infra, CI | `.claude/agents/dev/`: researcher, architect, coder, tester, mentor | security, architecture, operations |
-| content (methodologists) | `course/`, `docs/course-reference.md`, `.claude/learner/` notes | `.claude/agents/content/`: content-researcher, curriculum-architect, lesson-author, practice-designer, student | accuracy, pedagogy, assessment |
+| content (methodologists) | `course/`, `docs/courses/`, `docs/check-exit-codes.md`, `.claude/learner/` notes | `.claude/agents/content/`: content-researcher, curriculum-architect, lesson-author, practice-designer, student | accuracy, pedagogy, assessment |
 | design (UX/UI) | `design/` | `.claude/agents/design/`: ux-researcher, product-designer, ui-designer | usability, accessibility, visual consistency |
 
 **The contract between the teams** is the lesson format: `packages/lesson-schema` + ADR-0001.
