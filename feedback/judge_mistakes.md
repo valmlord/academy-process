@@ -703,6 +703,13 @@ the parenthesis; a missing row is a finding even when another item covers it.
 Rule: In a "main sentences #218 makes false" review, read the prose right under every table #218 edits, not only the
 table's rows.
 
+### 2026-11-21: Usability round 1 walked A71-1 without the check that has no `mentorAfter` (#71, judge_design round 2, usability)
+A71-1's threshold on the optional `attempts.mentorAfter` was in the design from round 1. Round 1 walked the dead end on
+a closed check but never ran the entry condition over real `lesson.yaml` data, where most checks have no `mentorAfter`
+and module 04's have no limit either, so F16 has no entry there. Found in round 2.
+Rule: For every entry condition that reads a lesson field, grep the field's count across `course/**/lesson.yaml` in round
+1 and walk the absent-field case, not only the sample checks the design note names.
+
 ### 2026-11-18: Round-1 finding sized the pre-existing volume window as "milliseconds" (#181, judge_design round 2, architecture)
 In round 1 I wrote that today's race lives "only in the milliseconds between `ensureVolume` and the first create". The
 volume can be removed until the daemon references it at `setHostConfig` (moby `daemon/create.go:203`), after
@@ -710,6 +717,22 @@ volume can be removed until the daemon references it at `setHostConfig` (moby `d
 consequence, F8, K8 and Q4, and it cost a round.
 Rule: A judge finding that states a window or a bound is held to the same proof as the design: name the call where it
 ends in the code of the system that owns it.
+
+### 2026-11-21: Consistency round 1 did not read the vocabulary rows of the nouns in A71-2's cost sentence (#71, judge_design round 2, consistency)
+A71-2 adds hints to the total and says "the total's "разборы" then covers hints, accepted", yet round 1 did not compare
+that with the vocabulary rows "total cost" (`ia.md:64`, "checks and mentor reviews") and "mentor review" (`ia.md:52`,
+"разбор") or with `progress.md` A72-11 / A72-16, so the stale rows survived to round 2. Round 1 also did not read the
+neighbours of the R2 budget-dialog sentence it failed (`ia.md:297-298`, `:305`).
+Rule: For every "accepted" widening of a word in a new rule, read the vocabulary row of that word and every rule titled by
+it in round 1; for every sentence failed, read the sentences before and after it in the same round.
+
+### 2026-11-23: Consistency rounds 1-2 did not read the vocabulary row "run" when the review took over the run's dialog (#71, judge_design round 3, consistency)
+From round 1, A71-2 has "Разобрать с ментором" open the run's budget confirmation. The vocabulary row "run" (`ia.md:40`,
+"one press of "Проверить", or "Запустить" in the budget confirmation") and `checks.md:26` define a run by that dialog's
+button, so a review's "Запустить" reads as a run. Rounds 1 and 2 failed the review's dialog focus at `ia.md:305` but
+never read the vocabulary row that names the dialog, or the B23 and B24 rows.
+Rule: When a design reuses a component that a vocabulary row or a B-table row names, grep the component's name across
+the vocabulary and the transition tables in round 1, and check that each sentence still holds for both uses.
 
 ### 2026-11-21: Round-3 fix proposal named one of two stoppers and asked for a lock hold without reading the lock (#199, judge_design round 4, operations)
 My round-3 B2 fix said "a run request reads the start record only after it has taken the workspace lock" and that the

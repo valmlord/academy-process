@@ -1269,6 +1269,146 @@ clause and the "course block" row) restate the rule's outcome before the pointer
 Rule: An "until #220 + pointer" clause names the term or rule id only ("from #220: `ia.md` A218-2"); it never states
 what the rule renders, because that copy drifts when the rule changes.
 
+### 2026-11-21: A71-8 / A71-9 leave a mentor call that ends during a run or after a newer result undefined (#71, judge_design round 1, accessibility)
+`ia.md:661-668` lets "Проверить" start a run while a mentor call runs (no R1 row blocks it), hides every mentor block
+during the run, and A71-6 starts an empty ladder for the newer result, while A71-11 lists no hint in the history. A71-8
+then has no shown target, the retry focus guard keeps focus, and A71-9 would write "Подсказка готова: <check title>" for
+a hint the page never shows (a misleading status message, WCAG 4.1.3).
+Rule: For every "when a call ends" rule, list each state the page can be in at that moment (run going, newer result,
+row collapsed, tab hidden) and give each its target or its silence.
+
+### 2026-11-21: A71-7 points a mentor control's R1 reason at text that is not next to it (#71, judge_design round 1, accessibility)
+`ia.md:663-664` describes every mentor control of a check by the one "Ментор читает попытку" text of the pending call,
+which stands in the review block or under the hint list, so "Разобрать с ментором" (during a hint call) and the ladder
+controls (during a review call) show no reason next to them, against R1 (`ia.md:164`), while R1 (`ia.md:194-195`) says
+the mentor controls "follow the same rule".
+Rule: A control's R1 reason is rendered next to that control; a shared reason text elsewhere needs an R1 exception
+stated in R1 itself, not in the section that uses it.
+
+### 2026-11-21: A spent review budget is a permanent dead end on a closed check, while a spent hint budget may be retried (#71, judge_design round 1, usability)
+A71-5 (`ia.md:641-644`) gives the spent-budget review block no "Повторить", and A71-1 (`ia.md:610-611`) never brings the
+button back for a result that has a block. A closed check (and a closed quiz) never gets a newer result (S2), so the
+review task.md promises after a close ("с разбором у ментора") can never be had there, and F16 Exit "Проверить" does not
+apply. A71-6 (`ia.md:655-656`) lets the same budget stop on a hint be pressed again, each press a new paid call, which is
+the very reason A71-5 gives for refusing it. One situation, two outcomes, and one of them has no way on.
+Rule: For every error state with no retry, walk it on a check that can get no newer result (closed check, closed quiz)
+and name what the learner does next; give the same failure the same recovery on every mentor surface, or state why not.
+
+### 2026-11-21: Removing the mentor reply field left auth.md promising a reply draft (#71, judge_design round 1, usability)
+`auth.md:91-92` (F2 keyboard path) still says "Quiz answers and a mentor reply draft survive the round trip (`quiz.md`,
+`mentor.md`)". The rewrite of `mentor.md` removed the reply field and its `sessionStorage` draft (A71-5, FU28), and the
+sweep (`plans/71-sweep.md`) covered ia.md, mentor.md, checks.md, progress.md and quiz.md only. A grep for "reply" or
+"draft" over `design/` finds it.
+Rule: When a design removes a feature, grep its nouns (field, draft, button label, storage key) across every file in
+`design/` and fix each hit, not only the files the sweep planned to touch.
+
+### 2026-11-21: A review opens the budget confirmation, but its focus sentences still name only "Проверить" (#71, judge_design round 1, consistency)
+A71-2 gives the review's dialog "the pressed control in place of "Проверить"" and the text "Разбор расходует токены:",
+and `checks.md:438` adds "A review opens it too". Left unscoped: `ia.md:291-293` (R2, "When the budget confirmation
+closes because of such a change, focus moves to "Проверить" first"), `checks.md:443-446` (one listed check reads "Эта
+проверка расходует токены:"), `checks.md:458-466` (Esc/"Отмена" to "Проверить", "Запустить" keeps focus on "Проверить",
+B23 to "Проверить", "In B6 and B23 the order is..."). Each now states the wrong target or text for a review.
+Rule: When a new caller reuses a component, read every sentence of that component's section and of every rule that
+names it, and scope each one that holds for the old caller only.
+
+### 2026-11-21: "Ментор читает попытку" became hint copy against the "попытка" vocabulary row (#71, judge_design round 1, consistency)
+`ia.md:41` limits "попытка" to "history and review copy" and lists "Ментор читает попытку" as review copy (D3). A71-6
+uses it as the hint busy text and A71-7 as the disabled reason of every mentor control, hint controls included, while
+A71-6's own reason says "a hint answers the files as they are now", so the text says the mentor reads the attempt for
+a call that reads the files.
+Rule: When a string is reused in a new place, check the vocabulary row of every noun in it against the new place and
+against the rule's own reasons.
+
+### 2026-11-21: F17 "Time limits: as F16" now points the hint timer at the review block (#71, judge_design round 1, consistency)
+`mentor.md:76` was not changed, but F16's Time limits (`mentor.md:45`) now say "what the block shows: A71-5", the
+review block. The hint busy display is A71-6, which does not say what its elapsed time counts from; A71-5 says
+"counted from the request, also after a reload" for the review only, while A71-7 lets both calls go on across a reload.
+Rule: After rewriting a flow section, grep "as F<n>" pointers to it and re-read each against the new text; one
+component (busy text plus timer) gets one definition for every caller.
+
+### 2026-11-21: mentor.md opening still places the review "in tab Проверки, under the check results of the attempt" (#71, judge_design round 1, consistency)
+`mentor.md:3-5` was kept while A71-1 adds the closed quiz block (Квиз tab) and A71-5 puts the block after the counter
+of the check's latest result; "under the check results of the attempt" is A71-10's history form only. It is also a
+placement rule stated outside `ia.md`.
+Rule: Re-read a flow file's opening "Page:" sentence against every placement rule the task adds.
+
+### 2026-11-21: The mentor review block in the quiz panel collides with the quiz "review" and with quiz.md's #36 release row (#71, judge_design round 1, consistency)
+`quiz.md` calls the answers view "the review" (F15.5, `:108`, `:155-156`, `:255`; `ia.md:89` "(review)"). A71 uses bare
+"review" for the mentor review and A71-1/A71-5 put its block in the same Квиз panel, so two concepts share one doc
+term in one panel (the case `ia.md:49` handles for "Вопрос"). `quiz.md:108` ("the quiz panel and everything in it ...
+rendered" from #36) is now false for the review block, which is from #37; only the button has a row (`:114`).
+Rule: When a feature moves into another flow's panel, check that panel's release table rows and every doc term the
+two flows share, and add a vocabulary note or a distinct term before reusing the word.
+
+### 2026-11-21: A71-1 never says what a check without `attempts.mentorAfter` offers, so F16 is unreachable on module 04 (#71, judge_design round 2, usability)
+`ia.md:612-618` offers "Разобрать с ментором" at a counter "of at least the `attempts.mentorAfter` the server reports"
+or on a closed check. The field is optional (`packages/lesson-schema/src/schema.ts:40`); course/ has 23 `mentorAfter`
+lines against 87 check `kind:` lines, and no module 04 lesson has a `limit` or a `mentorAfter`. Those checks never close
+and never reach a threshold, so F16 has no entry there, while learning-process §3 and §6 put a review after every
+submission. Neither A71-1 nor "Changed defaults" states the case, so Stepan cannot review it at the PR.
+Rule: For every entry condition built on an optional field, state the absent-field case in the rule and, when it removes
+a flow's entry for real data, list it in the design note's changed defaults with the count of affected checks.
+
+### 2026-11-21: "A call and a run never overlap" closed the newer-result case during a call, not before the press (#71, judge_design round 2, usability)
+A71-8 (`ia.md:697-702`) defines a stale tab's refused press for two reasons only (a running run, a pending call), and
+A71-13 item 3 (`ia.md:727-730`) gives the server no rule on what result a call answers. A tab that has not re-read (two
+windows side by side; a press before the visibility re-read returns) can still show result r1 after a run in another
+tab produced r2, or show "Разобрать с ментором" / "Следующая подсказка" after another tab already received that review
+or level. The press then starts a paid call that answers a result the panel does not show, or buys a review or level a
+second time; no rule says what the tab shows or where focus goes. This is round 1's class A ("a call whose result is no
+longer the shown one") entered from the other side.
+Rule: For a "stale tab" class, walk each thing the press depends on (latest result id, review present, highest level
+received, call pending, run going) changing before the press, and give each its server refusal and its on-screen result.
+
+### 2026-11-21: Round-2 fixes scoped the edited sentence but not its neighbours in R2 and checks.md (#71, judge_design round 2, consistency)
+The rework scoped `ia.md:296` and `checks.md:365` ("this table is every case") but left the sentences around them:
+`ia.md:297-298` ("Every such transition of the checks is listed ... B1-B26"), `checks.md:363-364` ("The controls that can
+go are ..." without the mentor controls that `ia.md:280-281` now lists as removable), `ia.md:364-368` (retry focus guard:
+"Nothing new is owed when focus stays", "The guard covers the Loads and Fails again columns", both false for the mentor
+call end the same paragraph adds at :359-360), and `ia.md:305`, where the review's return stands inside the subject of
+"go to controls that are always rendered", which A71-2 itself denies.
+Rule: After scoping one sentence, read every sentence of the same paragraph and the one before and after it for a closed
+list or an every/only/always claim the new caller breaks, and scope each in the same pass.
+
+### 2026-11-21: The ladder's reason during a hint call is defined three ways in ia.md (#71, judge_design round 2, consistency)
+A71-7 (`ia.md:683-684`) makes the ladder's reason "the busy display's text (not its timer)", while the disabled reason
+set (`ia.md:84`, "during a hint call the busy display ... is the ladder controls' reason") and R1 (`ia.md:197-198`, "a
+busy display right after the row as their reason") say the whole display, timer included, and row 84 restates A71-7's
+condition before its pointer.
+Rule: A rule's condition and outcome stand in one place; every other row names the label and points, and a pointer
+never paraphrases the target more widely than the target says.
+
+### 2026-11-21: Hints joined the total and the stored record, but the vocabulary row and A72-16's title kept the old claim (#71, judge_design round 2, consistency)
+A71-2 (`ia.md:626-627`) adds hints to the total and accepts that "разборы" covers them, but the vocabulary row "total
+cost" (`ia.md:64`, "names what it sums: checks and mentor reviews") and row "mentor review" (`ia.md:52`, "разбор") do not
+say so, so one Russian word names two concepts unrecorded. `progress.md:551` keeps the A72-16 title "Hints in F19.2 only
+once they are stored", which A71-11 (stored from #37, still not listed) makes false. `auth.md:91-92` replaced the reply
+draft with "a mentor call goes on meanwhile", a restated A71-7 outcome before the pointer.
+Rule: When a decision accepts a wider meaning for a word or changes when something shows, update the vocabulary row of
+that word and every title that states the old condition in the same edit; outside ia.md write the pointer alone.
+
+### 2026-11-23: The round-2 cut removed a rule but kept the pointers and the sentences that depended on it (#71, judge_design round 3, consistency)
+Two places still lean on what the cut took out of A71-2. First, `mentor.md:58-59` F17.2 still says a hint press goes
+"at the cost `ia.md` A71-2 names". In round 2, A71-2 said "A review and a hint add to their attempt's cost"; it now
+names only a review's cost and a hint's "до $N" budget, and a hint's cost is an obligation. So the pointer now gives a
+cost that no rule defines. Second, A71-2 now has the review use the run's budget confirmation, keep it open on a
+background change and send focus back to the pressed control. The sentences that still read as true for every budget
+confirmation were not narrowed: `checks.md:393` B23 (closes on a background change), `checks.md:394` B24 (focus back to
+"Проверить"), and the vocabulary definition of a run, `ia.md:40` and `checks.md:26` ("Запустить" in the budget
+confirmation is a run). A71-8 already writes "for a run's, B24", so ia.md treats B24 as a run's while checks.md does
+not.
+Rule: When a cut removes or reverses part of a rule, grep every pointer to that rule id across `design/flows/` and reread
+each one against the new text. When a shared component gets a second use, narrow every unscoped sentence about it to
+its first use ("a run's") in the same edit, vocabulary rows included.
+
+### 2026-11-24: Round 4 gave the review controls "до $N" but left the copy register listing it for the hint ladder only (#71, judge_design round 4, consistency)
+A71-2 (`ia.md:621-622`) now has "Разобрать с ментором" and the review's "Повторить" described by "до $N", like the hint
+controls. The closed copy set row "mentor (D3)" (`ia.md:91`) groups its strings by place and still lists "the button
+description "до $N"" under "hint ladder:" only; the review block's list has no "до $N" and "Разобрать с ментором" has no
+entry. A dev building the review controls from the register finds no description for them.
+Rule: When a rule moves a string to a new control, update the copy register row's place grouping in the same edit, so
+every control that shows the string is named where the register lists it.
+
 ### 2026-11-23: One F6 landing claimed for "every state below", including states R3 lands elsewhere (#233, judge_design round 1, accessibility)
 `plans/233-course-prototypes-design.md:97` says the catalog's `F6` to `main` "lands on the first module link in every
 state below", and the table under it lists `loading` (Skeletons `aria-hidden`, no module link: R3 lands on `main`

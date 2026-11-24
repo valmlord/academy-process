@@ -960,6 +960,21 @@ statements of what #222 depends on disagree; a #219 decision against Q4 would no
 Rule: When a rework changes which #218 parts point to a moved-out issue, re-read that issue's scope text (the plans
 comment and the posted body) against the design and update both in the same round.
 
+### 2026-11-24: Rewrite briefs kept a DESIGN task in judge rounds for days; deletion briefs closed it (#71)
+judge_design took five rounds and judge_ux three. Rounds 1-2 failed on the same two classes (a state the rules
+did not cover, and old sentences an extended rule made false), because each rework brief asked for the failing
+place to be rewritten, which added new sentences that the next round failed. From round 3 Stepan's rule was to
+delete the failing place instead (drop the review's budget dialog, the mentorAfter threshold, the stale-tab cases,
+the hint cost in the total) and keep each removed need as a one-line obligation in the repo
+(`mentor.md` "Not designed in #71"); every later round was a byte diff of a few lines plus a grep of every place
+naming the touched string, and three of the four later rounds failed only on one leftover sentence. Separately,
+`gh issue comment` was denied in this session by the permission classifier, so obligations meant for the issue
+had to live in the design.
+Rule: In a DESIGN rework, brief the role to delete the failing rule or sentence and record the need as an
+obligation, unless the issue cannot be met without it; pass the judges the byte diff against the last round and a
+grep of every place that names each touched string or control. Keep obligations in the repo, not only in an issue
+comment that may not be postable.
+
 ### 2026-11-23: An ADR amendment specified log lines one by one and cost a third design round (#219)
 judge_design round 1 failed 3/3 (course id rule only for URL ids, a "required" CI job that GitHub does not enforce,
 a replaced sentence named by ordinal, a renamed course directory with no operator signal). My round-1 brief asked the
@@ -1057,3 +1072,21 @@ id taken from issue text had no accepted form. Round 2 passed 3/3 after `command
 0 before the change, and a two-sentence form rule in `_contract.md`. judge_code passed 3/3 in round 1.
 Rule: any grep that must search `.claude/` from the product root uses `command grep` (or `git grep` per repo), and
 the brief asks for each check's output on the unchanged tree, which must differ from the expected result.
+
+### 2026-11-24: A plan item dictated a comment's reason I had not checked against the code path (#220)
+judge_code round 1 (architecture) failed on the doc comment of `firstReadableCourse`: it said the non-slug and
+`.: no course` results log no per-request line because the startup recompute and the export report such a root.
+The coder copied that reason from my plan item P2, which I wrote from a judge's non-blocking note. For `.: no course`
+it is false: that result comes from a `pnpm dev` race after the listing, which neither startup nor the export sees.
+Rule: a plan item that dictates a comment states only the guarantee the code gives; a reason or "reported by" clause
+goes in only after I traced the path that produces the case, otherwise it is left out.
+
+### 2026-11-24: A design size estimate missed by 70 % on test lines, after the issue was already split (#220)
+The approved design estimated about 1470 lines (480 source, 990 tests). The code came to 2479 (857 source, 1622
+tests, fixture and fakes): new test helpers, page tests that need mocks of server components, and adapting every
+existing test to the renamed fixture were not in the table. The orchestrator accepted one PR because the core commit
+could not be split without breaking callers. judge_design went 3 rounds (all FAILs on obligation text about other
+issues, closed by a sweep to bare pointers), judge_code 2 rounds (one false comment reason from my plan, one dead
+test buffer).
+Rule: a size table counts test helpers, mocks and adapted existing tests as their own rows, and when the estimate is
+within 20 % of the bound, treat it as over and name the split before judge_design.
