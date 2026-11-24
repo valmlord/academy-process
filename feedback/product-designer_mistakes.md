@@ -170,3 +170,39 @@ AC56 also names only limitation 1 as an exception, though limitations 2-3 are Ba
 Rule: For every element shared across quiz states, check its facts against each state's attempt number and quiz
 row, and do the same for every state a control leads to. Each quiz.md state is drawn or listed in "Prototype
 limitations", and every limitation the headless AC runs into is named as an exception in that AC.
+
+### 2026-11-24: A from-#37 live container drawn in every state, the v1 ones included (#71, judge_ux round 1, usability)
+`lesson/prototype.html:3035` puts the mentor status container `#mentor-status` in "Проверка" with no `data-state`, so
+all 124 states drawn before #71 (v1, #35, #36) now hold a from-#37 element. A71-12 lists the container among the things
+not rendered before #37, AC86 says "before #37 no state shows ... mentor status container", and Status says what binds
+#34-#36 is unchanged; yet AC84 says the prototype draws it in "every state that draws "Проверка"". The quiz notice
+container (`:210`) and the history status container (inside the F19 section) were release-scoped by `data-state`; this
+one broke that precedent, and Prototype limitation 6 (e) does not record it.
+Rule: Every element a task adds is release-scoped like its siblings: give it the `data-state` list of the states of its
+release, or record it as a prototype limitation; then grep the new element's id and check it against every AC that
+names its release.
+
+### 2026-11-24: AC83 restates R2's focus targets in other words and gets them wrong (#71, judge_ux round 1, consistency)
+`lesson/acceptance.md:2066-2069` (AC83) says a focused control the refused press's re-read removes moves focus to "the
+row's disclosure button, or "Проверить"". R2 "Focus after a background change" (`ia.md:272`) and the page's own
+Interactions table (`acceptance.md:961`) give the closed quiz block's place 1 target, the quiz result block, and
+"Проверить" is never removed (R2 place 3), so it is no target of this rule. A tester following AC83 would accept the
+wrong landing for "Разобрать с ментором" in the closed quiz block.
+Rule: An AC that names the targets of a rule either points to the rule (or to the page's table) without a gloss, or
+lists every place of the rule that applies, checked line by line against the rule.
+
+### 2026-11-24: AC80 narrows A71-6's ladder placement (#71, judge_ux round 1, consistency)
+A71-6 (`ia.md:649-651`) puts the ladder "after the review block or its button, or after the counter when the panel
+has neither". AC80 (`lesson/acceptance.md:2038-2039`) drops the last case. A71-1 offers no review on a runner error,
+while A71-6 still draws the ladder there, so that row is exactly the case AC80 leaves without a placement.
+Rule: When an AC restates a placement or entry rule, copy every alternative of the rule, and walk each case the
+neighbouring rules exclude (here A71-1's runner error) against the AC text.
+
+### 2026-11-24: Acceptance says the review's retry looks "as every other Повторить" while its own Button row draws one default (#71, judge_ux round 2, consistency)
+`lesson/acceptance.md:357-358` ("a secondary sm Button, inside the destructive Alert's `.alert-actions`, as every other
+"Повторить"") contradicts the same file's Button row (`:303`, "status actions (default sm)") and Copy row (`:1158`,
+status actions "Повторить / ..."): the environment status bar's "Повторить" (`prototype.html:3082`) is default sm and in
+no Alert. The prototype comment at `prototype.html:3034` ("present and empty in every #37 state") also still reads wider
+than Prototype limitation 6 (e), which draws `#mentor-status` in the 20 `#state-mentor-*` states only.
+Rule: When a note justifies markup by "every other X", grep X in this page's Components, Copy and prototype and make the
+sentence true for each hit; re-read the HTML comment beside any element whose scope a round changed.
