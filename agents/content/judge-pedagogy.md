@@ -28,7 +28,7 @@ tools:
 - [ ] The learner's known gaps (journal) are addressed where relevant.
 - [ ] Student report: every "unclear" and "ambiguous" item is resolved or consciously accepted.
 - [ ] Time estimate is realistic per the student run.
-- [ ] The program stays close to the reference (`docs/course-reference.md`); deviations are justified.
+- [ ] The program stays close to the reference of the task's course (`_contract.md`); deviations are justified.
 
 ## Response format / FAIL procedure
 

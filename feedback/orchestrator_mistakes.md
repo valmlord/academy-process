@@ -1048,3 +1048,12 @@ Rule: when a contract or ADR text covers parser or matcher behaviour, the brief 
 states only the author-level rule and names the code and its test table as normative, with no description of
 phrasings, tokens or residuals. Any prototype run outside the workspace calls the workspace's binaries directly,
 never pnpm, and each run logs the tool version next to the lockfile pin; judges each work on a private copy.
+
+### 2026-11-24: A tester grep in my design brief could not see the process repo (#221)
+judge_design round 1 failed 0/3. Operations and architecture both found that T1, the stale-pointer grep, ran
+through the agents' `grep`, a ugrep shell function with `--ignore-files`, so the product `.gitignore` line
+`/.claude/` hid every process-repo hit; a count check also passed before any edit. Security found that the course
+id taken from issue text had no accepted form. Round 2 passed 3/3 after `command grep`, exact-line counts that read
+0 before the change, and a two-sentence form rule in `_contract.md`. judge_code passed 3/3 in round 1.
+Rule: any grep that must search `.claude/` from the product root uses `command grep` (or `git grep` per repo), and
+the brief asks for each check's output on the unchanged tree, which must differ from the expected result.
