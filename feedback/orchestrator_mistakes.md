@@ -960,6 +960,30 @@ statements of what #222 depends on disagree; a #219 decision against Q4 would no
 Rule: When a rework changes which #218 parts point to a moved-out issue, re-read that issue's scope text (the plans
 comment and the posted body) against the design and update both in the same round.
 
+### 2026-11-23: An ADR amendment specified log lines one by one and cost a third design round (#219)
+judge_design round 1 failed 3/3 (course id rule only for URL ids, a "required" CI job that GitHub does not enforce,
+a replaced sentence named by ordinal, a renamed course directory with no operator signal). My round-1 brief asked the
+architect to name a log line for every operator-invisible state; round 2 then failed on the same class, because the
+#220 test list did not pin each of those lines. Stepan chose to cut: the amendment now holds one obligation of #220
+(decide, document and test what an operator sees; no user id, no file contents) instead of per-line text, and round 3
+passed 3/3. Separately, all three round-1 judges lacked a shell and could not read the issue body; from round 2 the
+brief quoted the issue bullets.
+Rule: an ADR states decisions and constraints on log lines (what must be distinguishable, what they never carry), not
+the lines themselves; the implementing issue owns and tests the exact lines. When judges cannot run `gh`, the brief
+quotes the issue text they must check against.
+
+### 2026-11-21: A test-only task spent four design rounds on its own evidence harness (#206)
+#206 adds one Playwright test (the AC51 reset dialog case). Every judge found the test itself sound from round 1.
+All seven FAILs over four rounds were in the test plan: first in predicted red sets, then in a log-reading script
+with eight checks and a dozen self-tests whose expected vectors kept being incomplete, and in round 4 in a closed
+image fetch list whose grep missed the line forms tester.md names. My round-1 brief asked the architect to make every
+read check provably able to fail, which grew the harness the later rounds failed on. The orchestrator then removed
+the harness (round 4: two quoted runs, green and one mutation), and round 4 still failed on the one closed list left.
+Rule: for a test-only task, brief the architect from the start for the smallest evidence that decides it (a green
+run and one named mutation, with the relevant runner output quoted), not a script that grades the logs. Any closed
+list the plan keeps is checked once against a real log of the same recipe (another session's log counts) before
+judge_design.
+
 ### 2026-11-21: A lost design cost six design rounds, most of them on ADR text for other issues (#199)
 #199 was written to implement rev 4o of the #163 design "unchanged", but that design, its ADR sweep and its sketch
 suite lived only in git-ignored plans/ of removed worktrees, so the task became a rebuild. judge_design took six
@@ -1009,3 +1033,18 @@ globs (`attempts-*`) that a new state had joined.
 Rule: when a DESIGN task assigns link targets per state, give the architect the parsed anchor list from round 1 and
 require the two-direction check before the first judge round; in the author brief, require a sweep of every state
 glob and counted list in acceptance notes against the page's data-state-label set.
+
+### 2026-11-23: An ADR that paraphrased a parser took five design rounds (#135)
+judge_design for the task.md quiz threshold check passed only in round 5. Security passed every round; the other
+failures were nearly all one class: the ADR-0001 item 6 amendment described the reader in English (which words a
+count may hold, how lines are trimmed and sentences split, "the form" of the sentence, which counts pass unchecked),
+and each rewrite drifted from the regexes while its sweep table said "exact", because the expected column was taken
+from the code. My round 1 brief asked the architect to make the ADR "name exactly what the code matches", which set
+up the paraphrase. Stepan's fix was to delete every sentence that described the reader and name the code and its
+fixture table as normative. Separately: in round 2 the architect ran a prototype outside the workspace with
+`pnpm exec`, which did a lockfile-less install into the worktree (vitest 5.1.1) that git status could not show; and
+the TASK tier was set from the issue while the change came to about 1 200 lines, most of them fixtures.
+Rule: when a contract or ADR text covers parser or matcher behaviour, the brief says from round 1 that the text
+states only the author-level rule and names the code and its test table as normative, with no description of
+phrasings, tokens or residuals. Any prototype run outside the workspace calls the workspace's binaries directly,
+never pnpm, and each run logs the tool version next to the lockfile pin; judges each work on a private copy.

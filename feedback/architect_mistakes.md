@@ -3105,6 +3105,127 @@ workspace (`api ensure`, :373) survives `compose down` and the recovery reads cl
 Rule: Before naming run directories, `ls` the scratch root and pick names that are absent; a recovery's closing check
 lists everything the script's own preflight lists.
 
+### 2026-11-21: Course id boundary rule scoped to "a URL's course id" while server actions take it as an argument (#219, judge_design round 1, security)
+The #219 ADR-0009 amendment (plans/219-design.md:184-186) checks the id form and looks the id up among listed names
+only for "a URL's course id", and says a lesson page's server actions read "the URL's course" (:182). The lesson
+actions take `courseId: unknown` from the browser (`apps/web/app/(app)/courses/[courseId]/lessons/[lessonId]/actions.ts:35-89`,
+`lib/workspace/environment.ts:98-108`), independent of the page URL, and the not-found page's course id comes from a
+mechanism #220 has not chosen yet. A faithful #220 could read the action argument into a per-course read with no form
+check, leaving only the fs layer's real-path check between browser input and a joined path.
+Rule: A rule about untrusted input names every way the value enters (route params, server action arguments, headers,
+API path params) and puts the check in the one function that turns the value into a read, so no caller can skip it.
+
+### 2026-11-21: ADR text justified a decision with a "required" CI job that GitHub does not enforce (#219, judge_design round 1, operations)
+The #219 amendment (plans/219-design.md:163-164, also alternative 1 at :35-36) keeps the export failing the image
+build on one broken course because "a failing course reaches main only past the required `content:validate` job".
+`gh api repos/valmlord/academy/branches/main/protection` answers 404 "Branch not protected" and `.../rulesets` is
+`[]`: no job is required, and the 2026-10-28 (#23) entry already recorded this. The real guards are the `content`
+job and the `e2e` job's `docker compose up -d --build` both going red, plus the process rule that a PR merges only
+on green CI. The same design accepted "a renamed course directory orphans progress, nothing checks this" although
+the startup recompute already reads every progress row and folds unknown-course rows into one generic `skipped`
+count, so one log line per unknown course id would tell the operator, and renaming back is a recovery the text
+never states.
+Rule: Every enforcement word in ADR text ("required", "blocked", "only past") is backed by a quoted API or file
+answer in the design; a silent data-orphaning residual names the log line that reveals it and the recovery step.
+
+### 2026-11-21: Amendment replaced a sentence by ordinal alone, with two counting conventions in one entry (#219, judge_design round 1, architecture)
+The #219 amendment (plans/219-design.md:165) says "Item 2's first sentence reads ..." without quoting the sentence it
+replaces, and section 6 does not list it among the byte-for-byte quote checks. The same entry calls item 1's "The web
+server reads ..." its "second sentence" (:157), counting the bold title "Runtime reads of an allowlisted copy." as
+sentence one, but calls item 7's "An unreadable or invalid ..." its "first sentence" (:146), not counting "Failures.".
+By the item 1 convention, item 2's first sentence is the title "The allowlist, by structure.", so the replacement
+target is ambiguous in an ADR whose original text stays and whose amendment "wins once accepted".
+Rule: An amendment that replaces text quotes every replaced sentence whole, never an ordinal alone, and the coder's
+quote check lists every replacement in the entry, counted against the entry's replacement bullets.
+
+### 2026-11-21: Class sweep named three operator signals, the test list covered only some of them (#219, judge_design round 2, operations)
+Revision 2 of the #219 design (plans/219-design.md:63-65) lists the signals for a failing course and a root failure:
+the web request log line (item 7, now naming the course id), the recompute line and the reconcile line, each also
+naming the root on a root failure. The #220 test list (:408-425) asserts the recompute line for failing course B,
+the unknown-course line and placeholder, and the reconcile line naming a failing course, but nothing for item 7's
+web line (`apps/web/lib/course/server.ts:18`, no test matches `course read failed` today) and nothing for any of the
+three root-failure lines, whose meaning #220 changes (a missing `course.yaml` is no longer a root failure). A signal
+with no test can lose its course id in #220 and every judge would still pass.
+Rule: When a design names log lines as the mitigation for an invisible state, the follow-up test list has one
+assertion per named line and per variant (course failure, root failure), counted against the sweep.
+
+### 2026-11-21: Guarded a dialog test on the owner's stack by one identifier, and closed a fetch list with no check (#206, judge_design round 1, security)
+Design D1 put a test that opens the reset dialog outside the DESTRUCTIVE_E2E gate, so it runs on Stepan's plain
+`pnpm test:e2e` against his real firstLesson workspace. The only "never press Сбросить" check was
+`rg resetConfirmLabel`, a form check: `dialog.getByRole("button").last().click()`, a `/Сбросить/` name regex or an
+Enter after a focus move all pass it and reset his folder. The same test plan said the builds "may fetch exactly"
+two images, "nothing else", but its read script keeps only turbo-prefixed lines, so no command ever looks at a build
+line, and section 4.2 claimed "nothing touches any object this run did not create" while both Dockerfiles write the
+shared `id=pnpm` BuildKit cache mount and `pnpm install` in W and C writes the host pnpm store.
+Rule: A safety property of a test that runs on the owner's stack is checked by its effect (list every interaction
+call in the test and its helpers, the set must equal the prescribed one), never by grepping one name; every closed
+"only X" list in a test plan has a command whose output decides it; an absolute "touches nothing it did not create"
+names each shared write (cache mounts, package stores) as an explicit exception or is not written.
+
+### 2026-11-21: Red-set prediction ignored Playwright project dependencies (#206, judge_design round 1, architecture)
+Design 4.4 predicted for R "skipped + did not run = B" and for N two failed tests (E-live-reset and E-reset-cancel), and
+D1 said a failure in lesson.spec "fails only this test". playwright.config.ts:107-112 makes `terminal` depend on
+`chromium`, and Playwright 1.64.1 runs a project only when every dependency project passed (runner/index.js:6757-6759,
+6773-6775). So one red chromium test turns the whole terminal and terminal-webkit projects into "did not run":
+E-reset-cancel never runs in N, and both R and N would read NOT AS EXPECTED and stop the tester on a correct product.
+Rule: Before predicting a red set, read the runner config's project graph (dependencies, serial mode, shards) and the
+runner's rule for dependents of a failed project; list every test that the failure stops from running.
+
+### 2026-11-21: Error-block anchor matched by the test's own title, and a wait with no command (#206, judge_design round 1, operations)
+Design 4.4 R checks that E-live-reset's error block has "a line containing `under the reset dialog` and not `notices
+shown`". The block starts with the failure header, and the test title "...stay announced under the reset dialog
+(AC51)" is in it, so the header alone meets the check when the second read fails (scratch spec, Playwright 1.64.1:
+header line plus `Error: under the reset dialog, notices shown`). The check cannot tell the first read from the second,
+and 4.6 claims it does. The same read filters the log down to turbo-prefixed lines before it extracts the `T32` lines,
+which carry no prefix, and the 60-minute hang limit gives no command that waits. The project-dependency part of the
+red sets is the architecture entry above, found in the same round.
+Rule: A log anchor that tells two failures apart matches the full message line (`^ *Error: <message>$`), is checked
+against the test title and header, and is run once on a scratch failure of each kind. A read names which stream each
+item comes from, and a time limit on a background run comes with the literal bounded wait command.
+
+### 2026-11-21: Self-test expectations named a subset of items, and one of them wrongly (#206, judge_design round 2, operations)
+Design r2 4.8 says K1 read in mode R gives "C6 OK and C7R OK (C1, C2, C3 BAD)". The read's C1 takes K1's own rc file,
+which holds `rc=1` (K1 fails on purpose), and mode R expects `rc=1`, so C1 is OK, not BAD; C4 (passed 0, not Pc-1, no
+`did not run` line) and C5 (setup+chromium line count) are BAD and not listed. X3, X5, X6 and X8 also turn further
+items BAD (X5 changes a ✓, so C4's passed-equals-✓ count breaks too) while 4.8 allows other BAD items only "where
+listed". 4.8 then says a self-test that comes out otherwise stops the tester before R, so a correct read stops the
+run. The same section asks for one Bash call per poll of up to 540 s without naming the call's timeout; the tool's
+default is 120 s.
+Rule: For each read self-test, write the full expected vector (every item OK or BAD) derived from the doctored input
+and the rc file actually passed, or state that only the named items are judged; a poll prescribed as one tool call
+names the call's timeout, above the loop's own bound.
+
+### 2026-11-21: One doctored self-test input with no before/after check, while the design claims all have one (#206, judge_design round 3, operations)
+Design r3 4.8 X7 builds `206-x7.log` by appending a line to G's log and states C2 OK because "the last T32 line is
+still `T32 RESULT OK`", but X7 has no precondition before or after the edit: nothing checks that G's log ends in a
+newline (otherwise the line joins `T32 RESULT OK`, C2 turns BAD and a correct read stops the run), that `alpine:3.20`
+is absent from G's log and present once in the copy, or that the `^T32 ` lines are the same in both. X5s, X10 and K4d
+each have both checks, and F16 says "preconditions on every doctored edit", so the claim is false for X7.
+Rule: Every doctored input, an append included, gets a command before the edit and one after it that prove exactly
+the change the expected vector assumes; list the doctored inputs and tick each one off before claiming "every".
+
+### 2026-11-21: Dropped the only self-test of a check moved into C5, while C5's clause is the sole guard (#206, judge_design round 3, architecture)
+Design r3 drops C6 and X6 and says a second failed test in R or N "is a second ✘ result line, which C5's exactly one ✘
+reads BAD". No kept self-test makes C5 BAD through that clause: X9 is BAD on "terminal lines, no ✘", K2-R and X10 on
+"count 1, no E-live line". A C5 without the "exactly one ✘" and "E-live ✓" clauses prints the same vectors, passes every
+self-test, and reads an R or N log with a red E-live, or any second red chromium test (F11), as AS EXPECTED; C1, C2,
+C7R and C8 are the same in that log. 4.8's own rule ("a self-test exists where a wrong read could report OK on a red
+result and no other kept check would catch it") keeps exactly this case, as it kept X5s for the skip.
+Rule: When a scope cut moves a guard from a dropped check into a clause of a kept one, find a kept self-test whose
+expected BAD comes only from that clause; if none, add one, and list which clause each kept self-test's BAD isolates.
+
+### 2026-11-21: Fetch list command omits the resolve and FROM line forms tester.md names (#206, judge_design round 4, operations)
+Design r4 4.2 says the image fetch list is closed per tester.md:60-70, but its grep keeps only `load metadata for`,
+`Pulling from`, `[auth]`, `naming to` and `unpacking to`. tester.md defines the closed build case by every resolve,
+metadata, fetch, auth/pull-token or `FROM` line. On two real isolated-stack logs (#216, 2026-11-21) the
+`docker/dockerfile:1` frontend shows up only as `resolve image config for docker-image://docker.io/docker/dockerfile:1`,
+which the command never prints, while the allowed `load metadata for docker.io/docker/dockerfile:1` never appears.
+So the one fetch the list allows for the frontend is never observed, and a different frontend or base would not be
+either.
+Rule: Before closing a fetch list with a grep, run that grep on a real build log from the same recipe and check that
+every line form the governing rule names (resolve, metadata, auth, FROM, naming, unpacking) is in the pattern and
+each allowed entry actually appears in the output.
+
 ### 2026-11-21: Bounded leftover slot-uid processes by "the next start kills them", against a same-uid killer (#199, judge_design round 1, security)
 The #199 rebuild says the slot's next start is the backstop for a failed cleanup, that "two checks never share a uid",
 and in ADR-0002 item 12 "Cleanup" and S199-10 that leftovers live "until the slot's next start". The cleanup and the
@@ -3213,3 +3334,71 @@ are the architect's.
 Rule: A "same box in both states" claim is checked against every media block of the layout (height queries too) and
 against classic scrollbars of every scroll container between the element and the grid, before it is written as
 verified.
+
+### 2026-11-21: "Their assertions do not change" for a fixture swap that leaks into a later loop iteration (#135, judge_design round 1, architecture)
+Design 8.3 replaces every `write(\`${L}/quiz.yaml\`, "q: 1\n")` with a helper that also writes task.md with the
+`` **`q`** (квиз): ... `` sentence, and says the assertions of the three affected tests stay. In
+`caps the limit of ready quiz and bug-hunt checks at 3` (validate.test.ts:309-326) the fixture is written once before
+a loop whose second iteration replaces the checks with a bug-hunt check only and expects `[]`; the task.md sentence
+then names "q", which is no quiz check of that lesson, so the new check reports T5 and the test goes red with the
+design followed exactly.
+Rule: When a fixture change adds a file that a new check reads, trace every test that writes it through each
+`withChecks`/loop iteration after the write, and run the old assertions against the new rules before saying they hold.
+
+### 2026-11-21: Merge-order rule without a fetch, ADR text narrower than the code, a miscounted restore criterion (#135, judge_design round 1, operations)
+Design section 6 makes `git merge-base --is-ancestor origin/main HEAD` the merge gate for content PRs with no
+`git fetch` before it, while main is unprotected (branch protection 404, `allow_update_branch` false), so the check
+can pass against a stale ref and nothing else enforces it; the design also does not say where the rule is written
+for whoever merges. Section 7's ADR paragraph lists the count markers as "N верных", "N из M" or a percentage and
+the restatement as "Квиз: не меньше K из Q", while 3.3 also triggers on "N правильн..." and accepts
+"не меньше K верных из Q"; T3 points authors to ADR-0001 item 8 although the form is defined in the amended item 6.
+14(d) decides the restore by "the three RESTORED lines" for four mutants (M1, M2, M2b, M3).
+Rule: A merge-order rule fetches the ref it compares and names the place it is recorded; ADR text that defines what
+a check matches is checked phrase by phrase against the regexes; every counted pass criterion is recounted against
+the list it counts.
+
+### 2026-11-21: Prototype run reinstalled the worktree's lesson-schema node_modules; ADR "one word" wider than the code (#135, judge_design round 2, operations)
+The r6 mutant run called `pnpm exec vitest` in the scratch prototype, a package outside the workspace whose
+node_modules is a symlink to the worktree's `packages/lesson-schema/node_modules`. pnpm's pre-run dependency check
+ran a fresh install without the lockfile (`r6/m-before.out`: "Packages are cloned...", `+ vitest 5.1.1`), which
+replaced the worktree's tree: `.bin/vitest` is now 5.1.1 while pnpm-lock.yaml pins 5.0.5 (vite 8.3.8 for 8.3.5).
+The design still says the prototype ran on 5.0.5, offers `git status` as the proof that nothing outside the
+scratchpad changed (git does not see node_modules), and the tester precondition only installs when
+`$W/node_modules` is missing, so the coder and tester would run a vitest that CI does not. Separately, amended
+item 6 defines a count as "N <one word> из M" while the code accepts only `[а-яё-]+`, so
+"Квиз: не меньше 5 tasks из 6." is skipped although the ADR says it is reported; the sweep row calls it "exact".
+Rule: A prototype never shares a node_modules with the worktree through a symlink and never runs `pnpm exec`/`pnpm
+run` outside the workspace; side effects are proven on node_modules too (`vitest --version` against the lockfile),
+not only by `git status`. An ADR phrase that names a character class says the class the regex uses.
+
+### 2026-11-21: ADR clause (e) keeps mid-paragraph terminators; PR comment addresses the author under his own name (#135, judge_design round 3, operations)
+Amended item 6 (e) says the paragraph "is split after every `.`, `!` or `?` that is followed by whitespace, and one
+`.`, `!` or `?` that ends the paragraph is dropped". Section 3.2 and the code also drop the inner terminator and the
+whitespace after it; the clause does not. Read literally with (i) and (j), "... нужно 4 верных." keeps its dot and
+" Квиз: не меньше 5 из 6" starts with a space, so neither grammar matches (measured, `jops3/adr-literal.mjs`): the
+own sentence of 17 of 18 quiz lessons and every mid-paragraph restatement would be "in neither form" and reported
+under (l), while the code reads them. The 7a row (e) is "exact" because its expectations came from the code's
+output, not from the clause. (i) "the id part of (g)" also leaves open whether ` (квиз):` belongs to it. Separately,
+the section 6 PR comment is posted through gh as valmlord, Stepan's own account, and says "Stepan, ... since you
+merge everything here": under the author's name it reads as the author writing to himself (human-text.md), and it
+repeats the PR body's "Merge order" section; "minus #135 itself" names the issue number, not the PR's.
+Rule: Measure each ADR clause by implementing the clause's literal reading, not by comparing fixture output with
+the code; text posted under the author's account is written in his voice and never addresses him.
+
+### 2026-11-21: ADR item 6 (d)/(e) leave out the trimming and the terminator drop the code does (#135, judge_design round 3, architecture)
+Read literally, amended item 6 trims only the lines that (d) joins to a paragraph, and (e) splits "after" a
+terminator without dropping it or the whitespace after it. The reader trims every line outside a fence (the
+first line of a paragraph and every block-start line too) and drops the inner terminator with the whitespace.
+So under the clauses, `- Квиз: не меньше 5 из 6   ` (trailing spaces, also a Markdown hard break "  " before
+a wrapped continuation), `Квиз пройден. Квиз: не меньше 5 из 6.` (fixture e2-dot) and the own sentence of 17
+of 18 quiz lessons are "in neither form" and reported under (l), while the code reads all of them
+(measured, `jarch3/bin/trail.ts`). Section 7a marks (d) and (e) "exact" because the expected column is the
+code's output, the same method revision 3 says it removed. Also (i) "the id part of (g)" does not say
+whether ` (квиз):` belongs to it.
+Rule: Each ADR clause that describes text processing names every transformation the code applies (trim,
+drop, normalise) at every place it applies, and is checked by an implementation of the clause's literal
+reading run over table C, not by the code's output.
+
+### 2026-11-21: Revision-4 ADR item 6 still calls 13 of 18 own sentences "not in the first form" (#135, judge_design round 4, operations)
+The amended paragraph (design section 7) gives the own-sentence form as `` `<id>` (квиз): Q вопросов, нужно K верных. `` and then says a sentence that begins with `` `<id>` (квиз): `` "but is not in the first form" is reported. 13 of the 18 course sentences are not in that form literally ("вопросов-сценариев", "нужно не меньше 5 верных", words before "нужно") and the code reads them with 0 issues (run on a prototype copy: `` `closed-environments-quiz` (квиз): 6 вопросов-сценариев, нужно не меньше 5 верных. `` and "... 6 вопросов про всё подряд, нужно 5 верных." give 0 issues). The next bullet, "Counts written another way are not recognised, and their sentences pass unchecked", is false for anchor-led sentences: "`closed-environments-quiz` (квиз): шесть вопросов, нужно пять верных." and "..., нужно 5/6." are reported (T4). Section 7a ran only examples that agree with each sentence, never the course's own variants A, C, D against the sentence that says what is reported.
+Rule: For every ADR sentence that says what is reported or what passes, run the course's own variants and the other bullets' examples against it, not only the sentence's own examples.
