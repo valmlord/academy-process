@@ -1400,3 +1400,11 @@ not.
 Rule: When a cut removes or reverses part of a rule, grep every pointer to that rule id across `design/flows/` and reread
 each one against the new text. When a shared component gets a second use, narrow every unscoped sentence about it to
 its first use ("a run's") in the same edit, vocabulary rows included.
+
+### 2026-11-24: Round 4 gave the review controls "до $N" but left the copy register listing it for the hint ladder only (#71, judge_design round 4, consistency)
+A71-2 (`ia.md:621-622`) now has "Разобрать с ментором" and the review's "Повторить" described by "до $N", like the hint
+controls. The closed copy set row "mentor (D3)" (`ia.md:91`) groups its strings by place and still lists "the button
+description "до $N"" under "hint ladder:" only; the review block's list has no "до $N" and "Разобрать с ментором" has no
+entry. A dev building the review controls from the register finds no description for them.
+Rule: When a rule moves a string to a new control, update the copy register row's place grouping in the same edit, so
+every control that shows the string is named where the register lists it.
