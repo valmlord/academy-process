@@ -1012,3 +1012,18 @@ by the issue, 8 files and about 360 lines with tests.
 Rule: when a dictated comment or failure row enumerates cases ("X, Y and Z change the box", "W does not"), brief the
 architect from round 1 to state the mechanism the code relies on instead of a case list, unless the list is
 exhaustive and each case is checked against the code that sizes the element. Count test lines in the tier sizing.
+
+### 2026-11-23: An ADR that paraphrased a parser took five design rounds (#135)
+judge_design for the task.md quiz threshold check passed only in round 5. Security passed every round; the other
+failures were nearly all one class: the ADR-0001 item 6 amendment described the reader in English (which words a
+count may hold, how lines are trimmed and sentences split, "the form" of the sentence, which counts pass unchecked),
+and each rewrite drifted from the regexes while its sweep table said "exact", because the expected column was taken
+from the code. My round 1 brief asked the architect to make the ADR "name exactly what the code matches", which set
+up the paraphrase. Stepan's fix was to delete every sentence that described the reader and name the code and its
+fixture table as normative. Separately: in round 2 the architect ran a prototype outside the workspace with
+`pnpm exec`, which did a lockfile-less install into the worktree (vitest 5.1.1) that git status could not show; and
+the TASK tier was set from the issue while the change came to about 1 200 lines, most of them fixtures.
+Rule: when a contract or ADR text covers parser or matcher behaviour, the brief says from round 1 that the text
+states only the author-level rule and names the code and its test table as normative, with no description of
+phrasings, tokens or residuals. Any prototype run outside the workspace calls the workspace's binaries directly,
+never pnpm, and each run logs the tool version next to the lockfile pin; judges each work on a private copy.
