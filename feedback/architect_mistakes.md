@@ -3105,6 +3105,50 @@ workspace (`api ensure`, :373) survives `compose down` and the recovery reads cl
 Rule: Before naming run directories, `ls` the scratch root and pick names that are absent; a recovery's closing check
 lists everything the script's own preflight lists.
 
+### 2026-11-21: Course id boundary rule scoped to "a URL's course id" while server actions take it as an argument (#219, judge_design round 1, security)
+The #219 ADR-0009 amendment (plans/219-design.md:184-186) checks the id form and looks the id up among listed names
+only for "a URL's course id", and says a lesson page's server actions read "the URL's course" (:182). The lesson
+actions take `courseId: unknown` from the browser (`apps/web/app/(app)/courses/[courseId]/lessons/[lessonId]/actions.ts:35-89`,
+`lib/workspace/environment.ts:98-108`), independent of the page URL, and the not-found page's course id comes from a
+mechanism #220 has not chosen yet. A faithful #220 could read the action argument into a per-course read with no form
+check, leaving only the fs layer's real-path check between browser input and a joined path.
+Rule: A rule about untrusted input names every way the value enters (route params, server action arguments, headers,
+API path params) and puts the check in the one function that turns the value into a read, so no caller can skip it.
+
+### 2026-11-21: ADR text justified a decision with a "required" CI job that GitHub does not enforce (#219, judge_design round 1, operations)
+The #219 amendment (plans/219-design.md:163-164, also alternative 1 at :35-36) keeps the export failing the image
+build on one broken course because "a failing course reaches main only past the required `content:validate` job".
+`gh api repos/valmlord/academy/branches/main/protection` answers 404 "Branch not protected" and `.../rulesets` is
+`[]`: no job is required, and the 2026-10-28 (#23) entry already recorded this. The real guards are the `content`
+job and the `e2e` job's `docker compose up -d --build` both going red, plus the process rule that a PR merges only
+on green CI. The same design accepted "a renamed course directory orphans progress, nothing checks this" although
+the startup recompute already reads every progress row and folds unknown-course rows into one generic `skipped`
+count, so one log line per unknown course id would tell the operator, and renaming back is a recovery the text
+never states.
+Rule: Every enforcement word in ADR text ("required", "blocked", "only past") is backed by a quoted API or file
+answer in the design; a silent data-orphaning residual names the log line that reveals it and the recovery step.
+
+### 2026-11-21: Amendment replaced a sentence by ordinal alone, with two counting conventions in one entry (#219, judge_design round 1, architecture)
+The #219 amendment (plans/219-design.md:165) says "Item 2's first sentence reads ..." without quoting the sentence it
+replaces, and section 6 does not list it among the byte-for-byte quote checks. The same entry calls item 1's "The web
+server reads ..." its "second sentence" (:157), counting the bold title "Runtime reads of an allowlisted copy." as
+sentence one, but calls item 7's "An unreadable or invalid ..." its "first sentence" (:146), not counting "Failures.".
+By the item 1 convention, item 2's first sentence is the title "The allowlist, by structure.", so the replacement
+target is ambiguous in an ADR whose original text stays and whose amendment "wins once accepted".
+Rule: An amendment that replaces text quotes every replaced sentence whole, never an ordinal alone, and the coder's
+quote check lists every replacement in the entry, counted against the entry's replacement bullets.
+
+### 2026-11-21: Class sweep named three operator signals, the test list covered only some of them (#219, judge_design round 2, operations)
+Revision 2 of the #219 design (plans/219-design.md:63-65) lists the signals for a failing course and a root failure:
+the web request log line (item 7, now naming the course id), the recompute line and the reconcile line, each also
+naming the root on a root failure. The #220 test list (:408-425) asserts the recompute line for failing course B,
+the unknown-course line and placeholder, and the reconcile line naming a failing course, but nothing for item 7's
+web line (`apps/web/lib/course/server.ts:18`, no test matches `course read failed` today) and nothing for any of the
+three root-failure lines, whose meaning #220 changes (a missing `course.yaml` is no longer a root failure). A signal
+with no test can lose its course id in #220 and every judge would still pass.
+Rule: When a design names log lines as the mitigation for an invisible state, the follow-up test list has one
+assertion per named line and per variant (course failure, root failure), counted against the sweep.
+
 ### 2026-11-21: Guarded a dialog test on the owner's stack by one identifier, and closed a fetch list with no check (#206, judge_design round 1, security)
 Design D1 put a test that opens the reset dialog outside the DESTRUCTIVE_E2E gate, so it runs on Stepan's plain
 `pnpm test:e2e` against his real firstLesson workspace. The only "never press Сбросить" check was

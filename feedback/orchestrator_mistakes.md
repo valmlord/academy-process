@@ -960,6 +960,18 @@ statements of what #222 depends on disagree; a #219 decision against Q4 would no
 Rule: When a rework changes which #218 parts point to a moved-out issue, re-read that issue's scope text (the plans
 comment and the posted body) against the design and update both in the same round.
 
+### 2026-11-23: An ADR amendment specified log lines one by one and cost a third design round (#219)
+judge_design round 1 failed 3/3 (course id rule only for URL ids, a "required" CI job that GitHub does not enforce,
+a replaced sentence named by ordinal, a renamed course directory with no operator signal). My round-1 brief asked the
+architect to name a log line for every operator-invisible state; round 2 then failed on the same class, because the
+#220 test list did not pin each of those lines. Stepan chose to cut: the amendment now holds one obligation of #220
+(decide, document and test what an operator sees; no user id, no file contents) instead of per-line text, and round 3
+passed 3/3. Separately, all three round-1 judges lacked a shell and could not read the issue body; from round 2 the
+brief quoted the issue bullets.
+Rule: an ADR states decisions and constraints on log lines (what must be distinguishable, what they never carry), not
+the lines themselves; the implementing issue owns and tests the exact lines. When judges cannot run `gh`, the brief
+quotes the issue text they must check against.
+
 ### 2026-11-21: A test-only task spent four design rounds on its own evidence harness (#206)
 #206 adds one Playwright test (the AC51 reset dialog case). Every judge found the test itself sound from round 1.
 All seven FAILs over four rounds were in the test plan: first in predicted red sets, then in a log-reading script
