@@ -1048,3 +1048,21 @@ Rule: when a contract or ADR text covers parser or matcher behaviour, the brief 
 states only the author-level rule and names the code and its test table as normative, with no description of
 phrasings, tokens or residuals. Any prototype run outside the workspace calls the workspace's binaries directly,
 never pnpm, and each run logs the tool version next to the lockfile pin; judges each work on a private copy.
+
+### 2026-11-24: A plan item dictated a comment's reason I had not checked against the code path (#220)
+judge_code round 1 (architecture) failed on the doc comment of `firstReadableCourse`: it said the non-slug and
+`.: no course` results log no per-request line because the startup recompute and the export report such a root.
+The coder copied that reason from my plan item P2, which I wrote from a judge's non-blocking note. For `.: no course`
+it is false: that result comes from a `pnpm dev` race after the listing, which neither startup nor the export sees.
+Rule: a plan item that dictates a comment states only the guarantee the code gives; a reason or "reported by" clause
+goes in only after I traced the path that produces the case, otherwise it is left out.
+
+### 2026-11-24: A design size estimate missed by 70 % on test lines, after the issue was already split (#220)
+The approved design estimated about 1470 lines (480 source, 990 tests). The code came to 2479 (857 source, 1622
+tests, fixture and fakes): new test helpers, page tests that need mocks of server components, and adapting every
+existing test to the renamed fixture were not in the table. The orchestrator accepted one PR because the core commit
+could not be split without breaking callers. judge_design went 3 rounds (all FAILs on obligation text about other
+issues, closed by a sweep to bare pointers), judge_code 2 rounds (one false comment reason from my plan, one dead
+test buffer).
+Rule: a size table counts test helpers, mocks and adapted existing tests as their own rows, and when the estimate is
+within 20 % of the bound, treat it as over and name the split before judge_design.
