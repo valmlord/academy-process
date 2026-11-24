@@ -1354,3 +1354,15 @@ lesson hrefs of a kept state are left with no target and fall back to the from-#
 `item-group` excludes it; acceptance :105), a pointer that covers nothing.
 Rule: When a pointer is narrowed from "hrefs" to an element name, list every href the state renders (grep the drawing by
 its `data-state`) and check each one lands in exactly one pointer; name a pointer only for an element the state draws.
+
+### 2026-11-24: #233 round 5 moved the in-page exception out of L1 and left L1 covering catalog in-page anchors
+The round-5 rework moved "In-page anchors keep the state; sign-in has no release form." from L1 into the LT
+paragraph. L1 still reads "an href of a past or kept state to a catalog module section (`#<moduleId>`) opens its
+default state". The kept catalog states `progress-unavailable` and `default-until-220` render the module list
+`catalog/prototype.html:80-87` (`href="#introduction"` ...), which is literally such an href: it now falls under L1
+("opens its default state") and under the LT in-page sentence ("keeps the state"), two rules with opposite outcomes.
+proto.js keeps the state (`proto.js:97-98`, :963), so L1 misinforms there. In round 4 the exception sat inside L1 and
+bounded it; the move widened L1 and the class check, which flagged the same two-rule overlap for `#stub-module`, did
+not re-check L1's own scope after the move.
+Rule: When a sentence that bounds a rule is moved out of it, re-read the rule alone and re-run the anchor check for
+every anchor its literal wording now covers.

@@ -988,3 +988,12 @@ by the issue, 8 files and about 360 lines with tests.
 Rule: when a dictated comment or failure row enumerates cases ("X, Y and Z change the box", "W does not"), brief the
 architect from round 1 to state the mechanism the code relies on instead of a case list, unless the list is
 exhaustive and each case is checked against the code that sizes the element. Count test lines in the tier sizing.
+
+### 2026-11-24: A sentence I moved "to remove ambiguity" was also the scope of the rule it left (#233)
+judge_design round 5: the architect's cross-check relied on "In-page anchors keep the state; sign-in has no release
+form." applying to every state, but the sentence sat inside L1. I briefed moving it into the LT paragraph. That
+sentence was also what limited L1 to cross-page hrefs, so after the move L1 ("an href of a past or kept state to a
+catalog module section opens its default state") covered the in-page module list of the kept catalog states too,
+the opposite of the LT sentence. Consistency failed the round on it; usability and accessibility passed.
+Rule: before moving a sentence out of a rule, read the rule without it and check its scope did not widen; when a
+rule needs a scope, state it in the rule itself ("on another page"), never by a neighbouring exception.
