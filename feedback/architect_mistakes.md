@@ -3463,3 +3463,12 @@ cannot be met as written: #241 must either read other courses' modules (breaking
 (breaking the obligation). The dashboard via `readEveryCourse` would also not be "the one per-course read function".
 Rule: When an obligation cites an ADR item, quote the item's own scope (whose ids, which files) and check every
 reader the obligation names can meet it; shortening a rule must not widen whom it binds.
+
+### 2026-11-24: The sort prescribed for determinism was a no-op on the listed objects (#239)
+plans/239-design.md:110 sorts the `readdirSync(..., { withFileTypes: true })` entries "by name" and D10 (:87)
+prescribes "the default `Array.prototype.sort`". On `Dirent[]` the default sort compares `"[object Dirent]"` strings
+and keeps readdir order, and it typechecks. APFS already lists names in order (measured), so no test on the Mac can
+go red; on CI's ext4 the order is hash-based, so T5 and T6 (two issues each, `toEqual`) would be red or green by
+file system. The web sorts the names after `.map((entry) => entry.name)` (node-fs.ts:80-83).
+Rule: When a design prescribes an ordering for determinism, name the value being sorted (strings, not entries) and
+say on which file system the guarding test can actually go red.
