@@ -171,6 +171,42 @@ Rule: For every element shared across quiz states, check its facts against each 
 row, and do the same for every state a control leads to. Each quiz.md state is drawn or listed in "Prototype
 limitations", and every limitation the headless AC runs into is named as an exception in that AC.
 
+### 2026-11-24: New states joined a shared link but not the limit that names its states (#222, judge_ux round 1, usability)
+#222 added nine two-course states with a readable block 1 to the dashboard (`courses-one-broken`,
+`courses-block-error-fails-again`, `courses-broken-no-title`, the three `courses-progress-lost-*` retries,
+`courses-other-broke-at-retry`, `courses-block-renamed`, `courses-block-removed`). Their six block-1 module rows
+share the markup that links `../catalog/prototype.html#<moduleId>`, which opens catalog `default`: one course, no
+"Другие курсы". `dashboard/acceptance.md` says every link opens a state with the same courses "except" L1-L8, but
+L4 names "every two-course state" as four (`courses-two`, `courses-one-empty`, `courses-all-passed`,
+`attempts-two-courses`), and L5 covers only the block heading links of the #222 states. So the limit list
+claims an invariant the drawing breaks, and the A218-14 section is missing from the target with no word about it.
+Rule: When new states are added to an element's `data-state`, grep every limit and "every"/"each" list that names
+the states of that element, and add the new states to it (or write the list as a rule, "every two-course state
+with a readable block 1"), in the same change.
+
+### 2026-11-24: State renamed without its old pointers, and from-#220 sentences left unscoped (#222, judge_ux round 1, consistency)
+To reuse `course-error`, `course-error-fails-again` and `progress-unavailable` for the new #220 one-course error
+states, the dashboard's kept states were renamed `*-until-220`. Two pointers to the old ids were missed: dashboard
+AC31 (an until-#220 AC) still names `progress-unavailable`, now the #220 state, and `ia.md:562` (R6 "Course id
+unknown", the until-#220 "Курс" rule) still points to dashboard `#state-course-error`, which now draws the #220
+block error with no "Курс". The catalog kept `course-error` as its until-#220 state, so one id now means opposite
+releases on two pages. The sweep (`plans/222-author-sweep.md`) also marked catalog `:22-24` ("#220 states: ... the h1
+is the course name") and AC13 ("h1 and `<title>` are the URL's course name") as untouched, though
+`courses-course-error` and `root-error` are #220 states whose h1 is "Не удалось загрузить курс". AC77, the sample
+"course 2 broken" and the R2 press-focus bullet copy the trigger of ES4, ES1 and R2 into the note.
+Rule: Before renaming a state id, grep the old id in `design/` (flows included) and either keep it or update every
+hit; for each new state, re-read every "from #220" or "#220 states" sentence of the page notes against it; an AC
+points to a rule's trigger by id, never by quoting the trigger cell.
+
+### 2026-11-24: Scripted id swap rewrote a kept-state pointer inside an HTML comment (#222, judge_ux round 2, consistency)
+Restoring the #233 ids was a two-step scripted rename (`*-until-220` back to the kept ids, the old #220 ids to
+`one-course-*`). The comment above the until-#220 Alert in `dashboard/prototype.html:138` named the kept
+`#state-course-error-fails-again-until-220`; the swap turned it into `#state-one-course-error-fails-again`, the #220
+block-error state, which does not show that Alert (its `data-state` is `course-error course-error-fails-again`). The
+sweep repaired five kept-state lines of the notes by hand, but read only attributes in the prototypes, not comments.
+Rule: After a scripted rename, list every hit of the new and old ids in prototype comments and prose too, and read
+each against the element it describes; an id in a comment is a pointer like any href.
+
 ### 2026-11-24: A from-#37 live container drawn in every state, the v1 ones included (#71, judge_ux round 1, usability)
 `lesson/prototype.html:3035` puts the mentor status container `#mentor-status` in "Проверка" with no `data-state`, so
 all 124 states drawn before #71 (v1, #35, #36) now hold a from-#37 element. A71-12 lists the container among the things

@@ -1269,6 +1269,45 @@ clause and the "course block" row) restate the rule's outcome before the pointer
 Rule: An "until #220 + pointer" clause names the term or rule id only ("from #220: `ia.md` A218-2"); it never states
 what the rule renders, because that copy drifts when the rule changes.
 
+### 2026-11-21: ES11 (no-Q1 duplicate pair) kept Q1's rename semantics and AN1's name for it (#222, judge_design round 1, usability)
+`ia.md:699` ES11 exists only if #219 drops Q1, so the id comes from `course.yaml`, yet its Why says "renaming one
+directory ends the state", which is Q1's "renamed = new id" (FB2, AN1). Renaming a directory leaves both `course.yaml`
+ids equal, so the stated recovery does not work. ES11 also names each of the pair's blocks by its directory name, while
+AN1 (`ia.md:709`) builds the status text from the course name (A218-7) or the id (ES10) and keys "newly shown" by course
+id, which the two blocks share: the announcement can repeat one sentence twice and match neither h2.
+Rule: For a conditional state that holds only when an assumption is dropped, re-read every sentence of its row and of
+every rule that keys on the dropped assumption (id, rename, name) under the opposite assumption, and say how each rule
+applies there.
+
+### 2026-11-21: #222 pointers added next to main sentences and lists they leave false (#222, judge_design round 1, consistency)
+The sweep (`plans/222-sweep.md`) checked that each changed line only names an id. It did not check the clause or list
+the pointer sits in. Examples: `ia.md:109` (dashboard copy: "an h2 in the Card's place", but ES1 makes it an h3 in a
+block); `ia.md:357` (R2 guard: "the target is shown; otherwise focus stays", but FB1-FB7 move focus); `ia.md:670`
+("the course name as a link", but ES1 has no link); `ia.md:339-342` ("Every Fails again target ..." names RO7 only,
+not RO5); `ia.md:613-615` (lists what #222 replaces, dashboard only, leaving out RG1 and RG2 for catalog and lesson);
+`ia.md:698` vs `:643-645` (ES10 says "wherever A218-7 names a course", but A218-7's list has no AN1 text);
+`progress.md:126-131` ("nothing needs to be" live, AN1 missing from the pointer list); `courses.md:46` ("retry that
+one alone", but RR1 re-reads everything); `courses.md:137-138` ("ids the #220 page reaches" then lists ES11, FB3 and
+FB4). The opposite direction also happened: ES9 (`ia.md:697`) copies F7's "lesson id is not checked, no breadcrumb"
+and its reason from `lesson-environment.md:96-98`.
+Rule: For every pointer you add, read the whole sentence, the table cell and the list it sits in as if the new rules
+already apply. Scope each clause they make false ("until #220; from #220 <id>"), make each "every", "only" or "alone"
+list match the rules, and never copy a flow file's existing rule or reason into a new ia.md row. Point to it instead.
+
+### 2026-11-21: Round-2 fixes scoped one place of a class and left its twin, and wrote a new condition beside a pointer (#222, judge_design round 2, consistency)
+Three cases. (1) `catalog.md:39-41` "whatever course id the URL names" was scoped "until #220" (U-nb3), but the
+lesson twin `lesson-environment.md:97` "The URL's course and lesson ids are not checked" stayed unscoped, though from
+#220 the course id is checked against the root (not-found way (3)) before ES9 can show; the sweep marked it T.
+(2) The C3 fix added a condition beside the FB pointer in the R2 guard (`ia.md:359` "when the focused element is
+removed or the target is not rendered"), which is wider than the FB intro's own trigger (`ia.md:730-732`: only when
+the guard's focus condition holds), so focus on the top bar with RO6's Card heading gone gets FB by one text and
+"stays" by the other (AT42); and the FB intro says the guard "lets the move be made" with the target not rendered,
+which the guard's "and the target is shown" never does. (3) S3 swept exclusive words outside the section only:
+ES1 Why (`ia.md:691`) "its catalog holds only the same Alert and retry" is false against ES7 with two or more courses.
+Rule: When you scope one sentence of a pattern, grep the same claim in every flow file and scope all hits; a pointer
+carries no condition of its own (the condition lives in the rule it points to); run the exclusive-word sweep over the
+new section's own cells too, against the section's other rows.
+
 ### 2026-11-21: A71-8 / A71-9 leave a mentor call that ends during a run or after a newer result undefined (#71, judge_design round 1, accessibility)
 `ia.md:661-668` lets "Проверить" start a run while a mentor call runs (no R1 row blocks it), hides every mentor block
 during the run, and A71-6 starts an empty ladder for the newer result, while A71-11 lists no hint in the history. A71-8
