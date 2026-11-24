@@ -3402,3 +3402,42 @@ reading run over table C, not by the code's output.
 ### 2026-11-21: Revision-4 ADR item 6 still calls 13 of 18 own sentences "not in the first form" (#135, judge_design round 4, operations)
 The amended paragraph (design section 7) gives the own-sentence form as `` `<id>` (квиз): Q вопросов, нужно K верных. `` and then says a sentence that begins with `` `<id>` (квиз): `` "but is not in the first form" is reported. 13 of the 18 course sentences are not in that form literally ("вопросов-сценариев", "нужно не меньше 5 верных", words before "нужно") and the code reads them with 0 issues (run on a prototype copy: `` `closed-environments-quiz` (квиз): 6 вопросов-сценариев, нужно не меньше 5 верных. `` and "... 6 вопросов про всё подряд, нужно 5 верных." give 0 issues). The next bullet, "Counts written another way are not recognised, and their sentences pass unchecked", is false for anchor-led sentences: "`closed-environments-quiz` (квиз): шесть вопросов, нужно пять верных." and "..., нужно 5/6." are reported (T4). Section 7a ran only examples that agree with each sentence, never the course's own variants A, C, D against the sentence that says what is reported.
 Rule: For every ADR sentence that says what is reported or what passes, run the course's own variants and the other bullets' examples against it, not only the sentence's own examples.
+
+### 2026-11-24: #220 design obliges #241 to add the stub course #241 ruled out, and claims the proxy matcher covers every app path (#220, judge_design round 1, security)
+`plans/220-design.md:213` ("the content team adds the #217 stub only with #241") and `:319` ("the stub course added
+together with it") hand #241 a second course in `course/`, while #241's own text decides the two-course e2e runs
+against a fixture root "not a stub course in `course/`, so the learner never sees a test course". #220 is not the
+owner of that choice. `:139` says the matcher `proxy.ts:36` "already covers every app path"; the negative lookahead
+`(?!_next/static|_next/image|favicon.ico)` is unanchored, so `/favicon.ico/courses/...`, `/_next/staticX/...` and
+`/_next/imageX/...` reach the `[...missing]` catch-all with no proxy run, and a client-sent `x-academy-pathname`
+arrives at `not-found.tsx` untouched. The read function bounds the harm, but the boundary claim was wrong and no
+test pins the unproxied case.
+Rule: An obligation handed to another issue is checked against that issue's decided text before it is written; a
+claim that a guard covers "every" path is checked against the guard's actual pattern, with the paths it lets through
+named in the failure modes.
+
+### 2026-11-24: #220 seam drops a top-bar link the design says it keeps, and leaves a seam result undefined (#220, judge_design round 1, architecture)
+`plans/220-design.md:122` sets the layout's `courseId` to undefined for every failure, while today
+`layout.tsx:20` passes `error.courseId`, set once `course.yaml` parsed (`read.ts:111,116`): a course whose
+`module.yaml` or `lesson.yaml` fails loses its "Курс" link in #220, yet `:268` says "No page ... change beyond
+A218-12's action rule; `TopBar` keeps `courseId`". The change was forced by `CourseReadError.courseId` becoming the
+directory name (always known), which the design noticed for L1 (`:37`) but did not follow to the case it now
+changes. `firstReadableCourse` (`:100-102`) returns the first `course`, else "the first failure", but a root whose
+listed names are all non-slugs gives `courseById` only `not-found` (form check first), so there is no failure to
+return and the typed `CourseRead` result is undefined; T8 does not cover it, and `readEveryCourse` calls the same
+root a failing course. `:316-318` also tells #241 to cache `readEveryCourse` as one unit, which is a mechanism #241
+owns and reads against item 8's "cache() per course id".
+Rule: When a design changes what a field means, list every reader of the old meaning and say what each now shows;
+every branch of a seam's typed result is defined for every listing, non-slug names included; obligations for
+another issue state the rule with its ADR pointer, not the mechanism.
+
+### 2026-11-24: #220 rework restates an ADR rule for #241 wider than the ADR says it (#220, judge_design round 2, architecture)
+Fixing A3 (an obligation dictating #241's mechanism), `plans/220-design.md:327-329` now obliges #241's dashboard and
+"Другие курсы" to read "only through the one per-course read function (item 8; no second id path)". ADR-0009 item 8
+puts that rule on "every course id that arrives with a request"; the dashboard and "Другие курсы" take their ids from
+the root's listing, not a request. Item 8 also says "Другие курсы" reads only "the `course.yaml` of each other
+course", while the per-course read function (`readCourseById`, section 1) reads the whole tree, so the obligation
+cannot be met as written: #241 must either read other courses' modules (breaking item 8) or add a second function
+(breaking the obligation). The dashboard via `readEveryCourse` would also not be "the one per-course read function".
+Rule: When an obligation cites an ADR item, quote the item's own scope (whose ids, which files) and check every
+reader the obligation names can meet it; shortening a rule must not widen whom it binds.
