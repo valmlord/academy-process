@@ -1013,6 +1013,27 @@ Rule: when a dictated comment or failure row enumerates cases ("X, Y and Z chang
 architect from round 1 to state the mechanism the code relies on instead of a case list, unless the list is
 exhaustive and each case is checked against the code that sizes the element. Count test lines in the tier sizing.
 
+### 2026-11-24: A sentence I moved "to remove ambiguity" was also the scope of the rule it left (#233)
+judge_design round 5: the architect's cross-check relied on "In-page anchors keep the state; sign-in has no release
+form." applying to every state, but the sentence sat inside L1. I briefed moving it into the LT paragraph. That
+sentence was also what limited L1 to cross-page hrefs, so after the move L1 ("an href of a past or kept state to a
+catalog module section opens its default state") covered the in-page module list of the kept catalog states too,
+the opposite of the LT sentence. Consistency failed the round on it; usability and accessibility passed.
+Rule: before moving a sentence out of a rule, read the rule without it and check its scope did not widen; when a
+rule needs a scope, state it in the rule itself ("on another page"), never by a neighbouring exception.
+
+### 2026-11-24: Six design rounds on link targets, closed by a parsed two-direction anchor check (#233)
+judge_design took six rounds, every FAIL from round 2 on in one class: where a state's links go (shared top bar,
+kept-state lesson links, prerequisite links, pointers that covered no anchor, a moved sentence that widened L1).
+Each rework fixed the named links and the next round found the next one, because the tables were checked by
+reading. What closed it: running the consistency judge's parser (each a[href] / [data-goto-state] by data-state
+scope, per state) and checking two directions against the LT tables: every anchor has exactly one rule, every rule
+cell covers an anchor. The author phase reused it per page and judge_ux needed two rounds, the second only for state
+globs (`attempts-*`) that a new state had joined.
+Rule: when a DESIGN task assigns link targets per state, give the architect the parsed anchor list from round 1 and
+require the two-direction check before the first judge round; in the author brief, require a sweep of every state
+glob and counted list in acceptance notes against the page's data-state-label set.
+
 ### 2026-11-23: An ADR that paraphrased a parser took five design rounds (#135)
 judge_design for the task.md quiz threshold check passed only in round 5. Security passed every round; the other
 failures were nearly all one class: the ADR-0001 item 6 amendment described the reader in English (which words a
