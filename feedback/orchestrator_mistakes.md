@@ -959,3 +959,17 @@ the class, not the instance.
 statements of what #222 depends on disagree; a #219 decision against Q4 would not be traced to #222 from the issue.
 Rule: When a rework changes which #218 parts point to a moved-out issue, re-read that issue's scope text (the plans
 comment and the posted body) against the design and update both in the same round.
+
+### 2026-11-24: Two judge phases spent extra rounds on one class each, and an author phase had nothing to draw on (#222)
+judge_design took three rounds: rounds 1 and 2 failed consistency on pointers added next to main sentences
+that the new rule left false, and on a twin sentence left unscoped after its pair was fixed. Round 3 passed
+only after Stepan chose to delete the three failing sentences instead of rewriting them. judge_ux also took
+three rounds: the author renamed kept prototype states with a script, which broke an ia.md pointer, split one
+id across two pages and, after the round-1 sweep, still left the old id in an HTML comment. Separately, #218
+merged without an author phase, so #222's author phase had no several-course prototypes to draw on and the
+task waited for #233.
+Rule: a flow sentence a judge fails twice in one class is deleted, with at most a bare id pointer, before it
+is rewritten. Before judge_ux, run a two-way state id check (every cited id in comments, notes and flows
+against the declared states, and every declared state against its States row) and pass its output to the
+judges. A DESIGN task that changes pages does not leave the author phase to another issue without one filed
+first.
