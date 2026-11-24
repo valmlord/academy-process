@@ -3181,3 +3181,112 @@ either.
 Rule: Before closing a fetch list with a grep, run that grep on a real build log from the same recipe and check that
 every line form the governing rule names (resolve, metadata, auth, FROM, naming, unpacking) is in the pattern and
 each allowed entry actually appears in the output.
+
+### 2026-11-21: Bounded leftover slot-uid processes by "the next start kills them", against a same-uid killer (#199, judge_design round 1, security)
+The #199 rebuild says the slot's next start is the backstop for a failed cleanup, that "two checks never share a uid",
+and in ADR-0002 item 12 "Cleanup" and S199-10 that leftovers live "until the slot's next start". The cleanup and the
+setup are themselves processes of the slot uid, and residual (1) puts learner code under that uid. A learner process
+that loops `kill -9 -1` kills the cleanup and every later setup before their own kill line (exit 137, uncounted
+not-started), so it runs until the container stops; `kill -STOP` turns the cleanup into `timed-out`. The 137 row named
+only the OOM killer and a container stop. The #163 round-2 entry had already made the prelude kill the guarantee
+against a leftover reaching the next check's `checks/`.
+Rule: For every guarantee that rests on one process of uid U killing all others of U, list the processes of U the
+adversary controls, ask what they do if they act first (kill, stop, ptrace), and state the bound that holds then.
+
+### 2026-11-21: Mutation rows whose named assertion cannot go red, and fake-clock rows shipped with no negative run (#199, judge_design round 1, architecture)
+The #199 rebuild maps every mutant to "the exact test and assertion that goes red" and procedure 21 rejects a red at
+any other assertion, yet two rows fail that on paper. RC9b's named "settle(250): 1" stays 1 under a 100 ms period,
+because the design's own settle model schedules the next poll only after the inspect crosses the socket in the real
+barrier; the difference appears one step later, at an assertion with no message (the round-13 RC9 class again).
+I-c13 asserts setup `not-started` before "exitStatus 123", so under M26 (plain `cd`) the setup starts and the
+unnamed first assertion fails before the named one runs. The design handed every RC negative run to the coder
+instead of running them, and stated "a container stop gives exit 137 `killed`" without a measurement, although Docker
+unregisters a container's execs when it exits, so the inspect answers 404.
+Rule: For each mutation row, walk the test's assertions in order under the mutant and confirm the first failing one
+is the named one; run every fake-clock row against its mutant before the design ships, not after.
+
+### 2026-11-21: Procedure 21 compared Docker objects of other sessions, and four mutation rows could not be decided as written (#199, judge_design round 1, operations)
+The #199 rebuild of procedure 21 lists every `academy.workspace.test-run` object and every managed container. It then
+requires "equals before" and "managed containers show only instance `local`". On the shared daemon the before-listing
+already held another session's `wks-t31-*` container, and that container vanished during the rehearsal with no action
+of the run. Step 8 was false before anything ran. The same design had more steps that do not hold:
+- M26's red test asserts setup `not-started` before the named "exitStatus 123", so the mutant goes red at the wrong
+  assertion.
+- Ten RC rows name no assertion message for the FAILLINE rule.
+- `-t '<name>'` breaks on I-c4's apostrophe.
+- Q5 needs `terminate` before the coder wrote it.
+Rule: A procedure's Docker checks compare only objects carrying the run's own id (the printed `run <id>`, instance
+`t<id>-*`). For every mutation row, walk the red test's assertions in order under the mutant and confirm that the first
+one to fail carries the row's message. Run every dictated command once with the real names in it.
+
+### 2026-11-21: Rev 2 Done gate fails on main, and the slot-trust cost omits the restart trigger (#199, judge_design round 2, operations)
+The #230 Done line runs `rg '\p{Cyrillic}'` over the five ADR files whole. On main before #230 changes anything, it
+prints 13 lines of quoted UI strings (ADR-0007, 0010, 0011), so the gate can pass only if accepted product text is
+deleted. The #230 issue body also kept an older Done line than the design's. Separately, the slot-trust "cost"
+paragraph names only results other than `clean` and calls them rare. By the same rule, every service restart makes
+the first check in each adopted workspace fail uncounted and stop the container, which ends the terminal. That
+trigger is routine (every deploy), and Stepan accepts the rule without it being stated.
+Rule: Run every dictated gate on today's main before sending it. A gate that is not red on main by design checks
+added lines only (`git diff -U0 main | rg '^\+'`). When a rule's cost is stated for Stepan, walk every trigger of the
+rule, including service restart and deploy, and name the most frequent one.
+
+### 2026-11-21: The #230 Done block renders as other commands, and option B leaves the trust read unlocked (#199, judge_design round 3, operations)
+The block the orchestrator pastes into #230 puts the gate commands on indented plain lines with no code fence. GitHub
+renders them as Markdown, so `\+`, `\(` and `\)` lose their backslashes and `<n>` is dropped. The rendered H4 regex
+`follow-up\s+issue)` is an rg parse error, `|| true` hides it, and H4 prints FOLLOWUP-OK with the placeholder still in
+the file. Separately, ADR-0010 item 14 does not say that a run request reads the start record under the workspace lock.
+Under option B, two checks of one attempt after a restart can each restart the container, and the second restart ends
+the first check with `service-stop`. 9.2.1 then states B's cost for a one-check attempt only.
+Rule: Text meant for an issue or PR body puts every command in a code fence and is checked with `gh api markdown`
+before it is pasted. A contract rule that decides on in-memory state says the state is read after the lock is taken,
+and its cost is walked with concurrent requests.
+
+### 2026-11-21: V2 locked the trust read of run requests only, and asked a non-reentrant lock to be taken twice (#199, judge_design round 4, architecture)
+Revision 4 made a run request read the start record after taking the workspace lock. The other stopper in the same
+ADR-0010 item 14 paragraph, the stop after a cleanup result other than `clean`, still queues on the FIFO lock and
+stops unconditionally. Behind a `PUT W` (the learner's restart from the menu) or, under option B, behind a run request
+that already stopped, started and recorded, it stops the fresh trusted container and ends that check `service-stop`.
+Separately, item 14 says the run request holds the lock through the stop and start, while item 8 and 9.2.1 say the
+stop and start take the lock "as `POST W/stop` and the start path do". `KeyedMutex` is not reentrant: a nested
+`mutex.run` on the same key waits for the task that awaits it, and the workspace hangs until restart.
+Rule: When a lock rule is added for one actor, list every actor that reads or acts on the same state and give each the
+read-after-lock rule; when a rule says "hold the lock across X", read the lock's code and say how X runs inside that
+hold (no second acquisition of a non-reentrant lock).
+
+### 2026-11-21: V2's lock hold, implemented through the manager, hangs the workspace and stops every idle stop (#199, judge_design round 4, operations)
+The same V2 text as the architecture entry above, seen for its blast radius. Following item 8 ("take it as `POST W/stop`
+and the start path do") and 9.2.1 ("the same path that starts a workspace today") inside the hold item 14 asks for
+means `manager.stop` or `manager.ensure` inside `mutex.run` on the same key. Measured with a copy of `KeyedMutex`: the
+nested task never settles. Every later request on that workspace then queues forever, and since `every` (main.ts)
+skips a tick while the previous sweep runs, no workspace is idle-stopped again until the service restarts.
+Rule: For a lock rule in a contract, name the call path that runs inside the hold and state its failure on the real
+lock implementation; say what is called directly so that nothing takes the lock twice.
+
+### 2026-11-21: The #196 lock obligation banned a call shape, not the hang, and kept an option-B clause for both options (#199, judge_design round 5, operations)
+Constraint (i) says nothing calls `mutex.run` on a key it already holds. A run request that holds the lock and awaits a
+stop the cleanup path queued on the same key meets that wording and still hangs (measured). The reach sentence named
+one workspace and left out the idle sweep, which stalls for every workspace. Test 2 of the same paragraph says "under
+option B", and the paragraph is kept whichever option lands, against 9.2's "drop the other option's sentences".
+Rule: A constraint written to prevent a failure states the failure's condition (hold and wait on the same lock) and its
+whole reach, not the one call that showed it; text kept for every option names no option.
+
+### 2026-11-21: Dictated a component comment that its own failure-mode table contradicts (#216, judge_design round 1, architecture)
+Design 1.1 dictates for `scrollable-code.tsx` "Pane split, one-pane switch, window width, zoom and text size all change
+the pre's box". The one-pane switch does not: below 64rem both panes share one grid area of `main.lesson-layout`
+(no padding), and the hidden pane is `position:absolute; inset:0` of the same box, so the `pre`'s width is the same
+shown and hidden; F6 of the same design says exactly that. Zoom also leaves the box in CSS px unchanged while the
+`.prose` 70ch cap holds. The coder would copy a false comment (the #121 and #156 lesson again).
+Rule: Before dictating a "these all do X" comment, check each listed case against the CSS that sizes the element and
+against the design's own failure-mode rows; state the cases where X does not happen and why the result is still right.
+
+### 2026-11-21: "Same width shown and hidden" stated from the tall-viewport grid only (#216, judge_design round 2, architecture)
+Round 2 put "the `pre`'s width is therefore the same shown and hidden" into "Verified" and F6, and took the judge's
+comment "a one-pane switch ... changes neither the box nor the overflow" into 1.1. At viewport height <= 30rem
+(`globals.css:405-408`, rows `auto auto`) the shown lesson pane grows to its content and the document scrolls, while
+the hidden pane is `inset:0` of `main` and its `ScrollArea` (`overflow-auto`, `page.tsx:150`) overflows vertically;
+with classic scrollbars, which AC75 itself was measured with, the scrollbar narrows the `pre`. The observer still
+catches it, so only the dictated text is false; the round-1 wording came from the judge, the "Verified" line and F6
+are the architect's.
+Rule: A "same box in both states" claim is checked against every media block of the layout (height queries too) and
+against classic scrollbars of every scroll container between the element and the grid, before it is written as
+verified.

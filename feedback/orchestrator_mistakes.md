@@ -971,3 +971,32 @@ Rule: for a test-only task, brief the architect from the start for the smallest 
 run and one named mutation, with the relevant runner output quoted), not a script that grades the logs. Any closed
 list the plan keeps is checked once against a real log of the same recipe (another session's log counts) before
 judge_design.
+
+### 2026-11-21: A lost design cost six design rounds, most of them on ADR text for other issues (#199)
+#199 was written to implement rev 4o of the #163 design "unchanged", but that design, its ADR sweep and its sketch
+suite lived only in git-ignored plans/ of removed worktrees, so the task became a rebuild. judge_design took six
+rounds: r1 0/3 (same-uid attacker, observables decided by reading, procedure 21 comparing other sessions' objects),
+r2 2/3 (restart cost missing, a #230 gate red on main), r3 2/3 (paste block unfenced, lock read order), r4 1/3 and
+r5 2/3 (the lock protocol dictated for #196 deadlocked on the non-reentrant KeyedMutex and then banned only one call
+shape), r6 3/3 once Stepan moved the protocol into a #196 obligation. The code-PR part was stable from r3 on and passed
+judge_code 3/3 in round 1. What worked: a researcher measuring the design's forms in a throwaway clone between
+rounds, running every gate on main with its seed before a round, rendering paste blocks with `gh api markdown`, and a
+byte snapshot of the design before each architect rewrite (the architect role has Write only) so the diff proved the
+edit stayed in scope.
+Rule: a design that other issues build on is posted to its issue as soon as it is approved, not left in plans/.
+When an issue's design would dictate behaviour another issue owns (a lock protocol, a route), state it as a named
+obligation with constraints from the start instead of as ADR text. Before handing a design to an architect for a
+targeted edit, snapshot the file and diff afterwards; give judges the diff.
+
+### 2026-11-21: Two design rounds on a dictated comment that listed which actions change a box (#216)
+judge_design passed 3/3 in round 3 (approved by the main orchestrator). Rounds 1 and 2 failed only in architecture,
+both on the same sentence in the dictated `scrollable-code.tsx` comment and its Verified and F6 echoes: a list of user
+actions that do or do not change the `pre`'s box. Round 1 claimed the one-pane switch and zoom change it; round 2
+claimed the one-pane switch never does, false at viewport height <= 30rem with classic scrollbars. My round-1 brief
+asked the architect to fix that line and sweep comments for overclaims, so the rewrite produced a new, narrower list
+that was again wrong in one corner. Round 3 dropped every list and stated only the mechanism (the observer reruns on
+any box change; a remount decides afresh), and judge_code passed 3/3 in round 1. The size was also misjudged: TASK
+by the issue, 8 files and about 360 lines with tests.
+Rule: when a dictated comment or failure row enumerates cases ("X, Y and Z change the box", "W does not"), brief the
+architect from round 1 to state the mechanism the code relies on instead of a case list, unless the list is
+exhaustive and each case is checked against the code that sizes the element. Count test lines in the tier sizing.
