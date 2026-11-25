@@ -3540,3 +3540,119 @@ ES1 beside the readable course's Card. Both cost restore work (afterEach, ci.yml
 glob `/app/course/*/course.yaml`), which is exactly what the question should put to Stepan, but the premise is false.
 Rule: Before writing that a state cannot be staged, read what the lever's mechanism can change (container write access,
 user, ownership) and trace each candidate change through the read path; state the cheapest working option and its cost.
+
+### 2026-11-25: The e2e safety boundary named the owner's images by a tag they do not have (#248, judge_design round 1, operations)
+Design 3.4 told the tester never to touch the owner's "`:dev` images". The owner's images are `academy-web:local`
+and `academy-workspace-service:local` (docker-compose.yml:30,71 `${..._IMAGE_TAG:-local}`, isolated-stack.sh:71
+OWNER_IMAGE); `academy-web:dev` appears only as a retag example in tester.md:88. A boundary that names the wrong tag
+leaves the real protected images unnamed in the one sentence the tester reads for this run.
+Rule: Every protected object a design names (project, volume, image:tag) is copied from docker-compose.yml or
+isolated-stack.sh, with the file:line, never from memory or another role file's examples.
+
+### 2026-11-25: Mutant red sets left out tests the mutant reaches, and a Chromium "measurement" that cannot fail (#248, judge_design round 1, architecture)
+Design 3.3 gave M3 (press focus dropped) the red set P1, P2 and the changed pathname test, but every page test of 3.2
+has the arrange check "the press focused the button", so all eleven go red too. M5 (`body` branch dropped) left out
+the existing "focuses another element that takes the success target's place" (retry-button.test.tsx:77-97), whose
+button is removed so focus is on `body`. M10 (harness answers at the press) listed H1 only, but P1's "right after:
+button focused", G3 and E1 also go red once the answer commits at the press. The design's own rule ("a row whose red
+set differs stops the work") turns each of these into a stop for the coder. Section 2.1 and X2 also called e2e R1 the
+Chromium measurement of focus falling to `body` on removal, but the first repo lesson has a workspace, so the loaded
+page is `LessonLayout` and the stored block (the old `main`) is detached together with the button; a detached
+`main.contains(detachedButton)` is true, so R1 passes whatever Chromium reports.
+Rule: For every mutant, walk every test, arrange checks included, and list the full red set; before naming a test as
+the measurement of a platform fact, show an outcome of the fact under which that test goes red.
+
+### 2026-11-25: One citation of a re-checked range left stale (#248)
+Round 2 of the #248 design said every cited line of isolated-stack.sh was re-checked, and section 3.4 cites the
+course restore as :364-370, but the F8 row of section 5 still cites it as :363-367 (:363 is the `fi` of the spec
+stage). The same object carries two different ranges in one document, so a reader cannot tell which one is true.
+Rule: When a range is corrected, grep the whole design for the old range and for every other citation of the same object, and fix them all in one pass.
+
+### 2026-11-25: A wrong range deleted instead of corrected, leaving a false source (#248)
+Round 3 of the #248 design deleted `ia.md:362-363` next to the quote "the dashboard course error's Alert" in section
+2.1 and kept the label "(RG1 text)"; the change log calls it "the quoted RG1 text". RG1 is ia.md:842 and does not
+contain that phrase. The phrase is R2's block sentence at ia.md:365 ("[RG1](#RG1). The block: until #220 the dashboard
+course error's Alert ..."), which only follows a link to RG1. A reader who opens RG1 to check the default block does
+not find it, so the citation now misinforms with no line number to catch it.
+Rule: When a cited range is wrong, find the line that holds the quoted text and cite it (rule id and line); never fix a
+wrong range by deleting it while keeping the source label it was attached to.
+
+### 2026-11-25: Guard walker for "records only under Labels" skips JSON Schema keywords zod emits (#132, judge_design round 1, security)
+plans/132-design.md T3 walks `z.toJSONSchema(..., { io: "input" })` through `properties`, `items` and `anyOf` only.
+Probed with zod 4.6.7: `z.tuple` emits `prefixItems` and `z.discriminatedUnion` emits `oneOf`, so a record added
+inside either is never seen, and the "non-empty" assertion stays green because the five existing `Labels` records
+are found. The walker also does not descend into a found record's `additionalProperties`, so a record-of-records or
+an array under `Labels` (paths `Labels.<key>.<key2>`, `Labels.0.<key>`, which the helper's "previous segment is
+Labels" rule leaks) passes. The guard is the design's only mitigation for the convention, so a false green is a leak.
+Rule: A schema-walking guard is fail-closed: it descends every subschema keyword the generator can emit, throws on
+any keyword it does not know, and each blind spot it claims to close has its own mutation row.
+
+### 2026-11-25: toJSONSchema guard claimed to see "every record" without probing $ref or pipe (#132, judge_design round 1, architecture)
+plans/132-design.md says the T3 guard turns any new record red. Probed with zod 4.6.7 (`io: "input"`): a schema
+with `.meta({ id })` or a `z.json()` field is emitted as `$ref` into `$defs`, which a walker over `properties` /
+`items` / `anyOf` never follows; `z.unknown().pipe(z.record(...))` shows only the pipe's input side (`{}`), so the
+record is absent from the JSON at all, and `io: "output"` cannot replace it because the `Labels` and `Volumes`
+transforms then come out as `{}`. The design stated a completeness it had not checked against the generator.
+Rule: Before a design calls a generated-artifact guard complete, probe every construct that changes the generator's
+output shape (refs, pipes, unions, tuples) and either cover it or name it as residual in the failure-mode table.
+
+### 2026-11-25: Tester procedure ran filtered package scripts in a fresh worktree without building the workspace deps (#132, judge_design round 2, operations)
+plans/132-design.md section 5 has the tester run `pnpm install --frozen-lockfile`, then `pnpm --filter
+@academy/workspace typecheck` / `test` and `exec vitest run`. A filtered pnpm script does not go through turbo, so
+`^build` never runs. `services/workspace/src/errors.ts:1` imports `@academy/lesson-schema/schema`, whose package
+exports point only at `dist/` (`packages/lesson-schema/package.json:7-19`), and the worktree has no
+`packages/lesson-schema/dist` (gitignored, install builds nothing). typecheck fails TS2307 and every test that
+imports `errors.ts` (T4, T5, most of the suite) fails to resolve, for a reason unrelated to the change.
+`.claude/agents/dev/tester.md:36` already uses `pnpm turbo run typecheck --force` for this reason.
+Rule: A tester procedure that calls a package script directly first builds that package's workspace dependencies
+(`pnpm exec turbo run build --filter='<pkg>^...'`), or goes through turbo.
+
+### 2026-11-25: Accepted residuals named by keyword, narrower than the class they stand for (#132, judge_design round 2, security)
+plans/132-design.md section 3 and decision 5 bound the T3 blind spots as "a record behind a `pipe`" and "a
+`refine` / `superRefine` that builds an issue path", and the reviewer is told to check `pipe` and `refine` in
+`schemas.ts`. Probed with zod 4.6.7 (input-mode walker, scratchpad `judge-r2.mjs`): `z.codec(z.string(),
+z.record(...))` is green with labels=0 and parses to path `X.evil k`; `.transform((v, ctx) => ctx.addIssue({ path:
+[key] }))` gives `X.k` and `.check((ctx) => ctx.issues.push({ path: [key] }))` gives `X.kk`, both invisible to
+JSON Schema. `schemas.ts` already uses `.transform` twice, so a grep for `refine` / `pipe` would not flag the
+cases that look closest to today's code. Same class as round 1: a keyword list standing in for a structural rule.
+Rule: A residual is stated as the mechanism (any pipe-like stage whose output side is not in input-mode JSON Schema;
+any code that adds an issue with a path), with the full current list of zod APIs that reach it, and is
+mechanically pinned (a source check in the guard test) when that is a few lines.
+
+### 2026-11-25: Residual rules worded as "pipe" and "refine / superRefine" while the walker sizing used unformatted lines (#132, judge_design round 2, architecture)
+Independent of the security entry above, same root: plans/132-design.md decision 5 and section 3 tell the coder and
+the reviewer to check "any `pipe`" and "no `refine` / `superRefine`". Probed with zod 4.6.7 against the round-2
+walker (scratchpad `j2/extra.mjs`): `z.codec(z.unknown(), z.record(...))` walks green and parses to `Extra.evil k`;
+`z.unknown().transform((v, ctx) => ctx.addIssue({ path: Object.keys(v) }))` walks green and gives `Extra.evil k`.
+`schemas.ts` already has two `.transform` callbacks. Also, "walker about 20-25 lines" counts the dense scratchpad
+`.mjs`; the same walker typed and run through biome (lineWidth 100) is 43 lines, at the ~40 ceiling, not under it.
+Rule: An accepted residual is written as its mechanism with the full list of zod APIs that reach it, and a size claim
+is measured on the formatted, typed code the coder will commit.
+
+### 2026-11-25: Mutation restore runs even when the stale-backup guard stopped the call (#132, judge_design round 3, operations)
+plans/132-design.md section 5 step 4 runs `{ [[ ! -e $B ]] || cmp $F $B; } && cp $F $B && perl ... && vitest; cp $B $F && cmp $F $B`.
+The `;` makes `cp $B $F` unconditional, so when the guard finds a backup that differs from `F` (left by an earlier
+tester round, before the coder changed the file), the call prints "differ" and then copies the old backup over the
+pending code; the closing `cmp` is silent and the status is 0. Reproduced in zsh on scratch files: the newer file
+ended up holding the old text. Backups are never removed, so the next tester round after a coder fix hits it.
+Rule: A mutation step restores only from a backup it took in the same call, and removes that backup after a verified
+restore; a backup found at the start stops the run for a manual look.
+
+### 2026-11-25: Mutation step claimed "the others in the file green" without walking each mutation over every test (#132, judge_design round 4, operations)
+Revision 4 of the tester procedure says that under each mutation the named tests are red and the others in the file
+green. MT1 (`path.map(String).join(".")`) turns T2 red too (`Labels.Symbol(s)`), and MT2 (`path.join(".")`, the code
+on main) turns the four T1 label rows red as well as T2. A tester following the step literally reports a failed check.
+Rule: Before a procedure states which tests stay green under a mutation, evaluate the mutated code against every row
+of every test in the file it runs.
+
+### 2026-11-25: #247 design removed the one-course seam but kept its only dependency, and wrote test selectors that match the Card (#247, judge_design round 1, architecture)
+The design deletes `getFirstReadableCourse` and `firstReadableCourse` "because dead code is deleted", but
+`getCourseNames` (server.ts:29), `CourseReads.listNames` (reads.ts:19,42-46) and `listCourseNames` (courses.ts:141-146)
+had that seam as their only production caller and are left with tests only. Its test plan claims ADR-0009 item 8
+(one listing, one read per course) without a test, although `course-server-fake.ts` records every file call and the
+catalog tests pin them. P2, P8 and D1 count `main section` elements while `NextLessonCard` is itself a `section` in
+`main` (next-lesson-card.tsx:24), so those tests as written are red against a correct page. The fixture course's
+`course.yaml` description "с одним уроком" was left false while the module summary was fixed for the same reason.
+Rule: When deleting a function, grep every function it calls and delete or justify each one left without a caller;
+when a test selector counts elements by tag or role, list every element of that tag the page renders, not only the
+new ones.

@@ -1149,3 +1149,51 @@ Rule: before pointing work at a follow-up issue in a brief, read that issue's bo
 In design and coder briefs, comments state only what the code in the same file makes true; a clause about another
 component (its targets, callers, "every"/"only" over other files) is left out from the first draft, and the first
 comment sweep checks for that class, not only for false reasons.
+
+### 2026-11-25: Four design rounds on citations and labels, and an e2e wait nobody had run (#248)
+judge_design passed 3/3 only in round 4. Round 1 failed on incomplete mutant red sets, a "measured" claim whose test
+passed either way, and a misnamed owner image. Rounds 2 and 3 failed on one stale line range each: the same item was
+cited in two sections, and a fix deleted a wrong range but kept the wrong rule label next to it. Round 4 passed after
+each range was cited once with "see X" pointers elsewhere, the round-log narrative was deleted from the design, and
+two sweeps went to the judges: a script that checks every path:N-M against origin/main, and a label sweep that checks
+each rule label and design/ citation against the rule's own words. Separately, design 3.4 prescribed
+`await response.finished()` after a held page.route refresh; nobody ran it before the tester, and T1-T3 hung on it in
+tester run 1 (it resolved in 2 of 9 held cases). The fix waited for the response headers, with T3 as the timing control.
+Rule: before the first judge_design round, run the citation script on the design and ask the architect for the label
+sweep, so stale ranges and misattributed rules never reach a judge; a design keeps no history of its own rounds. Any
+Playwright wait the design prescribes on an intercepted or held request is tried once against the real stack, or
+listed as unmeasured, before judge_design.
+
+### 2026-11-25: A hardening fix grew a guard test that took four of five design rounds (#132)
+#132 (keep Docker label keys out of the shape-error text) needed a six-line helper. My first architect brief asked
+for a fix that "cannot silently regress when a new z.record is added" and for a check that pins the convention, so
+the architect added a toJSONSchema guard test. Rounds 1 and 2 failed on the guard (a keyword whitelist, then
+blind spots named by keyword); the orchestrator descoped it to a PR follow-up. Rounds 3 and 4 then failed on the
+tester procedure text (a shell restore that could overwrite uncommitted code, then a claim that the unnamed tests
+stay green). judge_code passed 3/3 in round 1 on a 163-line diff. The tier was TASK from a 60-90 LOC research
+estimate; the r1 design came to ~175 LOC in 5 files.
+Rule: for a hardening issue, the architect brief asks for the fix and its tests only; a guard for future code is
+offered as a follow-up, not requested. A tester procedure in a design states rules (clean committed tree, what
+must go red, `git restore`), never shell one-liners and never claims about what stays green. Re-check the tier
+against the architect's estimate, test lines included, before judge_design.
+
+### 2026-11-25: My plan put a test helper one commit after the test that needs it (#247)
+plans/247-plan.md listed `writeTheoryOnlyCourse` under C4 while V1, in C3, reads the theory-only course; the coder
+moved the helper into C3 and reported it. The same plan also left a comment the C2 getter made false until C4; the
+coder replaced it in C2. Both were caught by the coder, not by me. judge_design took two rounds (round 1 failed
+architecture on dead code left after a seam removal, an ADR claim with no test, and a block selector that also
+matched the Card's section); judge_code passed 3/3 in round 1. Separately, `init` refused at first because this
+worktree folder still held the #71 process worktree (the #96 and #137 lesson again); the starting session removed it.
+Rule: before handing out a commit plan, list for each commit the helpers, fixtures and comments its tests and code
+touch, and place each in the first commit that uses it or makes it false.
+
+### 2026-11-25: Each rework brief named one class, and the next round found the neighbouring class (#228)
+judge_design took three rounds for a 41-line flow-text change. Round 1 failed because my architect brief limited the
+item-3 sweep to the files the research listed and left `ia.md` out. Round 2 failed on a pointer the round-2 sweep had
+itself extended (`ia.md:926-927`): the brief asked "does the pointer restate a rule", not "does it cover every page and
+state of its sentence", so the dashboard root error stayed unlisted. Round 3, briefed as a two-way check of every
+from-#NNN id list against its source (every id exists, every source row listed or excluded), passed 3/3 and found three
+more gaps of the same shape.
+Rule: a rework brief for a pointer finding asks for the two-way check over every pointer of that form in all of
+`design/flows/`, `ia.md` included, from the first rework on; the sweep's file list is all flow files, never the research
+file's list.
