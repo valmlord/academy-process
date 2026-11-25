@@ -1105,6 +1105,17 @@ test buffer).
 Rule: a size table counts test helpers, mocks and adapted existing tests as their own rows, and when the estimate is
 within 20 % of the bound, treat it as over and name the split before judge_design.
 
+### 2026-11-25: A probe fix closed one failure path and left its twin, costing a third design round (#240)
+judge_design took three rounds. Round 1 failed on name-mismatch containers (a reason false for one of two branches
+sharing a line) and on the stack probe printing "no lesson with a workspace" for a root failure. My round-2 brief named
+only the root-failure path; the architect fixed that one, and round 2 failed on its twin (the root reads but every course
+fails), the likely case with a one-course root. Round 3 passed once the brief asked for a sweep of every failure path of
+every probe and log line ("names what failed, not masked by a later generic message") before the judges. In judge_code,
+a doc fix for one false clause left a second false clause in the same sentence; I sent it back before the round.
+Rule: when a finding is "this output names the wrong cause", the fix brief asks for every result variant the reader can
+return (from its type) with the line each prints, not only the variant named. When a comment fix narrows one clause,
+re-read the whole sentence against the code before the judges see it.
+
 ### 2026-11-25: A TASK state kept for a change the research sized as PROJECT, and a 30 % size miss again (#239)
 The researcher sized #239 at 140-185 lines with tests, the architect at 193-224, the diff came to +290/-11 (formatter
 wraps, unions and doc comments). The state was initialized as TASK from the issue label before research; there is no
@@ -1135,3 +1146,14 @@ matched the Card's section); judge_code passed 3/3 in round 1. Separately, `init
 worktree folder still held the #71 process worktree (the #96 and #137 lesson again); the starting session removed it.
 Rule: before handing out a commit plan, list for each commit the helpers, fixtures and comments its tests and code
 touch, and place each in the first commit that uses it or makes it false.
+
+### 2026-11-25: Each rework brief named one class, and the next round found the neighbouring class (#228)
+judge_design took three rounds for a 41-line flow-text change. Round 1 failed because my architect brief limited the
+item-3 sweep to the files the research listed and left `ia.md` out. Round 2 failed on a pointer the round-2 sweep had
+itself extended (`ia.md:926-927`): the brief asked "does the pointer restate a rule", not "does it cover every page and
+state of its sentence", so the dashboard root error stayed unlisted. Round 3, briefed as a two-way check of every
+from-#NNN id list against its source (every id exists, every source row listed or excluded), passed 3/3 and found three
+more gaps of the same shape.
+Rule: a rework brief for a pointer finding asks for the two-way check over every pointer of that form in all of
+`design/flows/`, `ia.md` included, from the first rework on; the sweep's file list is all flow files, never the research
+file's list.
