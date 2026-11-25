@@ -1125,3 +1125,13 @@ in dark.
 Rule: before the first brief, check each "never touch" line of the constraints block against the commands the design
 prescribes, and name the run's own objects as allowed. Design conformance shots cover every page in scope in both
 themes from a fresh context; a page that fails only there is checked on main's code shape before it is called new.
+
+### 2026-11-25: My plan put a test helper one commit after the test that needs it (#247)
+plans/247-plan.md listed `writeTheoryOnlyCourse` under C4 while V1, in C3, reads the theory-only course; the coder
+moved the helper into C3 and reported it. The same plan also left a comment the C2 getter made false until C4; the
+coder replaced it in C2. Both were caught by the coder, not by me. judge_design took two rounds (round 1 failed
+architecture on dead code left after a seam removal, an ADR claim with no test, and a block selector that also
+matched the Card's section); judge_code passed 3/3 in round 1. Separately, `init` refused at first because this
+worktree folder still held the #71 process worktree (the #96 and #137 lesson again); the starting session removed it.
+Rule: before handing out a commit plan, list for each commit the helpers, fixtures and comments its tests and code
+touch, and place each in the first commit that uses it or makes it false.
