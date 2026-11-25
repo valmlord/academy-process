@@ -3472,3 +3472,15 @@ go red; on CI's ext4 the order is hash-based, so T5 and T6 (two issues each, `to
 file system. The web sorts the names after `.map((entry) => entry.name)` (node-fs.ts:80-83).
 Rule: When a design prescribes an ordering for determinism, name the value being sorted (strings, not entries) and
 say on which file system the guarding test can actually go red.
+
+### 2026-11-25: Mutation rows whose input never reaches the mutated line, and a wrap check that cannot pass (#241, judge_design round 1, architecture)
+M2 (readOtherCourses calls readListedCourse) names U4 as red, but U4 runs on the default fixture, where
+`broken-course` claims `fixture-course`'s id and readListedCourse returns at the id check (courses.ts:103) before
+any module.yaml: the file calls are the same under the mutation, so U4 stays green. M3 ("keep the title when the id
+check fails") can only be made inside the shared readCourseFile, which also turns the existing failing-course page
+tests and U8 red, against the row's "every other test green". E6 asserted "more than one client rect" on the course
+crumb, whose `a` is a flex item of `BreadcrumbItem`'s `inline-flex` li (breadcrumb.tsx:29-36), so it is blockified
+and has one rect however many lines it wraps to. The AC map also claimed lesson AC76's one-pane clause from two
+tests that both run in two panes.
+Rule: For every mutation row, trace the named test's fixture to the mutated line and list the full red set; for a
+layout assertion, check the measured element's computed display in the real component before choosing the metric.
