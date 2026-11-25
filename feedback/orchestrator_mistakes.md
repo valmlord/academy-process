@@ -1104,3 +1104,13 @@ issues, closed by a sweep to bare pointers), judge_code 2 rounds (one false comm
 test buffer).
 Rule: a size table counts test helpers, mocks and adapted existing tests as their own rows, and when the estimate is
 within 20 % of the bound, treat it as over and name the split before judge_design.
+
+### 2026-11-25: A TASK state kept for a change the research sized as PROJECT, and a 30 % size miss again (#239)
+The researcher sized #239 at 140-185 lines with tests, the architect at 193-224, the diff came to +290/-11 (formatter
+wraps, unions and doc comments). The state was initialized as TASK from the issue label before research; there is no
+re-tier verb, and pause plus a new init would have left a parked TASK state for Stepan to remove. The phases are the
+same, so I kept TASK and briefed the architect with PROJECT scope (what NOT to build). judge_design passed in round 2
+after one operations FAIL (a default sort on Dirent objects), judge_code 3/3 in round 1.
+Rule: for an issue whose description already implies tests over two courses plus an ADR change, size it before
+init and init the tier the size gives; a design size table adds about 30 % for formatter-wrapped types and doc
+comments in TypeScript.
