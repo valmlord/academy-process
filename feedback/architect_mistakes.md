@@ -3515,3 +3515,71 @@ and has one rect however many lines it wraps to. The AC map also claimed lesson 
 tests that both run in two panes.
 Rule: For every mutation row, trace the named test's fixture to the mutated line and list the full red set; for a
 layout assertion, check the measured element's computed display in the real component before choosing the metric.
+
+### 2026-11-25: Guard walker for "records only under Labels" skips JSON Schema keywords zod emits (#132, judge_design round 1, security)
+plans/132-design.md T3 walks `z.toJSONSchema(..., { io: "input" })` through `properties`, `items` and `anyOf` only.
+Probed with zod 4.6.7: `z.tuple` emits `prefixItems` and `z.discriminatedUnion` emits `oneOf`, so a record added
+inside either is never seen, and the "non-empty" assertion stays green because the five existing `Labels` records
+are found. The walker also does not descend into a found record's `additionalProperties`, so a record-of-records or
+an array under `Labels` (paths `Labels.<key>.<key2>`, `Labels.0.<key>`, which the helper's "previous segment is
+Labels" rule leaks) passes. The guard is the design's only mitigation for the convention, so a false green is a leak.
+Rule: A schema-walking guard is fail-closed: it descends every subschema keyword the generator can emit, throws on
+any keyword it does not know, and each blind spot it claims to close has its own mutation row.
+
+### 2026-11-25: toJSONSchema guard claimed to see "every record" without probing $ref or pipe (#132, judge_design round 1, architecture)
+plans/132-design.md says the T3 guard turns any new record red. Probed with zod 4.6.7 (`io: "input"`): a schema
+with `.meta({ id })` or a `z.json()` field is emitted as `$ref` into `$defs`, which a walker over `properties` /
+`items` / `anyOf` never follows; `z.unknown().pipe(z.record(...))` shows only the pipe's input side (`{}`), so the
+record is absent from the JSON at all, and `io: "output"` cannot replace it because the `Labels` and `Volumes`
+transforms then come out as `{}`. The design stated a completeness it had not checked against the generator.
+Rule: Before a design calls a generated-artifact guard complete, probe every construct that changes the generator's
+output shape (refs, pipes, unions, tuples) and either cover it or name it as residual in the failure-mode table.
+
+### 2026-11-25: Tester procedure ran filtered package scripts in a fresh worktree without building the workspace deps (#132, judge_design round 2, operations)
+plans/132-design.md section 5 has the tester run `pnpm install --frozen-lockfile`, then `pnpm --filter
+@academy/workspace typecheck` / `test` and `exec vitest run`. A filtered pnpm script does not go through turbo, so
+`^build` never runs. `services/workspace/src/errors.ts:1` imports `@academy/lesson-schema/schema`, whose package
+exports point only at `dist/` (`packages/lesson-schema/package.json:7-19`), and the worktree has no
+`packages/lesson-schema/dist` (gitignored, install builds nothing). typecheck fails TS2307 and every test that
+imports `errors.ts` (T4, T5, most of the suite) fails to resolve, for a reason unrelated to the change.
+`.claude/agents/dev/tester.md:36` already uses `pnpm turbo run typecheck --force` for this reason.
+Rule: A tester procedure that calls a package script directly first builds that package's workspace dependencies
+(`pnpm exec turbo run build --filter='<pkg>^...'`), or goes through turbo.
+
+### 2026-11-25: Accepted residuals named by keyword, narrower than the class they stand for (#132, judge_design round 2, security)
+plans/132-design.md section 3 and decision 5 bound the T3 blind spots as "a record behind a `pipe`" and "a
+`refine` / `superRefine` that builds an issue path", and the reviewer is told to check `pipe` and `refine` in
+`schemas.ts`. Probed with zod 4.6.7 (input-mode walker, scratchpad `judge-r2.mjs`): `z.codec(z.string(),
+z.record(...))` is green with labels=0 and parses to path `X.evil k`; `.transform((v, ctx) => ctx.addIssue({ path:
+[key] }))` gives `X.k` and `.check((ctx) => ctx.issues.push({ path: [key] }))` gives `X.kk`, both invisible to
+JSON Schema. `schemas.ts` already uses `.transform` twice, so a grep for `refine` / `pipe` would not flag the
+cases that look closest to today's code. Same class as round 1: a keyword list standing in for a structural rule.
+Rule: A residual is stated as the mechanism (any pipe-like stage whose output side is not in input-mode JSON Schema;
+any code that adds an issue with a path), with the full current list of zod APIs that reach it, and is
+mechanically pinned (a source check in the guard test) when that is a few lines.
+
+### 2026-11-25: Residual rules worded as "pipe" and "refine / superRefine" while the walker sizing used unformatted lines (#132, judge_design round 2, architecture)
+Independent of the security entry above, same root: plans/132-design.md decision 5 and section 3 tell the coder and
+the reviewer to check "any `pipe`" and "no `refine` / `superRefine`". Probed with zod 4.6.7 against the round-2
+walker (scratchpad `j2/extra.mjs`): `z.codec(z.unknown(), z.record(...))` walks green and parses to `Extra.evil k`;
+`z.unknown().transform((v, ctx) => ctx.addIssue({ path: Object.keys(v) }))` walks green and gives `Extra.evil k`.
+`schemas.ts` already has two `.transform` callbacks. Also, "walker about 20-25 lines" counts the dense scratchpad
+`.mjs`; the same walker typed and run through biome (lineWidth 100) is 43 lines, at the ~40 ceiling, not under it.
+Rule: An accepted residual is written as its mechanism with the full list of zod APIs that reach it, and a size claim
+is measured on the formatted, typed code the coder will commit.
+
+### 2026-11-25: Mutation restore runs even when the stale-backup guard stopped the call (#132, judge_design round 3, operations)
+plans/132-design.md section 5 step 4 runs `{ [[ ! -e $B ]] || cmp $F $B; } && cp $F $B && perl ... && vitest; cp $B $F && cmp $F $B`.
+The `;` makes `cp $B $F` unconditional, so when the guard finds a backup that differs from `F` (left by an earlier
+tester round, before the coder changed the file), the call prints "differ" and then copies the old backup over the
+pending code; the closing `cmp` is silent and the status is 0. Reproduced in zsh on scratch files: the newer file
+ended up holding the old text. Backups are never removed, so the next tester round after a coder fix hits it.
+Rule: A mutation step restores only from a backup it took in the same call, and removes that backup after a verified
+restore; a backup found at the start stops the run for a manual look.
+
+### 2026-11-25: Mutation step claimed "the others in the file green" without walking each mutation over every test (#132, judge_design round 4, operations)
+Revision 4 of the tester procedure says that under each mutation the named tests are red and the others in the file
+green. MT1 (`path.map(String).join(".")`) turns T2 red too (`Labels.Symbol(s)`), and MT2 (`path.join(".")`, the code
+on main) turns the four T1 label rows red as well as T2. A tester following the step literally reports a failed check.
+Rule: Before a procedure states which tests stay green under a mutation, evaluate the mutated code against every row
+of every test in the file it runs.
