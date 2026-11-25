@@ -792,3 +792,10 @@ My round-3 finding listed the catalog lesson rows of `default-until-220` as kept
 only and round 4 had to raise the links.
 Rule: When a finding names hrefs of a state, grep every href that state renders and name all of them, not the most
 visible element.
+
+### 2026-11-25: Round-1 note asked for `pnpm install` first but not for the workspace deps build (#132, judge_design round 2, operations)
+My round-1 note said "pnpm install first" for the tester procedure. I did not check that the filtered
+`pnpm --filter @academy/workspace` scripts skip turbo's `^build`, and `@academy/lesson-schema` resolves only from
+its `dist/`, absent in a fresh worktree. Revision 2 took the note as written and round 2 had to raise the build.
+Rule: Before a judge's note fixes a run order, check what each command needs on disk (workspace `dist/`, generated
+files) in a fresh worktree, not only what it needs installed.

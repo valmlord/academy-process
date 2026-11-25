@@ -1545,3 +1545,24 @@ bounded it; the move widened L1 and the class check, which flagged the same two-
 not re-check L1's own scope after the move.
 Rule: When a sentence that bounds a rule is moved out of it, re-read the rule alone and re-run the anchor check for
 every anchor its literal wording now covers.
+
+### 2026-11-25: #228 named the item-9 exception in five scope lines but left two that the research had listed, and swept item 3 without ia.md (#228, judge_design round 1, consistency)
+The issue asks to name "Requirements for #220" item 9 in the scope lines that give error states to #222. The design
+named it in `courses.md:3-4`, `:9-12`, `:150-151`, `:156` and `ia.md:744-745`, but left `ia.md:8-9` (file header, "Error
+and focus states from #220: section [Error and focus states (#222)]") and `courses.md:138` item 8 ("The error and focus
+states: `ia.md` [Error and focus states (#222)] and F21") as "optional", although the research (row 7) said the class rule
+asks to name it there, and item 8 now sits right above item 9's "not #222". Separately, the item-3 class sweep ("from #220
++ pointer" states the rule's outcome) re-read only `ia.md:7-9`, `:744-753`, `:783-784`, `:815-817` of ia.md, a file #218
+changed, and missed `ia.md:27` ("from #220 named by its title ([A218-7])") and `ia.md:545` (the from-#220 bar "Академия",
+"Главная", user menu, A218-3's own list, before its pointer).
+Rule: An exception is named in every line of the class the issue defines, not only the ones a design judges valuable; a
+"class sweep over the files #218 changed" greps "#220" in every one of them, ia.md included, and lists each hit.
+
+### 2026-11-25: #228 round 2 extended a pointer per page but left out the dashboard's root error (#228, judge_design round 2, consistency)
+R2-8 extended the Navigation model pointer (`ia.md:926-927`, "While the course cannot be read, the dashboard, catalog and
+lesson page show the course error ... the only action in `main`") to ES1, ES7, ES8, ES9, ES12 under the rule "every pointer
+names a target that covers everything it follows". It added ES8 (the root that cannot be read) for the catalog and the lesson
+page, but nothing for the dashboard's root error, which is "Rules (#218)" row "root error" (the Alert in the Card's place, no
+blocks; title ES2). `dashboard.md:54` points to exactly that row for the same state.
+Rule: When a pointer covers a sentence that names several pages, build a page x state grid (each page, each from-#220 state
+that replaces the sentence's state: one course, the root) and tick one target per cell before writing the pointer.
