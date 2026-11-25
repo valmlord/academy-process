@@ -1137,6 +1137,19 @@ Rule: before the first brief, check each "never touch" line of the constraints b
 prescribes, and name the run's own objects as allowed. Design conformance shots cover every page in scope in both
 themes from a fresh context; a page that fails only there is checked on main's code shape before it is called new.
 
+### 2026-11-25: A hardening fix grew a guard test that took four of five design rounds (#132)
+#132 (keep Docker label keys out of the shape-error text) needed a six-line helper. My first architect brief asked
+for a fix that "cannot silently regress when a new z.record is added" and for a check that pins the convention, so
+the architect added a toJSONSchema guard test. Rounds 1 and 2 failed on the guard (a keyword whitelist, then
+blind spots named by keyword); the orchestrator descoped it to a PR follow-up. Rounds 3 and 4 then failed on the
+tester procedure text (a shell restore that could overwrite uncommitted code, then a claim that the unnamed tests
+stay green). judge_code passed 3/3 in round 1 on a 163-line diff. The tier was TASK from a 60-90 LOC research
+estimate; the r1 design came to ~175 LOC in 5 files.
+Rule: for a hardening issue, the architect brief asks for the fix and its tests only; a guard for future code is
+offered as a follow-up, not requested. A tester procedure in a design states rules (clean committed tree, what
+must go red, `git restore`), never shell one-liners and never claims about what stays green. Re-check the tier
+against the architect's estimate, test lines included, before judge_design.
+
 ### 2026-11-25: My plan put a test helper one commit after the test that needs it (#247)
 plans/247-plan.md listed `writeTheoryOnlyCourse` under C4 while V1, in C3, reads the theory-only course; the coder
 moved the helper into C3 and reported it. The same plan also left a comment the C2 getter made false until C4; the
