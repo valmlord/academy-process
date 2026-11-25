@@ -1149,3 +1149,24 @@ Rule: for a hardening issue, the architect brief asks for the fix and its tests 
 offered as a follow-up, not requested. A tester procedure in a design states rules (clean committed tree, what
 must go red, `git restore`), never shell one-liners and never claims about what stays green. Re-check the tier
 against the architect's estimate, test lines included, before judge_design.
+
+### 2026-11-25: My plan put a test helper one commit after the test that needs it (#247)
+plans/247-plan.md listed `writeTheoryOnlyCourse` under C4 while V1, in C3, reads the theory-only course; the coder
+moved the helper into C3 and reported it. The same plan also left a comment the C2 getter made false until C4; the
+coder replaced it in C2. Both were caught by the coder, not by me. judge_design took two rounds (round 1 failed
+architecture on dead code left after a seam removal, an ADR claim with no test, and a block selector that also
+matched the Card's section); judge_code passed 3/3 in round 1. Separately, `init` refused at first because this
+worktree folder still held the #71 process worktree (the #96 and #137 lesson again); the starting session removed it.
+Rule: before handing out a commit plan, list for each commit the helpers, fixtures and comments its tests and code
+touch, and place each in the first commit that uses it or makes it false.
+
+### 2026-11-25: Each rework brief named one class, and the next round found the neighbouring class (#228)
+judge_design took three rounds for a 41-line flow-text change. Round 1 failed because my architect brief limited the
+item-3 sweep to the files the research listed and left `ia.md` out. Round 2 failed on a pointer the round-2 sweep had
+itself extended (`ia.md:926-927`): the brief asked "does the pointer restate a rule", not "does it cover every page and
+state of its sentence", so the dashboard root error stayed unlisted. Round 3, briefed as a two-way check of every
+from-#NNN id list against its source (every id exists, every source row listed or excluded), passed 3/3 and found three
+more gaps of the same shape.
+Rule: a rework brief for a pointer finding asks for the two-way check over every pointer of that form in all of
+`design/flows/`, `ia.md` included, from the first rework on; the sweep's file list is all flow files, never the research
+file's list.
