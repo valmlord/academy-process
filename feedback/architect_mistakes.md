@@ -3515,3 +3515,15 @@ and has one rect however many lines it wraps to. The AC map also claimed lesson 
 tests that both run in two panes.
 Rule: For every mutation row, trace the named test's fixture to the mutated line and list the full red set; for a
 layout assertion, check the measured element's computed display in the real component before choosing the metric.
+
+### 2026-11-25: #247 design removed the one-course seam but kept its only dependency, and wrote test selectors that match the Card (#247, judge_design round 1, architecture)
+The design deletes `getFirstReadableCourse` and `firstReadableCourse` "because dead code is deleted", but
+`getCourseNames` (server.ts:29), `CourseReads.listNames` (reads.ts:19,42-46) and `listCourseNames` (courses.ts:141-146)
+had that seam as their only production caller and are left with tests only. Its test plan claims ADR-0009 item 8
+(one listing, one read per course) without a test, although `course-server-fake.ts` records every file call and the
+catalog tests pin them. P2, P8 and D1 count `main section` elements while `NextLessonCard` is itself a `section` in
+`main` (next-lesson-card.tsx:24), so those tests as written are red against a correct page. The fixture course's
+`course.yaml` description "с одним уроком" was left false while the module summary was fixed for the same reason.
+Rule: When deleting a function, grep every function it calls and delete or justify each one left without a caller;
+when a test selector counts elements by tag or role, list every element of that tag the page renders, not only the
+new ones.
