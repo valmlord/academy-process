@@ -1114,3 +1114,14 @@ after one operations FAIL (a default sort on Dirent objects), judge_code 3/3 in 
 Rule: for an issue whose description already implies tests over two courses plus an ADR change, size it before
 init and init the tier the size gives; a design size table adds about 30 % for formatter-wrapped types and doc
 comments in TypeScript.
+
+### 2026-11-25: My constraints block forbade an object the briefed test run creates, and a dark 404 was first seen by a new shot check (#241)
+plans/241-constraints.md said "never touch images `academy-web:*`" while the design's T2 runs isolated-stack.sh, which
+builds and removes `academy-web:t31`; a tester bound by the words would have refused T2. The operations judge caught it
+in judge_design round 1. Separately, tester run 1 failed only on the new design-shots check: in a dark scheme every 404
+rendered light, because Next serves a notFound() from a page body as an `__next_error__` shell that the client renders
+with createRoot, so the head theme script never runs. The defect predated #241; no earlier e2e loaded a not-found page
+in dark.
+Rule: before the first brief, check each "never touch" line of the constraints block against the commands the design
+prescribes, and name the run's own objects as allowed. Design conformance shots cover every page in scope in both
+themes from a fresh context; a page that fails only there is checked on main's code shape before it is called new.
