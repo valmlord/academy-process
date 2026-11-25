@@ -1115,3 +1115,24 @@ a doc fix for one false clause left a second false clause in the same sentence; 
 Rule: when a finding is "this output names the wrong cause", the fix brief asks for every result variant the reader can
 return (from its type) with the line each prints, not only the variant named. When a comment fix narrows one clause,
 re-read the whole sentence against the code before the judges see it.
+
+### 2026-11-25: A TASK state kept for a change the research sized as PROJECT, and a 30 % size miss again (#239)
+The researcher sized #239 at 140-185 lines with tests, the architect at 193-224, the diff came to +290/-11 (formatter
+wraps, unions and doc comments). The state was initialized as TASK from the issue label before research; there is no
+re-tier verb, and pause plus a new init would have left a parked TASK state for Stepan to remove. The phases are the
+same, so I kept TASK and briefed the architect with PROJECT scope (what NOT to build). judge_design passed in round 2
+after one operations FAIL (a default sort on Dirent objects), judge_code 3/3 in round 1.
+Rule: for an issue whose description already implies tests over two courses plus an ADR change, size it before
+init and init the tier the size gives; a design size table adds about 30 % for formatter-wrapped types and doc
+comments in TypeScript.
+
+### 2026-11-25: My constraints block forbade an object the briefed test run creates, and a dark 404 was first seen by a new shot check (#241)
+plans/241-constraints.md said "never touch images `academy-web:*`" while the design's T2 runs isolated-stack.sh, which
+builds and removes `academy-web:t31`; a tester bound by the words would have refused T2. The operations judge caught it
+in judge_design round 1. Separately, tester run 1 failed only on the new design-shots check: in a dark scheme every 404
+rendered light, because Next serves a notFound() from a page body as an `__next_error__` shell that the client renders
+with createRoot, so the head theme script never runs. The defect predated #241; no earlier e2e loaded a not-found page
+in dark.
+Rule: before the first brief, check each "never touch" line of the constraints block against the commands the design
+prescribes, and name the run's own objects as allowed. Design conformance shots cover every page in scope in both
+themes from a fresh context; a page that fails only there is checked on main's code shape before it is called new.
