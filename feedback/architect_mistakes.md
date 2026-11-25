@@ -3463,3 +3463,34 @@ cannot be met as written: #241 must either read other courses' modules (breaking
 (breaking the obligation). The dashboard via `readEveryCourse` would also not be "the one per-course read function".
 Rule: When an obligation cites an ADR item, quote the item's own scope (whose ids, which files) and check every
 reader the obligation names can meet it; shortening a rule must not widen whom it binds.
+
+### 2026-11-25: #240 decision 1 reasoned for one of the two "invalid" branches only (#240, judge_design round 1, architecture)
+Decision 1 removes stopped containers with invalid labels "or labels naming another workspace than the container's
+name" (`reconcile.ts:42-45`) whenever the root reads. The ADR-0002 text (6.1, "because invalid labels name no course")
+and the dictated `classifyContainer` comment ("Labels that parse to no workspace name no course") give a reason that
+is true only for `parseWorkspaceLabels` returning `invalid`. A name-mismatch container has valid labels that do name a
+course; when that course fails, the ADR's own "keeps every stopped container of a failing course" reads as keep while
+the code removes. No test pins that case (C3, A2 use `invalidContainer` with no key labels), so option C, which the
+design rejects, passes every listed test.
+Rule: When a branch merges two conditions (`a || b`), state the decision's reason and pick its test for each
+condition separately; the case where a rejected option would differ needs its own test.
+
+### 2026-11-25: #240 design keeps the probe's "no lesson" message for a course root failure (#240, judge_design round 1, operations)
+Decision 6 (`plans/240-design.md:195-198`) changes `services/workspace/test/network/api.mjs` to `readEveryCourse`
+and, for a `root-failure` result, prints the existing `API FAIL no lesson with a workspace in the course` and exits 1.
+Today a root failure throws out of `readCourseLessons` and the CI step shows the `CourseReadError` with file and
+reason; after the change the CI e2e step `workspace service reaches Docker` (`ci.yml:174-175`) would tell the
+operator the content lacks a workspace lesson when the root could not be read, the one distinction #240 exists to
+give. The design mapped a new failure value onto an old message without asking whether the message still tells the
+truth.
+Rule: When a new result kind reaches an existing diagnostic, check the message still names the actual cause; a root
+failure prints the root error's message, never a content message.
+
+### 2026-11-25: Probe O1 fix covered the root failure but not a root whose every course fails (#240, judge_design round 2, operations)
+Round 1 failed the probe for printing "API FAIL no lesson with a workspace in the course" on a root failure. Decision 6
+of round 2 gives `root-failure` its own line, but a `courses` result whose entries are all `course-failure` still
+falls through to "no lesson with a workspace", and the course's read error is dropped. The live and CI root holds one
+course (`course/ai-for-developers`), so that course failing is the likelier way the probe meets a broken course, and
+its line names the wrong cause.
+Rule: When a finding is "this failure line names the wrong cause", give every failure the result type can carry its
+own line (root failure, every course failing), not only the case the finding named.
