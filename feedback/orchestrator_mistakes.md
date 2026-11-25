@@ -1136,3 +1136,14 @@ in dark.
 Rule: before the first brief, check each "never touch" line of the constraints block against the commands the design
 prescribes, and name the run's own objects as allowed. Design conformance shots cover every page in scope in both
 themes from a fresh context; a page that fails only there is checked on main's code shape before it is called new.
+
+### 2026-11-25: Each rework brief named one class, and the next round found the neighbouring class (#228)
+judge_design took three rounds for a 41-line flow-text change. Round 1 failed because my architect brief limited the
+item-3 sweep to the files the research listed and left `ia.md` out. Round 2 failed on a pointer the round-2 sweep had
+itself extended (`ia.md:926-927`): the brief asked "does the pointer restate a rule", not "does it cover every page and
+state of its sentence", so the dashboard root error stayed unlisted. Round 3, briefed as a two-way check of every
+from-#NNN id list against its source (every id exists, every source row listed or excluded), passed 3/3 and found three
+more gaps of the same shape.
+Rule: a rework brief for a pointer finding asks for the two-way check over every pointer of that form in all of
+`design/flows/`, `ia.md` included, from the first rework on; the sweep's file list is all flow files, never the research
+file's list.
