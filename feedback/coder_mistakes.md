@@ -379,3 +379,26 @@ recompute ran before the directories went away, so neither reports it. What does
 reads it: dead code with a doc comment that suggests the lines are checked.
 Rule: A comment that explains why a signal is absent names the place that does emit it for each case it lists, checked
 against when that case can occur; a test helper exports nothing no test reads.
+
+### 2026-11-25: Two added comments state a reason or an "only" that the code and the cited notes contradict (#251, judge_code round 1, architecture)
+apps/web/lib/course/view.ts:99-100 says an error block falls back to the course id "since no title was read". For the
+id-mismatch failure (courses.ts:113) course.yaml parsed and its title was read; the design (4.1 Q1) drops it on
+purpose. Design 7 asked only for the two cases and their lines, not a reason. apps/web/components/dashboard/
+load-error.tsx:17-19 says "only the two containers of the notifications region are live (ia.md R2)", but
+acceptance.md:498-499 lists the dashboard status container (ES6, ia.md:829 "under R2's first bullet") as a third live
+container, so the cited source says otherwise and the comment turns false when #255 adds ES6 without touching this
+file. Design 7 asked only for "static (role removed, alert.tsx:33-38)".
+Rule: A comment states the guarantee the design dictates and its code line; any added reason or "only" is checked
+against every case the code takes and against the cited document, including the parts scheduled for a sibling issue.
+
+### 2026-11-25: #251 round-2 sweep kept "every dashboard retry" on the Card heading, false once #255 lands (judge_code round 2, architecture)
+The r2 sweep (plans/251-code-r2-sweep.md) kept apps/web/components/dashboard/next-lesson-card.tsx:11 "The Card
+heading: the success target of every dashboard retry, in the root error and in a block's error form", backed by
+"LoadErrorAlert is the only dashboard retry" (true today, load-error.tsx:44). #255 implements RO1 (block retry
+succeeds: focus the block's h2, ia.md:853) and RO4 (root retry succeeds with no Card: the first block's h2,
+ia.md:856), so after #255 the block retry no longer targets the Card heading. #255 edits load-error.tsx, not
+next-lesson-card.tsx, so this remote "every" turns false without its file being touched: the same class as
+round-1 F2. The wording came from design 7 (plans/251-design.md:241-242); the sweep was the check that should
+have caught it.
+Rule: A sweep backs every "every"/"only" claim against today's code and against each sibling issue that changes the
+code the claim names; a claim about another file's behaviour is stated so it survives that issue, or not stated.

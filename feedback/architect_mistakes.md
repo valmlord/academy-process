@@ -3515,3 +3515,28 @@ and has one rect however many lines it wraps to. The AC map also claimed lesson 
 tests that both run in two panes.
 Rule: For every mutation row, trace the named test's fixture to the mutated line and list the full red set; for a
 layout assertion, check the measured element's computed display in the real component before choosing the metric.
+
+### 2026-11-25: Test API outside the project's lib, a mutation row no test of its name catches, and a pointer to an issue body not read (#251, judge_design round 1, architecture)
+The element-id property test prescribes `fc.pre` on `isWellFormed()` (plans/251-design.md:189-190), but apps/web
+compiles with `"lib": [..., "ES2023"]` (tsconfig.json:4) and includes every `**/*.ts`; `isWellFormed` is ES2024, so
+TS 7.0.2 rejects it (TS2550) and commit 2 does not typecheck. M4 ("error block appended after the loop") names V2
+red, but V2 puts both failing courses after the only readable one, so the appended order equals the in-place order and
+V2, named "puts each failing course in its list place", cannot fail on it. The ES1/ES2/ES10 e2e is pointed at #255
+(:18, :333) while plans/255-issue.md, a binding input, names only the fixture-stage lever and the ES7/RG2 e2e, and
+Question 3 says that body was not read. R1's question also hides that the no-Card-before-and-after case regresses
+today's focus on `main` (page.tsx:33-36, :48).
+Rule: Check every prescribed API against the package's tsconfig `lib`; for each mutation, confirm the named test's
+arrangement orders or values differ under it; read the body of every issue a pointer names before writing the pointer.
+
+### 2026-11-25: "Neither lever can stage it" written from the glob, not from the container (#251, judge_design round 2, architecture)
+The A3 rework says ES2 and a failing course beside a readable one have no e2e "because neither lever can stage it
+(... the repo stack has one course, so the chmod lever fails every course or none)" (plans/251-design.md:341-343),
+and Question 3 builds on it (:427). The spec's lever is `docker exec -u 0` in a web container that is not read-only
+(docker-compose.yml:26-66; only workspace has `read_only`, :76), with the course root-owned and the server running as
+`node` (apps/web/Dockerfile:42, :50, :55). `chmod a-r /app/course` makes `readdir` fail with EACCES
+(node-fs.ts:77-79, :35), which `listRoot` returns as a root failure (courses.ts:85-86): ES2. `mkdir
+/app/course/<id-form name>` adds a listed course whose course.yaml is missing (node-fs.ts:32, :58-61; courses.ts:110-111):
+ES1 beside the readable course's Card. Both cost restore work (afterEach, ci.yml:242-246, isolated-stack.sh:364-365
+glob `/app/course/*/course.yaml`), which is exactly what the question should put to Stepan, but the premise is false.
+Rule: Before writing that a state cannot be staged, read what the lever's mechanism can change (container write access,
+user, ownership) and trace each candidate change through the read path; state the cheapest working option and its cost.
