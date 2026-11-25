@@ -1137,6 +1137,19 @@ Rule: before the first brief, check each "never touch" line of the constraints b
 prescribes, and name the run's own objects as allowed. Design conformance shots cover every page in scope in both
 themes from a fresh context; a page that fails only there is checked on main's code shape before it is called new.
 
+### 2026-11-25: Both judge phases spent rounds on one class each, comment claims about other files (#251)
+judge_design took three rounds: r1 failed architecture on an e2e attributed to #255 that #255's body did not list
+(my own Q4 decision in the architect brief), r2 on a "no lever can stage it" premise the rework added. Round 3 passed
+once the orchestrator session decided the question and the false premise was deleted, not rewritten. judge_code also
+took three rounds, all on comments: r1 a reason clause and an "only" clause, r2 a comment in next-lesson-card.tsx naming
+the success target of "every dashboard retry", which #255 will change without opening that file. The r1 sweep checked
+each comment against today's code, not against what other issues will change; the wording came from design section 7.
+Round 3 passed after a sweep that deleted every comment clause stating another file's behaviour.
+Rule: before pointing work at a follow-up issue in a brief, read that issue's body and quote the line that owns it.
+In design and coder briefs, comments state only what the code in the same file makes true; a clause about another
+component (its targets, callers, "every"/"only" over other files) is left out from the first draft, and the first
+comment sweep checks for that class, not only for false reasons.
+
 ### 2026-11-25: Four design rounds on citations and labels, and an e2e wait nobody had run (#248)
 judge_design passed 3/3 only in round 4. Round 1 failed on incomplete mutant red sets, a "measured" claim whose test
 passed either way, and a misnamed owner image. Rounds 2 and 3 failed on one stale line range each: the same item was
