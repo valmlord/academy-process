@@ -1136,3 +1136,17 @@ in dark.
 Rule: before the first brief, check each "never touch" line of the constraints block against the commands the design
 prescribes, and name the run's own objects as allowed. Design conformance shots cover every page in scope in both
 themes from a fresh context; a page that fails only there is checked on main's code shape before it is called new.
+
+### 2026-11-25: Four design rounds on citations and labels, and an e2e wait nobody had run (#248)
+judge_design passed 3/3 only in round 4. Round 1 failed on incomplete mutant red sets, a "measured" claim whose test
+passed either way, and a misnamed owner image. Rounds 2 and 3 failed on one stale line range each: the same item was
+cited in two sections, and a fix deleted a wrong range but kept the wrong rule label next to it. Round 4 passed after
+each range was cited once with "see X" pointers elsewhere, the round-log narrative was deleted from the design, and
+two sweeps went to the judges: a script that checks every path:N-M against origin/main, and a label sweep that checks
+each rule label and design/ citation against the rule's own words. Separately, design 3.4 prescribed
+`await response.finished()` after a held page.route refresh; nobody ran it before the tester, and T1-T3 hung on it in
+tester run 1 (it resolved in 2 of 9 held cases). The fix waited for the response headers, with T3 as the timing control.
+Rule: before the first judge_design round, run the citation script on the design and ask the architect for the label
+sweep, so stale ranges and misattributed rules never reach a judge; a design keeps no history of its own rounds. Any
+Playwright wait the design prescribes on an intercepted or held request is tried once against the real stack, or
+listed as unmeasured, before judge_design.

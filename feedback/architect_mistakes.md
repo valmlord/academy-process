@@ -3515,3 +3515,39 @@ and has one rect however many lines it wraps to. The AC map also claimed lesson 
 tests that both run in two panes.
 Rule: For every mutation row, trace the named test's fixture to the mutated line and list the full red set; for a
 layout assertion, check the measured element's computed display in the real component before choosing the metric.
+
+### 2026-11-25: The e2e safety boundary named the owner's images by a tag they do not have (#248, judge_design round 1, operations)
+Design 3.4 told the tester never to touch the owner's "`:dev` images". The owner's images are `academy-web:local`
+and `academy-workspace-service:local` (docker-compose.yml:30,71 `${..._IMAGE_TAG:-local}`, isolated-stack.sh:71
+OWNER_IMAGE); `academy-web:dev` appears only as a retag example in tester.md:88. A boundary that names the wrong tag
+leaves the real protected images unnamed in the one sentence the tester reads for this run.
+Rule: Every protected object a design names (project, volume, image:tag) is copied from docker-compose.yml or
+isolated-stack.sh, with the file:line, never from memory or another role file's examples.
+
+### 2026-11-25: Mutant red sets left out tests the mutant reaches, and a Chromium "measurement" that cannot fail (#248, judge_design round 1, architecture)
+Design 3.3 gave M3 (press focus dropped) the red set P1, P2 and the changed pathname test, but every page test of 3.2
+has the arrange check "the press focused the button", so all eleven go red too. M5 (`body` branch dropped) left out
+the existing "focuses another element that takes the success target's place" (retry-button.test.tsx:77-97), whose
+button is removed so focus is on `body`. M10 (harness answers at the press) listed H1 only, but P1's "right after:
+button focused", G3 and E1 also go red once the answer commits at the press. The design's own rule ("a row whose red
+set differs stops the work") turns each of these into a stop for the coder. Section 2.1 and X2 also called e2e R1 the
+Chromium measurement of focus falling to `body` on removal, but the first repo lesson has a workspace, so the loaded
+page is `LessonLayout` and the stored block (the old `main`) is detached together with the button; a detached
+`main.contains(detachedButton)` is true, so R1 passes whatever Chromium reports.
+Rule: For every mutant, walk every test, arrange checks included, and list the full red set; before naming a test as
+the measurement of a platform fact, show an outcome of the fact under which that test goes red.
+
+### 2026-11-25: One citation of a re-checked range left stale (#248)
+Round 2 of the #248 design said every cited line of isolated-stack.sh was re-checked, and section 3.4 cites the
+course restore as :364-370, but the F8 row of section 5 still cites it as :363-367 (:363 is the `fi` of the spec
+stage). The same object carries two different ranges in one document, so a reader cannot tell which one is true.
+Rule: When a range is corrected, grep the whole design for the old range and for every other citation of the same object, and fix them all in one pass.
+
+### 2026-11-25: A wrong range deleted instead of corrected, leaving a false source (#248)
+Round 3 of the #248 design deleted `ia.md:362-363` next to the quote "the dashboard course error's Alert" in section
+2.1 and kept the label "(RG1 text)"; the change log calls it "the quoted RG1 text". RG1 is ia.md:842 and does not
+contain that phrase. The phrase is R2's block sentence at ia.md:365 ("[RG1](#RG1). The block: until #220 the dashboard
+course error's Alert ..."), which only follows a link to RG1. A reader who opens RG1 to check the default block does
+not find it, so the citation now misinforms with no line number to catch it.
+Rule: When a cited range is wrong, find the line that holds the quoted text and cite it (rule id and line); never fix a
+wrong range by deleting it while keeping the source label it was attached to.
